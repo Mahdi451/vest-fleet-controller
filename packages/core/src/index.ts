@@ -26,13 +26,20 @@ export const intentSchema = z
     entryType: z.literal('MARKET'),
     stopDistancePoints: positive,
     takeProfitPoints: positive,
-    riskMode: z.enum(['FIXED_NOTIONAL', 'FIXED_DOLLAR', 'PERCENT_DRAWDOWN']),
+    riskMode: z.enum([
+      'FIXED_NOTIONAL',
+      'FIXED_DOLLAR',
+      'PERCENT_DRAWDOWN',
+      'MARGIN_PERCENT',
+    ]),
     riskValue: positive,
     leverage: positive,
   })
   .strict()
   .refine(
-    (v) => v.riskMode !== 'PERCENT_DRAWDOWN' || new D(v.riskValue).lte(100),
+    (v) =>
+      !['PERCENT_DRAWDOWN', 'MARGIN_PERCENT'].includes(v.riskMode) ||
+      new D(v.riskValue).lte(100),
     'Percentage must be <= 100',
   );
 export type TradeIntent = z.infer<typeof intentSchema>;

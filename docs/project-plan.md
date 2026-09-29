@@ -20,14 +20,13 @@ controls. Do not treat these perpetual products as CME NQ futures.
 | M1 Core             | Implemented and tested                             | Domain schemas, account model, formulas, costs, drawdown and independent sizing                           |
 | M2 Simulator        | Initial simulator implemented and tested           | Ten accounts and requested core scenarios; model limitations documented                                   |
 | M3 Fleet controller | Initial implementation                             | Selection, previews, mock fan-out, identity, journal, immediate reconciliation; recovery workflow remains |
-| M4 Dashboard        | Deferred                                           | Local React/Vite controls after reliability work; clear simulation indicator and prominent flatten        |
+| M4 Dashboard        | Local simulator dashboard implemented              | Leverage/margin allocation, fleet previews, entry controls and coordinated flatten; no live adapter       |
 | M5 Vest integration | Blocked intentionally                              | Explicitly supported execution path, verified auth/rules/metadata and user review                         |
 | M6 Validation       | Unit/integration/simulator stage only              | Paper/test if available, one tiny account, small fleet, then larger fleet validation                      |
 
-The initial requested deliverable includes a working CLI rather than a polished
-dashboard. Future UI must show quote, direction, leverage choices, risk mode/value,
-stop and target, account balance/floor/buffer/enabled status, and per-account calculated
-orders. Controls: preview, long all, short all, prominent minimal-interaction flatten all.
+The initial delivery supplied the CLI. A follow-up added a working local browser dashboard
+and actual PNG screenshots in the README. The user clarified that percentages mean equity
+allocated as margin; `MARGIN_PERCENT` now supports this independently from drawdown-risk modes.
 
 ## Requirement mapping
 
@@ -39,7 +38,7 @@ orders. Controls: preview, long all, short all, prominent minimal-interaction fl
 | Section 6        | TradeIntent, selection, preview, deterministic child IDs, mock fan-out and reconciliation |
 | Section 7        | Configurable fee/slippage/funding/account cost and $2 reserve checks                      |
 | Section 8        | Initial ten-account fixtures and quote-driven scenarios                                   |
-| Section 9        | Preview CLI now; dashboard deferred                                                       |
+| Section 9        | CLI and local dashboard with actual screenshots                                           |
 | Section 10       | Allowlisted audit, SQLite reservation/replay, explicit uncertainty and circuit halt       |
 | Section 11       | TypeScript/pnpm workspace, lint/format/test tooling, private repository on GitHub         |
 | Sections 12–13   | Tested initial implementation and detailed README; no live implementation                 |
@@ -50,10 +49,10 @@ The private repository is `Mahdi451/vest-fleet-controller`; the initial implemen
 and detailed README are maintained on `main`.
 
 1. Continue M3 with persistent simulator snapshots, controlled restart/reconciliation,
-   and a queued emergency operation that handles a batch already in progress.
+   and an operator re-arm workflow. Dashboard flatten already coordinates with active batches.
 2. Obtain direct current Instant terms and staff/source permalinks for unresolved facts.
    Add evidence without promoting observations into permanent account rules.
-3. Build M4 local dashboard using the proven shared core.
+3. Extend dashboard recovery and synchronization using the proven shared core.
 4. Stop before M5 and present facts, unresolved questions, architecture, structure,
    risk/simulator behavior, test results and staged validation plan for review.
 

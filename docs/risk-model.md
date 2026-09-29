@@ -40,11 +40,12 @@ planned stop. The mock anchors stop/target prices to the decision quote and appl
 adverse slippage at both actual executions. This is conservative within the configured
 slippage/holding assumptions, not a guaranteed maximum loss across gaps or unlimited time.
 
-| Mode             | Allocation                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| FIXED_DOLLAR     | B = input risk dollars; q = floor_step(max(0, B−C) / K)                               |
-| PERCENT_DRAWDOWN | B = remaining drawdown × input percent / 100; same quantity equation                  |
-| FIXED_NOTIONAL   | q = floor_step(input notional / P); calculate B = raw quantity × K + C, then validate |
+| Mode             | Allocation                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------- |
+| MARGIN_PERCENT   | M = min(balance, equity) × input percent / 100; q = floor_step(M × leverage / (P+s)); calculate loss, then validate |
+| FIXED_DOLLAR     | B = input risk dollars; q = floor_step(max(0, B−C) / K)                                                             |
+| PERCENT_DRAWDOWN | B = remaining drawdown × input percent / 100; same quantity equation                                                |
+| FIXED_NOTIONAL   | q = floor_step(input notional / P); calculate B = raw quantity × K + C, then validate                               |
 
 Planned total loss = qK + C. Display stop-only loss qS separately from entry fee,
 exit fee, slippage, funding and fixed cost. Never credit favorable expected funding
@@ -67,3 +68,13 @@ Only linear single-market exposure is modeled. No inverse contracts, options, po
 offsets, pyramiding or guaranteed stops. Funding scenarios are explicit; actual holding
 time must be bounded/reassessed in a future service. Precision, mark-price basis,
 fees, execution price protection and market hours remain live integration prerequisites.
+
+## Margin allocation is not loss allocation
+
+The dashboard defaults to MARGIN_PERCENT after the user clarified that 10x/75% means
+75% equity as margin at 10x leverage. For $500, this gives approximately $3,750 exposure;
+50x/25% gives approximately $6,250. A stop and modeled costs still determine the loss.
+An 80-point stop at price 30,400 fails the $2-reserve check for a $500 account with a $490
+floor under both presets. The larger-buffer first account can differ. Requested sizes
+are displayed even when rejected; no automatic size reduction or stop adjustment occurs.
+Entry fees must fit in addition to margin, so 100% allocation can fail the margin check.

@@ -47,6 +47,9 @@ export class FleetController {
     this.circuitOpen = true;
     this.journal.halt();
   }
+  requestHalt() {
+    this.halt();
+  }
   private async deadline<T>(promise: Promise<T>): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -94,6 +97,10 @@ export class FleetController {
     });
     const body = { createdAt, intent, quote, accounts: included, orders };
     const preview = { previewId: hash(body), ...body };
+    for (const [id, old] of this.previews) {
+      if (!isFresh(old.createdAt, createdAt, this.config.maxPreviewAgeMs))
+        this.previews.delete(id);
+    }
     this.previews.set(preview.previewId, structuredClone(preview));
     this.journal.log({
       timestamp: createdAt,

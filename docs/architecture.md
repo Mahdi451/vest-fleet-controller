@@ -9,7 +9,7 @@ revalidates each child before dispatch through an `ExecutionAdapter`.
 
 ```mermaid
 flowchart TD
-  UI[CLI; future local dashboard] --> Fleet[Fleet controller]
+  UI[CLI and local dashboard] --> Fleet[Fleet controller]
   Fleet --> Risk[Pure risk engine]
   Risk --> Domain[Validated domain types]
   Fleet --> Journal[SQLite journal and audit]
@@ -20,9 +20,10 @@ flowchart TD
 ```
 
 Node 24, TypeScript, pnpm, Zod, decimal.js, Vitest, ESLint and Prettier provide a
-small reproducible toolchain. SQLite uses Node's built-in API. A future local service
-will use Fastify, with React/Vite for the dashboard. No HTTP server or dashboard is
-needed for this first preview-and-simulation deliverable.
+small reproducible toolchain. SQLite uses Node's built-in API. The first local dashboard
+uses Node HTTP plus plain browser JavaScript/CSS, avoiding an extra frontend build step.
+The user requested leverage/allocation controls after the CLI delivery. React/Vite remains
+an optional later UI implementation, not a dependency for running the current dashboard.
 
 ## Component ownership
 
@@ -34,13 +35,14 @@ needed for this first preview-and-simulation deliverable.
 | Adapter         | Simulation-only capability contract                                                    | Official supported transport or native copier                               |
 | Simulator       | Independent accounts, protected fills, costs, funding scenarios, withdrawal and breach | Deterministic event replay, persistent simulator snapshots, liquidity model |
 | Journal         | Durable master/child attempts and allowlisted audit events                             | Schema migrations, recovery reconciliation service                          |
-| Dashboard       | Deferred                                                                               | Price, fleet table, master controls, per-account preview, prominent flatten |
+| Dashboard       | Local simulation controls                                                              | Price, fleet table, master controls, per-account preview, prominent flatten |
 
 ## Major assumptions and decisions
 
 1. Fixed $490 floors, Instant fees, and 95% withdrawal share are observations, not
    verified current rules. The share is an explicit withdrawal parameter.
-2. Budget inputs represent all-in planned loss. The original gross sizing formulas
+2. Fixed-dollar and drawdown budget inputs represent all-in planned loss. Margin-percent
+   inputs allocate min(balance, equity) as margin, multiplied by leverage for exposure. The original gross sizing formulas
    remain separate tested functions. No hidden leverage multiplier changes P&L.
 3. The internal product is a linear synthetic `NDX`, one unit = $1/point. No external
    symbol, quantity step, contract multiplier or liquidation formula is certified.
@@ -74,3 +76,20 @@ explicit refusal are preferable to silently weakening the risk model.
 Methods for cancellation, explicit leverage changes and subscriptions should be added
 when a supported implementation needs them. Current market entries are immediately
 filled/rejected/unknown; fake no-op cancellation methods would imply safety that is absent.
+
+## Local dashboard boundary
+
+`apps/dashboard/server.ts` binds only to 127.0.0.1. Requests require the exact Host;
+provided Origins must match. Mutations require a process-specific token and JSON body,
+with Zod validation and a 16 KiB body limit. No CORS, no live transport, no remote login.
+Static files are allowlisted and served with a restrictive content security policy.
+
+Mutations are serialized or rejected while busy. Flatten latches the controller halt
+immediately, waits for the active bounded operation, then closes and reconciles accounts.
+Preview refresh updates the **synthetic** quote; no real market freshness is implied.
+Previews expire after the configured five seconds and are invalidated by UI changes.
+The client preserves request identity during execution and blocks new entries on lost
+responses. Session IDs prevent old browser requests from trading after a simulator reset.
+
+Dashboard sessions retain balances in memory until reset/exit. Each new session gets a
+new SQLite journal. There is no persistent simulator restore or re-arm of a halted session.

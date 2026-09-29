@@ -7,14 +7,21 @@ risk-adjusted orders, and testing execution behavior before any supported live i
 The initial fleet models **10 × $500 Instant funded accounts**.
 
 > **Current release: simulation only.** Prices and accounts are synthetic. There is no
-> live Vest adapter, authenticated market feed, dashboard, or credential setup.
+> live Vest adapter, authenticated market feed, or credential setup.
+> Both a local browser dashboard and CLI are available.
 > The code cannot send a live Vest trade.
+
+![Actual local dashboard: leverage and margin allocation preview](docs/images/dashboard-preview.png)
+
+_Actual application screenshot, using synthetic accounts and prices._
 
 ## Contents
 
 - [What the tool does](#what-the-tool-does)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
+- [Using the web dashboard](#using-the-web-dashboard)
+- [Trading power: leverage × allocation](#trading-power-leverage--allocation)
 - [Trade previews](#trade-previews)
 - [How account risk works](#how-account-risk-works)
 - [Execution and failure handling](#execution-and-failure-handling)
@@ -37,7 +44,7 @@ equity, failure floor, costs and remaining buffer.
 | ----------------- | ----------------------------------------------------------------------------------------- |
 | Account inventory | Balance, equity, P&L, floor, buffer, leverage, positions, status and synchronization time |
 | Trade intent      | Direction, market entry, stop/target distance, risk mode/value and leverage               |
-| Risk sizing       | Fixed dollar budget, percentage of remaining drawdown, or fixed notional                  |
+| Risk sizing       | Margin allocation × leverage, fixed dollar loss, drawdown percentage, or fixed notional   |
 | Cost model        | Entry/exit fees, adverse slippage, funding allowance and account-specific costs           |
 | Preview           | Per-account size, notional, estimated loss, remaining buffer and rejection reasons        |
 | Execution         | Sequential mock dispatch with fresh validation before each child order                    |
@@ -48,7 +55,8 @@ equity, failure floor, costs and remaining buffer.
 | Observability     | Structured, allowlisted audit records and explicit unknown outcomes                       |
 
 The account manager currently lives in the validated account model and mock adapter.
-The CLI demonstrates the engine; it is not a continuously running trading service.
+The local dashboard keeps one simulated fleet running until you reset it or stop the server.
+The CLI runs isolated scenarios. Neither interface automates Vest’s website.
 
 ## Architecture
 
@@ -58,6 +66,8 @@ simulator and any future permitted adapter must use the same trade intent and ri
 ```mermaid
 flowchart TD
     CLI["Preview and simulation CLI"] --> Controller["Fleet controller"]
+    Browser["Local browser dashboard"] --> Server["Loopback HTTP service"]
+    Server --> Controller
     Controller --> Risk["Independent risk calculations"]
     Risk --> Core["Validated account and trade models"]
     Controller --> Journal["SQLite execution journal"]
@@ -69,7 +79,8 @@ flowchart TD
 
 **Stack:** Node 24, TypeScript, pnpm, Zod, decimal.js, SQLite, Vitest, ESLint and
 Prettier. The small workspace shares a root toolchain and uses direct TypeScript
-imports between packages. React/Vite and a local HTTP service are later milestones.
+imports between packages. The dashboard uses Node’s HTTP server and plain browser
+JavaScript/CSS; it needs no frontend build step or additional runtime dependencies.
 
 ## Quick start
 
@@ -95,11 +106,14 @@ Git history when needed. If you have a repository checkout, use its root directo
 ```sh
 pnpm install --frozen-lockfile
 pnpm check
-pnpm preview
+pnpm dashboard
 ```
 
 `pnpm check` runs strict TypeScript checking, ESLint, formatting checks and tests.
-`pnpm preview` calculates orders but does not submit even mock entries.
+Open **http://127.0.0.1:4173** in your browser. Keep the terminal running.
+Use `Ctrl+C` to stop the server.
+
+For terminal-only usage, `pnpm preview` calculates orders without submitting even mock entries.
 
 ### Run an isolated simulation
 
@@ -111,6 +125,84 @@ pnpm simulate --scenario retry
 
 Every CLI invocation creates a **new simulated fleet** and a separate local journal.
 Running another command does not resume the previous simulation's balances or positions.
+
+## Using the web dashboard
+
+1. Choose **LONG** or **SHORT** in the direction selector.
+2. Set **leverage** and **% of equity as margin**, or choose a preset.
+3. Set the **stop and target distances** in points.
+4. Select the participating accounts using the checkboxes.
+5. Click **Refresh trade preview**. Review each account’s margin, notional,
+   planned loss, remaining drawdown and approval status.
+6. Click **LONG SELECTED** or **SHORT SELECTED** within five seconds. Only
+   approved accounts execute. Presets calculate previews; they do not place orders.
+7. Use the synthetic price controls to test price moves, stops and targets.
+8. **FLATTEN ALL** closes every simulated account, including accounts not selected,
+   and latches the entry halt. It does not require a confirmation dialog.
+
+Changing an input or account selection invalidates the preview. Expired previews must
+be refreshed. LONG and SHORT are not reversal buttons: existing positions must close
+before a new trade can be opened. A dropped execution response disables further entries;
+use flatten and inspect outcomes instead of blindly clicking again.
+
+After emergency flatten, **New simulation** explicitly resets balances, positions and
+entry state to the initial fleet. It asks for confirmation because it discards simulated
+state. There is currently no re-arm-and-preserve-balances workflow. Audit files remain
+under `.runtime/dashboard/<session-id>.sqlite`.
+
+![Actual dashboard after all ten simulated long entries](docs/images/dashboard-positions.png)
+
+A [mobile layout screenshot](docs/images/dashboard-mobile.png) is also included.
+
+The service listens only on `127.0.0.1:4173`; use that exact address, not `localhost`.
+Host/Origin checks, a mutation token, a restrictive content security policy and no CORS
+limit access from other websites. This is a local simulator, not a remotely authenticated
+trading service. Do not expose it to a LAN or reverse proxy.
+
+## Trading power: leverage × allocation
+
+**Allocation means the percentage of account equity committed as margin. It is not
+percentage of drawdown risk.** This is the dashboard’s default sizing mode,
+`MARGIN_PERCENT`. Other risk modes remain available in the dropdown and CLI.
+
+```text
+margin allocation = min(balance, equity) × allocation percent / 100
+buying power      = margin allocation × leverage
+quantity          = round_down(buying power / adverse entry price)
+planned loss      = quantity × stop distance + modeled costs
+```
+
+The model requires flat accounts before opening new positions, so it does not pretend
+to calculate free collateral for an existing portfolio. It uses `price + entry slippage`
+for conservative sizing in either direction. Rounding and slippage make the displayed
+quote-based notional slightly smaller than the simple buying-power amount.
+
+For a $500 account at a synthetic price of 30,400:
+
+| Leverage | Equity allocation | Margin | Approximate buying power | Stop-only loss at 80 points, before costs |
+| -------- | ----------------: | -----: | -----------------------: | ----------------------------------------: |
+| 10x      |               25% |   $125 |                   $1,250 |                                     $3.29 |
+| 10x      |               75% |   $375 |                   $3,750 |                                     $9.87 |
+| 50x      |               25% |   $125 |                   $6,250 |                                    $16.45 |
+
+At a $10 drawdown buffer and $2 reserve, the last two examples are **rejected** after
+costs. A higher account buffer can produce a different decision: Account 01 can approve
+10x/75% under the example assumptions while Accounts 02–10 reject it. Preview totals
+show **all requested exposure**, including rejected accounts; only approved rows execute.
+The controller never silently shrinks a requested margin allocation to make it pass.
+
+![Actual rejection of 50x leverage and 25 percent margin allocation](docs/images/dashboard-risk-rejection.png)
+
+Leverage multiplies exposure when margin allocation is held constant. In a fixed-dollar
+loss or drawdown-risk mode, the stop and loss budget determine size; leverage primarily
+changes required margin. Always check the sizing-mode label.
+
+CLI equivalent:
+
+```sh
+pnpm preview --mode MARGIN_PERCENT --risk 75 --leverage 10 --stop 80
+pnpm preview --mode MARGIN_PERCENT --risk 25 --leverage 50 --stop 80
+```
 
 ## Trade previews
 
@@ -158,7 +250,7 @@ pnpm preview --config config/example.yaml
 | `--side`     | `LONG`                | `LONG` or `SHORT`                                                        |
 | `--stop`     | `80`                  | Stop distance in index points                                            |
 | `--target`   | `80`                  | Take-profit distance in index points                                     |
-| `--mode`     | `PERCENT_DRAWDOWN`    | `FIXED_DOLLAR`, `PERCENT_DRAWDOWN` or `FIXED_NOTIONAL`                   |
+| `--mode`     | `PERCENT_DRAWDOWN`    | `MARGIN_PERCENT`, `FIXED_DOLLAR`, `PERCENT_DRAWDOWN` or `FIXED_NOTIONAL` |
 | `--risk`     | `40`                  | Dollars, percent or notional according to mode; `40` means 40%, not 0.4% |
 | `--leverage` | `50`                  | Requested leverage, checked against configuration and margin             |
 | `--config`   | `config/example.yaml` | YAML cost and safety assumptions                                         |
@@ -206,14 +298,15 @@ For P=30,400, R=$4 and S=60, the gross formula gives approximately **$2,026.67**
 That is before costs. The executable sizing calculation reserves costs inside the
 risk budget, so its approved notional is smaller.
 
-| Mode                   | Calculation                                                                     |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| Fixed dollar           | Input is the total planned loss budget, including costs                         |
-| Percentage of drawdown | Budget = that account's buffer × percentage / 100                               |
-| Fixed notional         | Convert requested notional to quantity, then validate its total loss and margin |
+| Mode                   | Calculation                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Margin allocation      | Allocate equity × percentage as margin; multiply by leverage, then validate loss |
+| Fixed dollar           | Input is the total planned loss budget, including costs                          |
+| Percentage of drawdown | Budget = that account's buffer × percentage / 100                                |
+| Fixed notional         | Convert requested notional to quantity, then validate its total loss and margin  |
 
-Stop distance is required in all modes. Leverage changes estimated margin requirements;
-it does not change dollars per point when notional stays the same.
+Stop distance is required in all modes. In margin-allocation mode, changing leverage
+changes exposure. At a fixed notional, leverage changes margin but not dollars per point.
 
 ### Include costs before approval
 
@@ -282,13 +375,13 @@ still return the original fill after that position has been closed.
 attempts every account, and reads positions afterward. An account with an unresolved
 submission remains `UNKNOWN` even if its current position snapshot is empty.
 
-**Current limitation:** if execution is already in progress, flatten latches the halt
-but returns `EXECUTION_IN_PROGRESS_RETRY_FLATTEN`. It must be called again after the
-bounded operation completes. A queued emergency workflow is required before a live
-service or dashboard can claim reliable single-action emergency handling.
+The dashboard first latches the controller halt, waits for its current bounded operation,
+and then runs flatten automatically. Failures remain explicit and the button stays
+available for retry. The lower-level `flattenAll()` call itself still requires a retry
+when called directly during execution; the dashboard supplies that coordination.
 
-There is no standalone interactive flatten CLI yet. Scenario commands exercise the
-controller's flatten operation at the end of the run.
+There is no standalone interactive flatten CLI. Scenario commands exercise flatten at
+the end of the run. A successful flatten keeps entries halted until a new simulation.
 
 ## Simulator scenarios
 
@@ -351,7 +444,8 @@ not increase the allowed loss to preserve an earlier size.
 
 SQLite records the child as submitting/unknown **before** invoking the adapter.
 An unfinished master or unknown child halts a new controller using that journal.
-There is no automatic recovery or circuit-reset workflow in this release.
+There is no automatic recovery or circuit-reset workflow that preserves simulated balances.
+The dashboard can explicitly discard its current simulated fleet and start a new session.
 
 Audit records include timestamp, trade/account/request IDs, direction, requested and
 filled quantity, protection levels, fees, status, error code, adapter and latency.
@@ -366,6 +460,10 @@ comments only. A private repository is still not a place to store credentials.
 
 | Location                               | Responsibility                                                        |
 | -------------------------------------- | --------------------------------------------------------------------- |
+| `apps/dashboard/server.ts`             | Loopback service, request validation and emergency coordination       |
+| `apps/dashboard/public/`               | Browser controls, account table and simulation status                 |
+| `docs/images/`                         | Actual application screenshots                                        |
+| `tests/dashboard.test.ts`              | HTTP security, execution, retry, reset and safety integration         |
 | `apps/controller/src/cli.ts`           | Command parsing, preview output and scenario execution                |
 | `packages/core/src/index.ts`           | Decimal primitives, schemas, account state and initial fleet          |
 | `packages/risk-engine/src/index.ts`    | Pure sizing, cost estimates and safety checks                         |
@@ -379,12 +477,12 @@ comments only. A private repository is still not a place to store credentials.
 | `config/example.yaml`                  | Cost and safety assumptions                                           |
 | `docs/`                                | Evidence register, architecture, risk/execution models and validation |
 
-There is no empty dashboard or live-adapter shell. Add those packages when the relevant
-milestone begins. Keep `main` simple; use `feature/*` when a change benefits from isolation.
+The dashboard reuses the same domain, risk engine, controller and simulator as the CLI.
+There is no live-adapter shell. Keep `main` simple; use `feature/*` when a change benefits from isolation.
 
 ## Verification and development
 
-The initial implementation passed **40 tests in three files**, strict TypeScript checks,
+The dashboard release passed **49 tests in four files**, strict TypeScript checks,
 ESLint and formatting checks. See [validation results](docs/validation.md) for the tested
 runtime, CLI checks and limits. This is a dated validation result, not a live CI badge.
 
@@ -414,8 +512,8 @@ Useful invariants to preserve when extending the tool:
 | M0: research         | Evidence register exists; key facts unresolved | Verify current Instant rules and supported execution                              |
 | M1: core             | Implemented                                    | Extend only with verified rule/instrument metadata                                |
 | M2: simulator        | Initial version implemented                    | Persist simulator snapshots and deterministic recovery                            |
-| M3: controller       | Initial version implemented                    | Operator reconciliation and queued emergency handling                             |
-| M4: dashboard        | Planned                                        | Local fleet table, previews and prominent emergency controls                      |
+| M3: controller       | Initial version implemented                    | Operator reconciliation; dashboard coordinates emergency handling                 |
+| M4: dashboard        | Local simulator implemented                    | Persistent recovery and operator re-arm workflow remain                           |
 | M5: Vest integration | Deliberately blocked                           | Officially documented or explicitly permitted execution path                      |
 | M6: validation       | Unit/integration/simulator stages only         | Paper environment if available, then separately authorized staged real validation |
 

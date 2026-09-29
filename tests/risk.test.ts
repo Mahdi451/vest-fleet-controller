@@ -179,3 +179,76 @@ describe('per-account sizing and reserves', () => {
     }
   });
 });
+
+describe('margin allocation and buying power', () => {
+  it('uses leverage times each account’s allocated equity rather than its drawdown', () => {
+    const t = {
+      ...intent,
+      riskMode: 'MARGIN_PERCENT' as const,
+      riskValue: '75',
+      leverage: '10',
+    };
+    const normal = sizeTrade(account(), t, quote, config, NOW);
+    const larger = sizeTrade(account(0), t, quote, config, NOW);
+    expect(Number(normal.marginRequired)).toBeCloseTo(375, 2);
+    expect(Number(normal.notional)).toBeGreaterThan(3749);
+    expect(Number(normal.notional)).toBeLessThanOrEqual(3750);
+    expect(Number(larger.notional)).toBeGreaterThan(Number(normal.notional));
+    expect(normal.reasons).toContain('DRAWDOWN_RESERVE');
+    expect(larger.approved).toBe(true);
+  });
+  it('50x at 25% requests more exposure than 10x at 75%, while risk gates still apply', () => {
+    const r = sizeTrade(
+      account(),
+      {
+        ...intent,
+        riskMode: 'MARGIN_PERCENT',
+        riskValue: '25',
+        leverage: '50',
+      },
+      quote,
+      config,
+      NOW,
+    );
+    expect(Number(r.marginRequired)).toBeCloseTo(125, 2);
+    expect(Number(r.notional)).toBeGreaterThan(6249);
+    expect(Number(r.totalPlannedLoss)).toBeGreaterThan(16.45);
+    expect(r.approved).toBe(false);
+  });
+  it('approves 10x at 25% with sufficient stop reserve, and caps the percentage at 100', () => {
+    const r = sizeTrade(
+      account(),
+      {
+        ...intent,
+        riskMode: 'MARGIN_PERCENT',
+        riskValue: '25',
+        leverage: '10',
+      },
+      quote,
+      config,
+      NOW,
+    );
+    expect(r.approved).toBe(true);
+    expect(Number(r.remainingAfterStop)).toBeGreaterThan(6);
+    expect(() =>
+      intentSchema.parse({
+        ...intent,
+        riskMode: 'MARGIN_PERCENT',
+        riskValue: '101',
+      }),
+    ).toThrow();
+    const all = sizeTrade(
+      account(),
+      {
+        ...intent,
+        riskMode: 'MARGIN_PERCENT',
+        riskValue: '100',
+        leverage: '10',
+      },
+      quote,
+      config,
+      NOW,
+    );
+    expect(all.reasons).toContain('INSUFFICIENT_MARGIN');
+  });
+});

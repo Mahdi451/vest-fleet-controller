@@ -66,8 +66,10 @@ entry requests remain a blocker even if the current position snapshot is empty.
 One controller owns one fleet. A busy guard serializes entry operations. Emergency
 flatten first latches the circuit, so later children cannot dispatch. If a batch is
 currently active, it returns `EXECUTION_IN_PROGRESS_RETRY_FLATTEN`; call flatten again
-after that bounded operation completes. This limitation must be replaced by an owned
-emergency-operation queue before a dashboard/live service is considered ready.
+after that bounded operation completes. The local dashboard supplies this coordination:
+it calls `requestHalt()` immediately, waits for its in-progress operation, then runs
+flatten and reports each account outcome. No new entry is accepted after the request.
+Direct non-dashboard callers must still handle the busy/retry result.
 
 No promise of globally exactly-once trading is possible from client IDs alone. A live
 adapter requires documented server deduplication or authoritative lookup plus safe

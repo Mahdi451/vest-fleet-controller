@@ -110,16 +110,30 @@ export function sizeTrade(
     .plus(entryBasis.mul(fee.entryFeeRate))
     .plus(exitBasis.mul(fee.exitFeeRate))
     .plus(exitBasis.mul(c.fundingRateAllowance));
+  // Margin allocation is a requested exposure, never an implied loss budget.
+  // Use the smaller balance/equity and adverse entry basis, then round down.
+  const marginQuantity = D.max(0, D.min(a.balance, a.equity))
+    .mul(t.riskValue)
+    .div(100)
+    .mul(t.leverage)
+    .div(entryBasis);
   const budget =
     t.riskMode === 'PERCENT_DRAWDOWN'
       ? dd.mul(t.riskValue).div(100)
       : t.riskMode === 'FIXED_DOLLAR'
         ? new D(t.riskValue)
-        : new D(t.riskValue).div(p).mul(perUnit).plus(fixed);
+        : (t.riskMode === 'MARGIN_PERCENT'
+            ? marginQuantity
+            : new D(t.riskValue).div(p)
+          )
+            .mul(perUnit)
+            .plus(fixed);
   const raw =
-    t.riskMode === 'FIXED_NOTIONAL'
-      ? new D(t.riskValue).div(p)
-      : D.max(0, budget.minus(fixed)).div(perUnit);
+    t.riskMode === 'MARGIN_PERCENT'
+      ? marginQuantity
+      : t.riskMode === 'FIXED_NOTIONAL'
+        ? new D(t.riskValue).div(p)
+        : D.max(0, budget.minus(fixed)).div(perUnit);
   const qty = raw.div(c.sizeStep).floor().mul(c.sizeStep);
   const entryFee = qty.mul(entryBasis).mul(fee.entryFeeRate),
     exitFee = qty.mul(exitBasis).mul(fee.exitFeeRate);
@@ -141,7 +155,10 @@ export function sizeTrade(
     reasons.push('DRAWDOWN_RESERVE');
   if (margin.plus(entryFee).plus(fixed).gt(D.min(a.balance, a.equity)))
     reasons.push('INSUFFICIENT_MARGIN');
-  if (t.riskMode !== 'FIXED_NOTIONAL' && loss.gt(budget))
+  if (
+    ['FIXED_DOLLAR', 'PERCENT_DRAWDOWN'].includes(t.riskMode) &&
+    loss.gt(budget)
+  )
     reasons.push('RISK_BUDGET_EXCEEDED');
   return {
     accountId: a.accountId,
