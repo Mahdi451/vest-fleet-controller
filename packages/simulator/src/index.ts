@@ -13,6 +13,7 @@ import {
   type RiskConfig,
   type Quote,
 } from '../../core/src/index.ts';
+import { evaluateFleetExposure } from '../../risk-engine/src/exposure.ts';
 import { costsFor, sizeTrade } from '../../risk-engine/src/index.ts';
 import type {
   ExecutionAdapter,
@@ -159,20 +160,19 @@ export class MockVestAdapter implements ExecutionAdapter {
       this.config,
       this.clock(),
     );
-    const opposite = [...this.accounts.values()].some((account) =>
-      account.positions.some((p) => p.side !== order.intent.side),
-    );
+    const exposureViolations = evaluateFleetExposure(order.intent, [
+      ...this.accounts.values(),
+    ]);
     if (
       !check.approved ||
-      opposite ||
+      exposureViolations.length > 0 ||
       !new D(check.quantity).eq(order.preview.quantity) ||
       JSON.stringify(order.config) !== JSON.stringify(this.config) ||
       order.preview.stop !== check.stop ||
       order.preview.target !== check.target
     ) {
-      result.error = opposite
-        ? 'OPPOSING_FLEET_POSITION'
-        : 'PRETRADE_REVALIDATION_FAILED';
+      result.error =
+        exposureViolations[0]?.code ?? 'PRETRADE_REVALIDATION_FAILED';
       return record();
     }
     const fault = this.faults.get(a.accountId);

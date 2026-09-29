@@ -33,7 +33,7 @@ inspect the mock/venue truth, and implement a reviewed recovery workflow before 
 ## Dispatch policy
 
 Dispatch is sequential. Each account is re-read, re-sized and checked for revision,
-balance, equity, floor, enabled state, freshness, existing position and opposing fleet
+balance, equity, floor, enabled state, freshness, existing position and enabled-fleet same-market opposing
 exposure. Preview expiry and price drift are checked again. A re-sized quantity may
 not exceed the preview quantity. Excess movement or changed state requires a new preview.
 
@@ -89,3 +89,14 @@ by git. The prototype does not collect passwords, keys, cookies or tokens.
 
 SQLite is durable local storage, not a tamper-proof/compliance audit system. Disk failure
 can stop execution; the controller must not proceed after journal-write failure.
+
+## Mandatory enabled-fleet exposure check
+
+`CROSS_ACCOUNT_HEDGE_GUARD = ENABLED` applies before preview approval, immediately before
+each child, and within mock submission. The shared risk-engine rule scans the full enabled
+fleet, not only selected destinations. Disabled exposure is ignored. Preview diagnostics
+identify conflicting accounts; a guard rejection uses `CROSS_ACCOUNT_HEDGE_GUARD`.
+A conflict present before a batch produces zero submissions. A conflict found during
+fan-out rejects the next child, halts the circuit, and blocks remaining children; earlier
+fills remain explicit. Flatten/close bypass this entry rule and still include disabled
+accounts. Correlated-market rules are additive extension points with no active policy.

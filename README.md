@@ -355,19 +355,36 @@ An account rejected during preview is skipped. An unexpected failure on a previo
 approved account halts the remaining dispatch. Existing successful fills are not
 silently rolled back; their simulated stop/target protection remains active.
 
-| Example event                                        | Controller behavior                                                      |
-| ---------------------------------------------------- | ------------------------------------------------------------------------ |
-| Accounts 01–07 fill, 08 rejects                      | Record seven fills and the rejection; do not send entries to 09–10       |
-| Response times out                                   | Keep outcome unknown; block further entries; do not automatically resend |
-| Response is ambiguous, but ledger and position agree | Reconcile to filled without a second entry                               |
-| Same master ID and same preview are retried          | Return the recorded result without resubmission                          |
-| Same master ID is reused for another preview         | Reject the identity conflict                                             |
-| Price or account state changes after preview         | Revalidate; reject if the preview is no longer safe                      |
-| Another account holds the opposite direction         | Block new opposing exposure, including when that account is disabled     |
-| A response names the wrong account                   | Preserve the requested identity, mark unknown and halt                   |
+| Example event                                        | Controller behavior                                                                                |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Accounts 01–07 fill, 08 rejects                      | Record seven fills and the rejection; do not send entries to 09–10                                 |
+| Response times out                                   | Keep outcome unknown; block further entries; do not automatically resend                           |
+| Response is ambiguous, but ledger and position agree | Reconcile to filled without a second entry                                                         |
+| Same master ID and same preview are retried          | Return the recorded result without resubmission                                                    |
+| Same master ID is reused for another preview         | Reject the identity conflict                                                                       |
+| Price or account state changes after preview         | Revalidate; reject if the preview is no longer safe                                                |
+| Another account holds the opposite direction         | Block opposing same-market entries when that account is enabled; unselected enabled accounts count |
+| A response names the wrong account                   | Preserve the requested identity, mark unknown and halt                                             |
 
 A historical `FILLED` result is not a current-position query. An exact replay can
 still return the original fill after that position has been closed.
+
+### Mandatory hedge guard
+
+`CROSS_ACCOUNT_HEDGE_GUARD = ENABLED` is a hard entry rule, with no disable setting.
+Same-direction copying into flat accounts passes this guard. Opposite-direction NQ/NDX
+entries fail whenever another **enabled** account holds that market in the other direction.
+All enabled accounts count, including accounts not selected for the new trade. Disabled
+accounts are ignored per the specified policy; unchecking a dashboard account only
+changes participation and does **not** disable it. Disabling does not close its positions
+or establish an exemption under Vest's rules.
+
+The rule runs in preview, before each child dispatch, and in the mock adapter. Preview
+responses include the conflicting account, symbol and direction. Emergency flatten is
+always permitted. No automatic correlated-market blocking is enabled; the exposure-rule
+interface can add a future verified policy. Current executable intents remain NDX-only.
+See the [exact behavior matrix](docs/risk-model.md#mandatory-cross-account-hedge-guard)
+and [policy evidence status](docs/vest-facts.md#hedge-policy-requirement-update--2026-09-29).
 
 ### Emergency flatten
 
@@ -466,6 +483,8 @@ comments only. A private repository is still not a place to store credentials.
 | `tests/dashboard.test.ts`              | HTTP security, execution, retry, reset and safety integration         |
 | `apps/controller/src/cli.ts`           | Command parsing, preview output and scenario execution                |
 | `packages/core/src/index.ts`           | Decimal primitives, schemas, account state and initial fleet          |
+| `packages/risk-engine/src/exposure.ts` | Mandatory same-market hedge guard and future additive exposure rules  |
+| `tests/hedge-guard.test.ts`            | Unit and simulator/controller hedge-policy tests                      |
 | `packages/risk-engine/src/index.ts`    | Pure sizing, cost estimates and safety checks                         |
 | `packages/execution/src/adapter.ts`    | Execution interface and response validation                           |
 | `packages/execution/src/controller.ts` | Preview, dispatch, reconciliation and emergency control               |
@@ -482,7 +501,7 @@ There is no live-adapter shell. Keep `main` simple; use `feature/*` when a chang
 
 ## Verification and development
 
-The dashboard release passed **49 tests in four files**, strict TypeScript checks,
+The hedge-guard release passed **62 tests in five files**, strict TypeScript checks,
 ESLint and formatting checks. See [validation results](docs/validation.md) for the tested
 runtime, CLI checks and limits. This is a dated validation result, not a live CI badge.
 
@@ -543,7 +562,7 @@ no multi-process coordination, no pyramiding/reversal and no live market data.
 | `INSUFFICIENT_MARGIN`                             | Estimated margin plus entry costs exceeds available cash/equity                               |
 | `STALE_ACCOUNT`, `STALE_QUOTE`, `PREVIEW_EXPIRED` | Obtain fresh state and a new preview; do not blindly resend                                   |
 | `EXISTING_POSITION`                               | Initial implementation requires a flat destination account                                    |
-| `OPPOSING_FLEET_POSITION`                         | Another account has opposite-direction exposure, even if disabled                             |
+| `CROSS_ACCOUNT_HEDGE_GUARD`                       | An enabled account has opposite same-market exposure; disabled accounts are ignored           |
 | `IDEMPOTENCY_CONFLICT`                            | An existing master/request ID was reused with a different payload                             |
 | `UNKNOWN` or `RECONCILIATION_REQUIRED`            | Preserve the journal and reconcile the outcome; do not retry entry                            |
 | `EXECUTION_IN_PROGRESS_RETRY_FLATTEN`             | Entry halt is latched; call flatten after the active operation completes                      |

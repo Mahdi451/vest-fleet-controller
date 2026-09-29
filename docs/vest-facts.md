@@ -29,23 +29,23 @@ Publication dates are unknown unless stated below; all sources were checked on t
 
 ## UNVERIFIED
 
-| Question                                                                              | Current evidence / required resolution                                                                                                                                          |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Maximum funded count; Instant inclusion; change from five to ten                      | Prior research reported staff confirmation, but no direct dated staff permalink was retrieved. Obtain current written confirmation.                                             |
-| Native copier status and availability                                                 | Prior report only; no authoritative release or supported integration contract found.                                                                                            |
-| Automation and cross-account copy permissions                                         | Obtain explicit permissions covering this exact account product and owner fleet. Public exchange API documentation alone is insufficient.                                       |
-| Funded/evaluation API availability and roadmap                                        | Reportedly unavailable with future access planned. Neither current availability nor a promised date verified.                                                                   |
-| Capital backend differs from standard exchange                                        | Prior report only. No inspection of private endpoints performed.                                                                                                                |
-| Supported Capital authentication and account scoping                                  | Standard exchange authentication is documented; applicability to Capital is unknown.                                                                                            |
-| NQ UI to NDX-USD-PERP mapping, tick size, size step, minimum size, multiplier, margin | Naming convention is documented, exact mapping is not. `NDX` will be a simulation-only domain symbol.                                                                           |
-| Instant drawdown, fixed vs trailing, equity basis and equality boundary               | $490 is a user-observed fixture. Confirm fees, funding, unrealized P&L and withdrawals in the failure calculation.                                                              |
-| Instant daily loss rule, reset clock and daylight saving behavior                     | Do not import evaluation daily-loss rules into Instant automatically.                                                                                                           |
-| Instant payout split, minimums, caps, profit debit vs net payout, floor after payout  | User observed 95%; current public sources conflict by product.                                                                                                                  |
-| NQ execution fee of 0.0025% each side                                                 | User observed one trade. General API docs say 0.01% per transaction, which may be a different execution path. No permanent fee default justified.                               |
-| Full fee schedule and funding                                                         | Fee page could not be retrieved; verify applicable market, session, account and execution channel. Funding changes with market/time.                                            |
-| Instant leverage options and margin/liquidation rules                                 | User UI offered 10/20/30/40/50x. Exact limits and liquidation buffer not verified.                                                                                              |
-| Cross-account hedging prohibition and other termination conditions                    | Prior report only. Current prop terms link returned no readable body; full contractual conditions were not verified. Treat opposing fleet exposure as blocked in the prototype. |
-| API numeric rate limits and reliable idempotency semantics                            | Published API shows rate-limit and duplicate errors, but no confirmed numeric quota or Capital retry contract was located.                                                      |
+| Question                                                                              | Current evidence / required resolution                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Maximum funded count; Instant inclusion; change from five to ten                      | Prior research reported staff confirmation, but no direct dated staff permalink was retrieved. Obtain current written confirmation.                                                                                                                    |
+| Native copier status and availability                                                 | Prior report only; no authoritative release or supported integration contract found.                                                                                                                                                                   |
+| Automation and cross-account copy permissions                                         | Obtain explicit permissions covering this exact account product and owner fleet. Public exchange API documentation alone is insufficient.                                                                                                              |
+| Funded/evaluation API availability and roadmap                                        | Reportedly unavailable with future access planned. Neither current availability nor a promised date verified.                                                                                                                                          |
+| Capital backend differs from standard exchange                                        | Prior report only. No inspection of private endpoints performed.                                                                                                                                                                                       |
+| Supported Capital authentication and account scoping                                  | Standard exchange authentication is documented; applicability to Capital is unknown.                                                                                                                                                                   |
+| NQ UI to NDX-USD-PERP mapping, tick size, size step, minimum size, multiplier, margin | Naming convention is documented, exact mapping is not. `NDX` will be a simulation-only domain symbol.                                                                                                                                                  |
+| Instant drawdown, fixed vs trailing, equity basis and equality boundary               | $490 is a user-observed fixture. Confirm fees, funding, unrealized P&L and withdrawals in the failure calculation.                                                                                                                                     |
+| Instant daily loss rule, reset clock and daylight saving behavior                     | Do not import evaluation daily-loss rules into Instant automatically.                                                                                                                                                                                  |
+| Instant payout split, minimums, caps, profit debit vs net payout, floor after payout  | User observed 95%; current public sources conflict by product.                                                                                                                                                                                         |
+| NQ execution fee of 0.0025% each side                                                 | User observed one trade. General API docs say 0.01% per transaction, which may be a different execution path. No permanent fee default justified.                                                                                                      |
+| Full fee schedule and funding                                                         | Fee page could not be retrieved; verify applicable market, session, account and execution channel. Funding changes with market/time.                                                                                                                   |
+| Instant leverage options and margin/liquidation rules                                 | User UI offered 10/20/30/40/50x. Exact limits and liquidation buffer not verified.                                                                                                                                                                     |
+| Cross-account hedging prohibition and other termination conditions                    | Prior report only. Current prop terms link returned no readable body; full contractual conditions were not verified. Block opposite same-market entries across enabled fleet accounts under the project guard; see the dated requirement update below. |
+| API numeric rate limits and reliable idempotency semantics                            | Published API shows rate-limit and duplicate errors, but no confirmed numeric quota or Capital retry contract was located.                                                                                                                             |
 
 Research-only endpoint strings supplied by the user: `GET /v3/capital/limits`,
 `GET /v3/capital/accounts`, `POST /v3/auth/account-token`, `/v3/positions/open`,
@@ -79,3 +79,24 @@ to retrieval. These failures mean unknown, not permission or prohibition.
 Before any live adapter: obtain current Instant terms, official account/market metadata,
 permitted execution documentation, fees, funded authentication, copier/hedging rules,
 rate limits, and server-side protection/retry behavior. Recheck all dated findings.
+
+## Hedge-policy requirement update — 2026-09-29
+
+**UNVERIFIED Vest policy:** the user relayed prior research saying Vest staff prohibit
+hedging between funded accounts. No direct dated staff permalink or complete applicable
+contract was supplied with this update. The report remains unverified; it is not promoted
+to CONFIRMED. Existing official source URLs and their retrieval limits are recorded above.
+Obtain the actual staff statement and current funded/Instant terms before live integration.
+
+**Confirmed project instruction, not a Vest factual claim:** user instruction dated
+2026-09-29 requires `CROSS_ACCOUNT_HEDGE_GUARD = ENABLED`. Enabled funded accounts may
+share the same market direction or be flat, but new opposing same-market entries must
+be rejected. Disabled accounts are ignored by this guard per the user's explicit scope;
+unselected enabled accounts still count. This is not evidence that Vest exempts disabled
+accounts, or that same-direction copying/automation is currently authorized.
+
+Same-direction copying and opposite-direction hedging are distinct behaviors. NQ/NDX
+local aliases share one guard identity; the API symbol remains unverified. Economically
+related markets such as NQ and SPX may raise a separate correlated-hedging issue, but its
+scope is **UNVERIFIED**. No automatic correlated-market blocking is enabled. The risk
+engine provides an additive rule extension point for a later verified policy.

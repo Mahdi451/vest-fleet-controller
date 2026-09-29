@@ -10,7 +10,7 @@ Date: 2026-09-29. Scope: local simulation-only initial implementation.
 | TypeScript strict checking | Passed                                                                             |
 | ESLint                     | Passed                                                                             |
 | Prettier check             | Passed                                                                             |
-| Vitest                     | **49 tests passed, 4 files passed**                                                |
+| Vitest                     | **62 tests passed, 5 files passed**                                                |
 | Preview CLI                | Passed; all ten independently sized accounts displayed                             |
 | JSON preview               | Passed                                                                             |
 | Partial-failure CLI        | Seven filled, account 08 rejected, 09–10 blocked                                   |
@@ -71,3 +71,19 @@ long entry, flatten/halt, explicit reset, 50x/25% rejection, short entry and syn
 market movement. No page JavaScript errors or horizontal page overflow remained.
 PNG captures in `docs/images/` are from the running application. The browser was an
 isolated test dependency; running the dashboard adds no browser automation dependency.
+
+## Hedge-guard follow-up — 2026-09-29
+
+Design and test expectations were updated first. The red run demonstrated the old
+behavior still blocked disabled opposite exposure and lacked the shared policy module.
+After implementing the simulation-only rule pipeline, `pnpm check` passed all gates:
+**62 tests in five files**, including 13 new hedge unit/integration cases.
+
+`tests/hedge-guard.test.ts` verifies mandatory enablement, flat accounts, same-direction
+LONG/SHORT copying, NQ/NDX aliases, disabled exposure ignored, enabled unselected exposure
+detected, full conflict rejection before submission, exposure changing after preview and
+between children, independent mock enforcement, flatten despite a pre-existing hedge,
+and a test-only additive correlated-rule fixture. The fixture is not enabled in production.
+The earlier execution test asserting disabled exposure blocked entries was intentionally
+replaced to match the user's new requirement. Existing disabled-account flatten coverage
+remains. No live integration was added or exercised.

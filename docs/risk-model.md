@@ -78,3 +78,44 @@ An 80-point stop at price 30,400 fails the $2-reserve check for a $500 account w
 floor under both presets. The larger-buffer first account can differ. Requested sizes
 are displayed even when rejected; no automatic size reduction or stop adjustment occurs.
 Entry fees must fit in addition to margin, so 100% allocation can fail the margin check.
+
+## Mandatory cross-account hedge guard
+
+Design update: 2026-09-29, following the user's explicit safety requirement.
+`CROSS_ACCOUNT_HEDGE_GUARD = ENABLED` is mandatory, not a user-disableable risk setting.
+All accounts in the current simulated fleet represent funded accounts.
+
+| Existing fleet exposure                   | Proposed entry on another enabled account | Hedge decision                                               |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| Enabled NQ/NDX LONG                       | NQ/NDX LONG                               | Allow through this guard                                     |
+| Enabled NQ/NDX LONG                       | NQ/NDX SHORT                              | Reject                                                       |
+| Enabled NQ/NDX SHORT                      | NQ/NDX SHORT                              | Allow through this guard                                     |
+| Enabled NQ/NDX SHORT                      | NQ/NDX LONG                               | Reject                                                       |
+| Enabled accounts all flat                 | LONG or SHORT                             | Allow through this guard                                     |
+| Disabled account has opposite exposure    | Entry on an enabled account               | Ignore disabled exposure for this guard                      |
+| Enabled NQ LONG                           | SPX SHORT                                 | No automatic correlation block; future policy extension only |
+| Any exposure, including an existing hedge | Emergency flatten                         | Always permit the attempt                                    |
+
+"Allow" here means the hedge guard passes. All account, cost, reserve, freshness,
+leverage, margin and flat-destination checks still apply. Same-direction copying into
+flat accounts is permitted by this application policy; adding to an existing position
+is still rejected. This does not establish Vest's permission for copy trading.
+
+The guard inspects every **enabled** account, including those not selected for the new
+trade. It ignores disabled accounts exactly as requested; disabling does not close a
+position or establish that Vest would ignore it. Unchecking a dashboard participation
+box is not disabling an account. Emergency flatten includes both categories.
+
+Pre-trade sequence: validate intent and snapshots → evaluate enabled-fleet exposure →
+calculate per-account risk → preview → re-read the enabled fleet immediately before
+**each** child → evaluate exposure again → submit. The mock adapter independently
+rechecks its current book. An initial conflict rejects the fleet before any submission;
+a newly introduced conflict during fan-out stops remaining dispatch and halts entries.
+Already filled positions are reported explicitly, not silently undone.
+
+`CROSS_ACCOUNT_HEDGE_GUARD` identifies rejections, with conflicting account/market/side
+in preview diagnostics. The risk engine uses an additive `FleetExposureRule` interface:
+the mandatory same-market rule always runs and future verified correlation rules can
+add violations, never remove its violations. No correlation groups, statistical
+thresholds or NQ/SPX equivalence are enabled. Rule-level NQ/NDX aliases are local display
+normalization only; executable intents remain NDX-only and no Vest API symbol is certified.

@@ -10,6 +10,10 @@ import {
   type Quote,
 } from '../../core/src/index.ts';
 import { sizeTrade, type RiskPreview } from '../../risk-engine/src/index.ts';
+import {
+  evaluateFleetExposure,
+  type ExposureViolation,
+} from '../../risk-engine/src/exposure.ts';
 import type { ExecutionAdapter, OrderResult } from './adapter.ts';
 import { Journal } from './journal.ts';
 import { validateResult } from './adapter.ts';
@@ -23,6 +27,7 @@ export interface FleetPreview {
   quote: Quote;
   accounts: Account[];
   orders: RiskPreview[];
+  exposureViolations: ExposureViolation[];
 }
 export class FleetController {
   private previews = new Map<string, FleetPreview>();
@@ -82,20 +87,23 @@ export class FleetController {
     const quote = await this.deadline(this.adapter.getQuote());
     const included = accounts.filter((a) => ids.includes(a.accountId));
     const createdAt = this.clock();
-    const opposing = accounts.some((a) =>
-      a.positions.some(
-        (p) => p.symbol === intent.symbol && p.side !== intent.side,
-      ),
-    );
+    const exposureViolations = evaluateFleetExposure(intent, accounts);
     const orders = included.map((a) => {
       const r = sizeTrade(a, intent, quote, this.config, createdAt);
-      if (opposing) {
+      if (exposureViolations.length) {
         r.approved = false;
-        r.reasons.push('OPPOSING_FLEET_POSITION');
+        r.reasons.push(...new Set(exposureViolations.map((v) => v.code)));
       }
       return r;
     });
-    const body = { createdAt, intent, quote, accounts: included, orders };
+    const body = {
+      createdAt,
+      intent,
+      quote,
+      accounts: included,
+      orders,
+      exposureViolations,
+    };
     const preview = { previewId: hash(body), ...body };
     for (const [id, old] of this.previews) {
       if (!isFresh(old.createdAt, createdAt, this.config.maxPreviewAgeMs))
@@ -151,7 +159,9 @@ export class FleetController {
             stopped || this.circuitOpen
               ? 'CIRCUIT_OPEN'
               : !planned.approved
-                ? 'PREVIEW_REJECTED'
+                ? planned.reasons.includes('CROSS_ACCOUNT_HEDGE_GUARD')
+                  ? 'CROSS_ACCOUNT_HEDGE_GUARD'
+                  : 'PREVIEW_REJECTED'
                 : 'PREVIEW_EXPIRED';
         } else {
           let submitted = false;
@@ -175,13 +185,14 @@ export class FleetController {
               state.balance !== before.balance ||
               state.equity !== before.equity ||
               state.drawdown.floor !== before.drawdown.floor;
-            const opposing = fleet.some((a) =>
-              a.positions.some((p) => p.side !== preview.intent.side),
+            const exposureViolations = evaluateFleetExposure(
+              preview.intent,
+              fleet,
             );
             if (
               this.circuitOpen ||
               mismatch ||
-              opposing ||
+              exposureViolations.length > 0 ||
               !actual.approved ||
               !isFresh(
                 preview.createdAt,
@@ -194,7 +205,8 @@ export class FleetController {
                 .gt(this.config.maxPriceMovePoints) ||
               new D(actual.quantity).gt(planned.quantity)
             ) {
-              result.error = 'PRETRADE_REVALIDATION_FAILED';
+              result.error =
+                exposureViolations[0]?.code ?? 'PRETRADE_REVALIDATION_FAILED';
             } else {
               result.status = 'UNKNOWN';
               result.error = 'SUBMITTING';

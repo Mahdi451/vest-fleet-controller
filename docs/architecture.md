@@ -48,7 +48,8 @@ an optional later UI implementation, not a dependency for running the current da
    symbol, quantity step, contract multiplier or liquidation formula is certified.
 4. All new entries require flat accounts. Same-direction additions and reversals are
    rejected; partial closes are supported by the mock. Opposite fleet positions are
-   blocked conservatively pending verification of Vest's hedging rules.
+   blocked across enabled accounts by the mandatory hedge guard; disabled accounts
+   are ignored under the user's specified scope. Vest's exact policy remains unverified.
 5. Daily-loss floor may be supplied, and the stricter floor wins. Automatic daily
    reset logic is deferred because Instant applicability and baseline are unresolved.
 6. Sequential dispatch simplifies the initial safety model and allows revalidation
@@ -93,3 +94,20 @@ responses. Session IDs prevent old browser requests from trading after a simulat
 
 Dashboard sessions retain balances in memory until reset/exit. Each new session gets a
 new SQLite journal. There is no persistent simulator restore or re-arm of a halted session.
+
+## Fleet exposure policy
+
+The risk engine owns a pure, reusable fleet-exposure rule pipeline. Its mandatory
+same-market rule is shared by controller preview, immediate child pre-trade validation,
+and MockVestAdapter submission validation. `CROSS_ACCOUNT_HEDGE_GUARD = ENABLED` has
+no disable switch. Only enabled accounts contribute exposure, even if unselected.
+The prior prototype's treatment of disabled opposite exposure is superseded by this
+explicit user requirement. Flatten and close operations do not run entry hedge rules.
+
+Exposure-rule inputs accept generic market labels as a narrow read-only view, allowing
+future correlated-market rules without changing sizing or execution interfaces.
+Current executable domain schemas remain single-market NDX. Additional rules are additive;
+no correlated blocking policy is shipped. A future adapter must scope the fleet to funded
+accounts and provide authoritative, fresh positions plus unresolved-order reconciliation.
+A local rule cannot prevent a separate manual trader or service from changing positions
+between checks; no atomic cross-account venue guarantee is claimed.

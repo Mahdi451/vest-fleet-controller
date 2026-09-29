@@ -23,7 +23,8 @@ Available CLI scenarios: `win`, `loss`, `partial-failure`, `ambiguous`, `timeout
 
 The test suite additionally exercises funding, partial closes, profit withdrawal,
 price movement between children, adapter timeout, journal restart, stale state and
-cross-account opposing positions. A failure in one account does not modify another
+same-market opposing positions across enabled accounts. Disabled exposure is ignored
+by the entry guard, while flatten still includes disabled accounts. A failure in one account does not modify another
 account's balance. Circuit-breaker policy may prevent later accounts from participating.
 
 ## Model boundaries
@@ -40,3 +41,12 @@ account's balance. Circuit-breaker policy may prevent later accounts from partic
 - The adapter's account/order state is in memory. A controller can reopen its SQLite
   journal against the same adapter; a new CLI invocation is a new isolated simulation.
 - Full replayable simulator persistence and UI emergency recovery remain later work.
+
+## Hedge policy scenarios
+
+The simulator and controller share `evaluateFleetExposure`. Unit and integration cases in
+`tests/hedge-guard.test.ts` cover same-direction copying, opposite same-market rejection,
+flat destinations, disabled-source exclusion, enabled unselected positions, exposure
+introduced after preview or between fills, and emergency flatten of an existing hedge.
+A test-only generic-market rule demonstrates future NQ/SPX correlation extensibility;
+SPX is not an executable simulator market and no correlated rule is enabled by default.

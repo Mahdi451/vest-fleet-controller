@@ -183,7 +183,7 @@ describe('execution reliability', () => {
       s.journal.close();
     }
   });
-  it('blocks opposing exposure even when the existing account is disabled and unselected', async () => {
+  it('ignores opposing exposure on a disabled account per the explicit guard scope', async () => {
     const s = await setup();
     try {
       const p = await s.controller.preview(intent, ['01']);
@@ -192,7 +192,11 @@ describe('execution reliability', () => {
       const short = await s.controller.preview({ ...intent, side: 'SHORT' }, [
         '02',
       ]);
-      expect(short.orders[0]!.reasons).toContain('OPPOSING_FLEET_POSITION');
+      expect(short.orders[0]!.approved).toBe(true);
+      expect(
+        (await s.controller.execute('disabled-exposure', short.previewId))[0]!
+          .status,
+      ).toBe('FILLED');
     } finally {
       s.journal.close();
     }
