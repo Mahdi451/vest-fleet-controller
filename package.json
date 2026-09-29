@@ -1,0 +1,35 @@
+{
+  "name": "vest-fleet-controller",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local risk and fleet controller for managing multiple Vest Capital funded trading accounts.",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "preview": "node --import tsx apps/controller/src/cli.ts preview",
+    "simulate": "node --import tsx apps/controller/src/cli.ts simulate",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+  },
+  "dependencies": {
+    "decimal.js": "^10.6.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.0",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^4.1.11"
+  }
+}

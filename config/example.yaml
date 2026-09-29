@@ -1,0 +1,13 @@
+# SIMULATION ASSUMPTIONS ONLY. Decimal values must be quoted strings.
+entryFeeRate: '0.000025'
+exitFeeRate: '0.000025'
+slippagePointsPerSide: '1'
+fundingRateAllowance: '0.0001'
+accountCost: '0'
+minimumRemainingDrawdownAfterStop: '2'
+sizeStep: '0.000001'
+maxLeverage: '50'
+maxDataAgeMs: 5000
+maxPreviewAgeMs: 5000
+maxPriceMovePoints: '5'
+# Funding allowance is for the entire planned holding period, not per hour.
