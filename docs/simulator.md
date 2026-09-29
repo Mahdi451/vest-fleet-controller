@@ -9,14 +9,14 @@ diverge naturally with quantity, fills, fees, withdrawals and disabled state.
 | Market entry      | Re-runs the shared risk engine, checks account/fleet safety and deduplicates request ID                          |
 | Fill              | Current synthetic quote plus adverse per-side slippage; charges entry fee and fixed account cost                 |
 | Leverage          | Per-order leverage recorded; estimated initial margin checked by risk engine                                     |
-| Protection        | Stop/target attached atomically in the mock, anchored to decision quote                                          |
-| Market update     | Mark unrealized P&L and equity, detect breach and stop/target crossing                                           |
+| Protection        | Separate SL/TP calls after entry fill; reduce-only orders anchored to actual fill                                |
+| Market update     | Mark equity, detect breach and evaluate ACTIVE protection orders                                                 |
 | Stop/target       | Close at current synthetic market price plus adverse slippage, not a guaranteed trigger price                    |
 | Partial close     | Realize proportional P&L and exit fee, preserve the remainder and protection                                     |
 | Funding           | Explicit signed hourly-rate × hours scenario; positive rates debit longs and credit shorts                       |
 | Breach            | Equity at/below effective floor permanently marks breached; open positions close at current simulated price      |
 | Withdrawal        | Flat active account only, within realized profit and reserve; debit gross and report explicit split's net payout |
-| Emergency flatten | Controller attempts all accounts, including disabled, and rechecks positions                                     |
+| Emergency flatten | Cancel active protection and close all accounts, including disabled; verify both books                           |
 
 Available CLI scenarios: `win`, `loss`, `partial-failure`, `ambiguous`, `timeout`,
 `disabled`, `gap`, `retry`. Each uses the same TradeIntent and risk engine.
@@ -36,7 +36,12 @@ account's balance. Circuit-breaker policy may prevent later accounts from partic
   maintenance-margin liquidation formula, trading calendar or real market feed.
 - There is no automatic funding clock or Vest payout API. Withdrawal semantics are
   assumptions for experimentation, not promises about current Vest rules.
-- Stops are atomic only inside the mock. Live protection capabilities must be verified.
+- Entry and protection are separate calls. Raw entry has `protectionStatus: NONE`;
+  market updates cannot trigger protection that has not been created. SL and TP must
+  both be active for `PROTECTED` establishment. Gaps can occur during this interval.
+- Sibling cancellation is local simulation behavior; no venue-native OCO is assumed.
+  Full closes cancel siblings; reduce-only exits cap size after partial manual closes.
+  Orders linked to an older entry cannot reverse or close a newer position.
 - A price gap or funding charge beyond the configured allowance can breach an account.
 - The adapter's account/order state is in memory. A controller can reopen its SQLite
   journal against the same adapter; a new CLI invocation is a new isolated simulation.
@@ -50,3 +55,17 @@ flat destinations, disabled-source exclusion, enabled unselected positions, expo
 introduced after preview or between fills, and emergency flatten of an existing hedge.
 A test-only generic-market rule demonstrates future NQ/SPX correlation extensibility;
 SPX is not an executable simulator market and no correlated rule is enabled by default.
+
+## Post-fill protection scenarios
+
+`tests/protection.test.ts` exercises LONG/SHORT slippage, fractional fill anchors,
+SL/TP rejection, lost responses, delayed calls, forged acknowledgements, mismatched
+reconciliation, journal failure, immediate stop exit before TP establishment, sibling
+cancellation, duplicate requests and flatten with absent/partial/full protection.
+`injectProtectionFault(accountId, type, fault)` supplies deterministic rejection,
+timeout-before-create and ambiguous-after-create scenarios to simulator tests.
+
+With default quote 30,400 and one-point slippage, LONG fills at 30,401 and its 80-point
+TP triggers at 30,481; SHORT fills at 30,399 and TP triggers at 30,319. CLI win/loss
+scenarios now move relative to actual fill, rather than the preview quote. The trigger
+is not the exit fill: adverse exit slippage and market gaps still apply.

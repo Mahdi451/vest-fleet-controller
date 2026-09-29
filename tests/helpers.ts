@@ -30,9 +30,11 @@ export function account(index = 1) {
 export async function setup(c = config) {
   let now = NOW;
   const clock = () => now;
-  const adapter = new MockVestAdapter(c, clock);
-  await adapter.connect();
   const journal = new Journal();
+  const adapter = new MockVestAdapter(c, clock, undefined, '30400', (event) =>
+    journal.log(event),
+  );
+  await adapter.connect();
   const controller = new FleetController(adapter, c, journal, clock, 50);
   return {
     adapter,

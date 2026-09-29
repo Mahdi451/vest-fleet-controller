@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { FleetController } from '../packages/execution/src/controller.ts';
 import { Journal, type AuditEvent } from '../packages/execution/src/journal.ts';
 import { config, intent, NOW, setup } from './helpers.ts';
@@ -256,14 +257,53 @@ describe('execution reliability', () => {
       const second = new Journal(path);
       try {
         const place = vi.spyOn(s.adapter, 'placeOrder');
+        const protect = vi.spyOn(s.adapter, 'placeProtectionOrder');
         const c2 = new FleetController(s.adapter, config, second, s.clock);
         expect(await c2.execute('restart', p.previewId)).toEqual(r);
         expect(place).not.toHaveBeenCalled();
+        expect(protect).not.toHaveBeenCalled();
       } finally {
         second.close();
       }
     } finally {
       s.journal.close();
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+  it('refuses legacy atomic-fill journal results and halts after upgrade', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'vest-legacy-'));
+    const path = join(directory, 'journal.sqlite');
+    const initial = new Journal(path);
+    initial.close();
+    const db = new DatabaseSync(path);
+    const legacy = {
+      requestId: 'child',
+      accountId: '01',
+      status: 'FILLED',
+      filledSize: '1',
+      entryPrice: '30400',
+      fees: '0',
+      error: null,
+    };
+    db.prepare('INSERT INTO trades(id,fingerprint,result) VALUES(?,?,?)').run(
+      'old',
+      'preview',
+      JSON.stringify([legacy]),
+    );
+    db.prepare('INSERT INTO children(id,master_id,result) VALUES(?,?,?)').run(
+      'child',
+      'old',
+      JSON.stringify(legacy),
+    );
+    db.close();
+    const journal = new Journal(path);
+    try {
+      expect(journal.halted()).toBe(true);
+      expect(() => journal.replay('old', 'preview')).toThrow(
+        'LEGACY_RESULT_REQUIRES_RECONCILIATION',
+      );
+    } finally {
+      journal.close();
       rmSync(directory, { recursive: true, force: true });
     }
   });

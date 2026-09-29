@@ -36,9 +36,11 @@ Conservative per-unit loss coefficient:
 `K = S + 2s + (P+s)e + (P+S+2s)x + (P+S+2s)f`
 
 The fee/funding price bases are upper estimates covering either direction at the
-planned stop. The mock anchors stop/target prices to the decision quote and applies
-adverse slippage at both actual executions. This is conservative within the configured
-slippage/holding assumptions, not a guaranteed maximum loss across gaps or unlimited time.
+planned stop. Final protection is anchored to actual fill. The existing two-sided
+slippage allowance is retained conservatively: entry slippage shifts the anchor and
+exit slippage still adds to stop loss. No extra size is credited back after entry.
+This is conservative within configured slippage/holding assumptions, not a guaranteed
+maximum loss across gaps, unprotected execution intervals or unlimited time.
 
 | Mode             | Allocation                                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -61,6 +63,34 @@ and venue liquidation behavior are not modeled and must be verified before live 
 Examples: 40% of $14.55 yields a $5.82 all-in budget; 40% of $10 yields $4. A $9 planned
 loss with $10 available and $2 required reserve is rejected. The 40% input is a user
 example/configurable policy, not a recommendation about trading risk.
+
+## Preview estimates versus final protection
+
+`stopDistancePoints` and `takeProfitPoints` remain authoritative intent. Risk previews
+expose `estimatedStop` and `estimatedTarget` from the current quote; they are estimates,
+not attached orders or promised fill levels. MARKET entry creates an unprotected
+position. The controller reconciles the actual destination fill before calculating:
+
+| Side  | Final STOP_LOSS           | Final TAKE_PROFIT       |
+| ----- | ------------------------- | ----------------------- |
+| LONG  | fill − stopDistancePoints | fill + takeProfitPoints |
+| SHORT | fill + stopDistancePoints | fill − takeProfitPoints |
+
+For LONG fill 30,450.25, stop distance 25 and target distance 50, final SL is
+30,425.25 and TP is 30,500.25. `protectionPrices()` uses decimal arithmetic, with
+positive-price validation. Reconciliation compares against these actual-fill levels,
+never equality with the preview's estimated prices.
+
+A CME/signal source may select LONG/SHORT, but its price does not anchor destination
+protection. No signal feed is implemented here. Both separate exits must be reduce-only
+and confirmed active before establishment succeeds. An unprotected filled position is
+unsafe; failed protection causes immediate flatten attempt and circuit halt.
+
+The simulator has no invented CME or Vest price tick. Decimal values are preserved
+exactly; configured quantity rounding remains separate. A future live adapter must
+verify destination tick size, precision and trigger rules, define conservative rounding,
+and recheck risk after rounding. Entry fill/fee overruns outside the modeled envelope
+already fail closed. Gaps and protection outages can exceed the modeled loss.
 
 ## Limitations
 

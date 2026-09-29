@@ -40,6 +40,21 @@ export function notionalForRisk(
     .div(positive.parse(stop))
     .toFixed();
 }
+/** Exact simulator decimals. Venue tick size/rounding must be verified before live use. */
+export function protectionPrices(fillPrice: string, intent: TradeIntent) {
+  const fill = new D(positive.parse(fillPrice));
+  const t = intentSchema.parse(intent);
+  const sign = direction(t.side);
+  return {
+    stopPrice: positive.parse(
+      fill.minus(new D(t.stopDistancePoints).mul(sign)).toFixed(),
+    ),
+    targetPrice: positive.parse(
+      fill.plus(new D(t.takeProfitPoints).mul(sign)).toFixed(),
+    ),
+  };
+}
+
 export function costsFor(a: Account, c: RiskConfig) {
   return a.feeOverride ?? c;
 }
@@ -61,8 +76,8 @@ export interface RiskPreview {
   totalPlannedLoss: string;
   remainingAfterStop: string;
   marginRequired: string;
-  stop: string;
-  target: string;
+  estimatedStop: string;
+  estimatedTarget: string;
 }
 export function sizeTrade(
   account: Account,
@@ -102,7 +117,8 @@ export function sizeTrade(
   const target = p.plus(new D(t.takeProfitPoints).mul(direction(t.side)));
   if (D.min(stopPrice, target).minus(slip).lte(0) || p.minus(slip).lte(0))
     reasons.push('INVALID_PROTECTION_PRICE');
-  // Upper bounds cover both directions; rates are decimal fractions. Quantity is $/point.
+  // Preview estimates only; final protection anchors to fill. Two slippage allowances
+  // remain conservative for fill-relative stops. Rates are fractions; quantity is $/point.
   const entryBasis = p.plus(slip);
   const exitBasis = p.plus(stop).plus(slip.mul(2));
   const perUnit = stop
@@ -178,7 +194,7 @@ export function sizeTrade(
     totalPlannedLoss: loss.toFixed(),
     remainingAfterStop: dd.minus(loss).toFixed(),
     marginRequired: margin.toFixed(),
-    stop: stopPrice.toFixed(),
-    target: target.toFixed(),
+    estimatedStop: stopPrice.toFixed(),
+    estimatedTarget: target.toFixed(),
   };
 }

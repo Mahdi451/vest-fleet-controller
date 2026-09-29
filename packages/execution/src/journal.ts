@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
-import type { OrderResult } from './adapter.ts';
+import { childResultSchema, type ChildResult } from './adapter.ts';
 
 const auditSchema = z.object({
   balance: z.string().optional(),
@@ -14,6 +14,11 @@ const auditSchema = z.object({
   accountId: z.string().optional(),
   requestId: z.string().optional(),
   symbol: z.string().optional(),
+  entryRequestId: z.string().optional(),
+  protectionType: z.string().optional(),
+  triggerPrice: z.string().optional(),
+  reduceOnly: z.boolean().optional(),
+  orderId: z.string().optional(),
   direction: z.string().optional(),
   requestedSize: z.string().optional(),
   filledSize: z.string().optional(),
@@ -40,7 +45,7 @@ export class Journal {
   claim(
     id: string,
     fingerprint: string,
-  ): { fresh: boolean; result: OrderResult[] | null } {
+  ): { fresh: boolean; result: ChildResult[] | null } {
     const row = this.db
       .prepare('SELECT fingerprint,result FROM trades WHERE id=?')
       .get(id);
@@ -49,9 +54,7 @@ export class Journal {
         throw new Error('IDEMPOTENCY_CONFLICT');
       return {
         fresh: false,
-        result: row.result
-          ? (JSON.parse(String(row.result)) as OrderResult[])
-          : null,
+        result: row.result ? this.readResults(String(row.result)) : null,
       };
     }
     this.db
@@ -59,7 +62,7 @@ export class Journal {
       .run(id, fingerprint);
     return { fresh: true, result: null };
   }
-  replay(id: string, fingerprint: string): OrderResult[] {
+  replay(id: string, fingerprint: string): ChildResult[] {
     const row = this.db
       .prepare('SELECT fingerprint,result FROM trades WHERE id=?')
       .get(id);
@@ -68,7 +71,13 @@ export class Journal {
       throw new Error('IDEMPOTENCY_CONFLICT');
     if (!row.result)
       throw new Error('INCOMPLETE_TRADE_REQUIRES_RECONCILIATION');
-    return JSON.parse(String(row.result)) as OrderResult[];
+    return this.readResults(String(row.result));
+  }
+  private readResults(json: string): ChildResult[] {
+    const parsed = z.array(childResultSchema).safeParse(JSON.parse(json));
+    if (!parsed.success)
+      throw new Error('LEGACY_RESULT_REQUIRES_RECONCILIATION');
+    return parsed.data;
   }
   unresolvedAccount(accountId: string): boolean {
     return !!this.db
@@ -77,20 +86,21 @@ export class Journal {
       )
       .get(accountId);
   }
-  child(master: string, result: OrderResult) {
+  child(master: string, result: ChildResult) {
+    childResultSchema.parse(result);
     this.db
       .prepare(
         'INSERT INTO children(id,master_id,result) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET result=excluded.result',
       )
       .run(result.requestId, master, JSON.stringify(result));
   }
-  children(master: string): OrderResult[] {
+  children(master: string): ChildResult[] {
     return this.db
       .prepare('SELECT result FROM children WHERE master_id=?')
       .all(master)
-      .map((r) => JSON.parse(String(r.result)) as OrderResult);
+      .map((r) => JSON.parse(String(r.result)) as ChildResult);
   }
-  finish(id: string, result: OrderResult[]) {
+  finish(id: string, result: ChildResult[]) {
     this.db
       .prepare('UPDATE trades SET result=? WHERE id=?')
       .run(JSON.stringify(result), id);
@@ -103,7 +113,7 @@ export class Journal {
         .get() ||
       !!this.db
         .prepare(
-          "SELECT 1 FROM children WHERE json_extract(result,'$.status')='UNKNOWN' LIMIT 1",
+          "SELECT 1 FROM children WHERE json_extract(result,'$.status')='UNKNOWN' OR json_extract(result,'$.state') IS NULL LIMIT 1",
         )
         .get()
     );

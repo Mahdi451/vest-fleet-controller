@@ -1,6 +1,6 @@
-# Initial validation report
+# Validation report
 
-Date: 2026-09-29. Scope: local simulation-only initial implementation.
+Date: 2026-09-29. Scope: local simulation-only implementation, including post-fill protection.
 
 | Check                      | Result                                                                             |
 | -------------------------- | ---------------------------------------------------------------------------------- |
@@ -10,7 +10,7 @@ Date: 2026-09-29. Scope: local simulation-only initial implementation.
 | TypeScript strict checking | Passed                                                                             |
 | ESLint                     | Passed                                                                             |
 | Prettier check             | Passed                                                                             |
-| Vitest                     | **62 tests passed, 5 files passed**                                                |
+| Vitest                     | **96 tests passed, 6 files passed**                                                |
 | Preview CLI                | Passed; all ten independently sized accounts displayed                             |
 | JSON preview               | Passed                                                                             |
 | Partial-failure CLI        | Seven filled, account 08 rejected, 09–10 blocked                                   |
@@ -87,3 +87,41 @@ and a test-only additive correlated-rule fixture. The fixture is not enabled in 
 The earlier execution test asserting disabled exposure blocked entries was intentionally
 replaced to match the user's new requirement. Existing disabled-account flatten coverage
 remains. No live integration was added or exercised.
+
+## Post-fill protection refactor — 2026-09-29
+
+`pnpm format` and `pnpm check` passed: formatting, ESLint, strict TypeScript and
+**96 tests in six files**. This adds 34 tests to the previous 62-test baseline.
+The full hedge-guard suite remains unchanged and passes. The only changed simulator
+win expectation moves the target quote one point with actual adverse entry slippage:
+LONG 30,481 / SHORT 30,319 instead of preview-based 30,480 / 30,320.
+
+New protection coverage includes:
+
+- LONG/SHORT actual-fill anchors, including the exact 30,450.25 example and slippage
+  divergence from preview; raw entry has no protection.
+- Durable state/request recording before side effects; no success before both exits.
+- SL and TP rejection, cleanup failure, delayed protection and journal-write failure;
+  halt later children and preserve uncertain outcomes even when cleanup is flat.
+- Authoritative recovery after lost responses; fabricated acknowledgements, missing
+  ledger, wrong position, altered protection identity/size/price and inactive orders.
+- SL triggering during establishment, before TP can be installed.
+- Both exit directions, sibling cancellation, stale-order identity, reduce-only schema
+  rejection and remaining-quantity caps after partial closes.
+- Idempotent protection retries, changed-payload conflicts, terminal orders not revived;
+  controller restart replay does not resubmit entries or protection.
+- Flatten with unprotected, partially protected and protected positions, including
+  disabled accounts; active-order evidence prevents a false flat report.
+- Legacy journal result refusal and a halted controller on upgrade.
+
+CLI smoke checks passed for LONG win and SHORT loss. Both independently established
+10 protected entries, triggered all exits, produced the expected P&L direction and
+reported all accounts flat afterward. JSON preview contains estimated SL/TP fields
+for all ten accounts. Dashboard HTTP integration tests pass with the shared controller;
+the browser now displays protection status and execution state. Earlier browser
+screenshots document the preceding UI release; they were not regenerated for this change.
+
+Unresolved integration gates: verified destination tick/trigger rules, request-to-venue
+order mapping, genuine server-side reduce-only guarantees, cancellation races, late
+request resolution, subscriptions and durable operator recovery. No live adapter,
+live trading or undocumented endpoint access was added.

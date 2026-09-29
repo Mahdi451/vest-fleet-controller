@@ -340,16 +340,29 @@ A child may not grow beyond the preview quantity.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Previewed
-    Previewed --> Rejected: invalid or stale
-    Previewed --> Submitting: journal before dispatch
-    Submitting --> Filled: ledger and protected position match
-    Submitting --> Rejected: confirmed rejection and flat state
-    Submitting --> Unknown: timeout or conflicting evidence
-    Unknown --> Filled: immediate reconciliation succeeds
-    Unknown --> Halted: outcome unresolved
-    Filled --> Flat: close and verify
+    [*] --> PREVIEWED
+    PREVIEWED --> ENTRY_SUBMITTING: validate and journal
+    ENTRY_SUBMITTING --> ENTRY_FILLED_UNPROTECTED: authoritative fill
+    ENTRY_FILLED_UNPROTECTED --> PROTECTION_SUBMITTING: fill-relative SL/TP
+    PROTECTION_SUBMITTING --> PROTECTED: both reduce-only exits verified
+    ENTRY_SUBMITTING --> UNKNOWN: unresolved entry
+    PROTECTION_SUBMITTING --> UNKNOWN: protection failure
+    UNKNOWN --> HALTED: flatten attempted and fan-out stopped
+    PROTECTED --> EXITED: exit and cancel sibling
 ```
+
+MARKET entry is submitted alone. SL/TP prices are calculated only after authoritative
+fill confirmation, then submitted as separate reduce-only orders. For a LONG fill at
+30,450.25 with 25-point SL and 50-point TP, final prices are **30,425.25 / 30,500.25**.
+Preview levels are estimates. A CME/signal source may choose direction; destination
+fill always anchors protection.
+
+An unprotected filled position is unsafe. Failure to establish either SL or TP causes
+an immediate account-flatten attempt, an `UNKNOWN` child result and a controller halt.
+Later accounts are `HALTED`. Successful cleanup is recorded separately; it does not
+turn failed establishment into success. TP/SL exits cancel their sibling in the
+simulator, with entry-linked reduce-only checks preventing exposure reversal. No
+venue-native OCO is assumed.
 
 An account rejected during preview is skipped. An unexpected failure on a previously
 approved account halts the remaining dispatch. Existing successful fills are not
@@ -359,14 +372,14 @@ silently rolled back; their simulated stop/target protection remains active.
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | Accounts 01–07 fill, 08 rejects                      | Record seven fills and the rejection; do not send entries to 09–10                                 |
 | Response times out                                   | Keep outcome unknown; block further entries; do not automatically resend                           |
-| Response is ambiguous, but ledger and position agree | Reconcile to filled without a second entry                                                         |
+| Response is ambiguous, but ledger and position agree | Verify entry, then create and verify SL/TP before reporting PROTECTED                              |
 | Same master ID and same preview are retried          | Return the recorded result without resubmission                                                    |
 | Same master ID is reused for another preview         | Reject the identity conflict                                                                       |
 | Price or account state changes after preview         | Revalidate; reject if the preview is no longer safe                                                |
 | Another account holds the opposite direction         | Block opposing same-market entries when that account is enabled; unselected enabled accounts count |
 | A response names the wrong account                   | Preserve the requested identity, mark unknown and halt                                             |
 
-A historical `FILLED` result is not a current-position query. An exact replay can
+A historical `FILLED` / `PROTECTED` result is not a current-position query. An exact replay can
 still return the original fill after that position has been closed.
 
 ### Mandatory hedge guard
@@ -501,7 +514,7 @@ There is no live-adapter shell. Keep `main` simple; use `feature/*` when a chang
 
 ## Verification and development
 
-The hedge-guard release passed **62 tests in five files**, strict TypeScript checks,
+The post-fill protection release passed **96 tests in six files**, strict TypeScript checks,
 ESLint and formatting checks. See [validation results](docs/validation.md) for the tested
 runtime, CLI checks and limits. This is a dated validation result, not a live CI badge.
 
@@ -523,6 +536,8 @@ Useful invariants to preserve when extending the tool:
 5. Fees, funding and withdrawals are accounted for once.
 6. Breached accounts never become active again merely because price recovers.
 7. Journal-write failure cannot be ignored to continue submitting orders.
+8. Entry fill alone is never establishment success: both reduce-only protections must be verified.
+9. Final protection uses actual destination fill, never the preview quote.
 
 ## Roadmap and live integration gates
 

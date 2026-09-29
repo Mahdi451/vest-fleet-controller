@@ -123,7 +123,12 @@ async function main() {
               .mul(values.scenario === 'gap' ? 5 : 1)
           : new D(intent.takeProfitPoints);
       await adapter.updatePrice(
-        new D(values.price).plus(move.mul(sign)).toFixed(),
+        new D(
+          results.find((r) => r.state === 'PROTECTED')?.entryPrice ??
+            values.price,
+        )
+          .plus(move.mul(sign))
+          .toFixed(),
       );
       console.log(
         JSON.stringify(

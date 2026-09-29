@@ -50,13 +50,48 @@ export const positionSchema = z
     side: sideSchema,
     quantity: positive,
     entryPrice: positive,
-    stop: positive,
-    target: positive,
     leverage: positive,
-    requestId: z.string().min(1),
+    entryRequestId: z.string().min(1),
+    protectionStatus: z.enum(['NONE', 'SUBMITTING', 'ACTIVE', 'FAILED']),
   })
   .strict();
 export type Position = z.infer<typeof positionSchema>;
+export const executionStateSchema = z.enum([
+  'PREVIEWED',
+  'ENTRY_SUBMITTING',
+  'ENTRY_FILLED_UNPROTECTED',
+  'PROTECTION_SUBMITTING',
+  'PROTECTED',
+  'EXITED',
+  'REJECTED',
+  'UNKNOWN',
+  'HALTED',
+]);
+export type ExecutionState = z.infer<typeof executionStateSchema>;
+export const protectionRequestSchema = z
+  .object({
+    requestId: z.string().min(1),
+    masterTradeId: z.string().min(1),
+    accountId: z.string().min(1),
+    entryRequestId: z.string().min(1),
+    symbol: z.literal('NDX'),
+    positionSide: sideSchema,
+    quantity: positive,
+    type: z.enum(['STOP_LOSS', 'TAKE_PROFIT']),
+    triggerPrice: positive,
+    reduceOnly: z.literal(true),
+  })
+  .strict();
+export type ProtectionRequest = z.infer<typeof protectionRequestSchema>;
+export const protectionOrderSchema = protectionRequestSchema.extend({
+  orderId: z.string().min(1),
+  status: z.enum(['ACTIVE', 'FILLED', 'CANCELED', 'REJECTED']),
+  filledSize: nonnegative,
+  error: z.string().nullable(),
+});
+export type ProtectionOrder = z.infer<typeof protectionOrderSchema>;
+export type ProtectionStatus = Position['protectionStatus'];
+
 export const accountSchema = z
   .object({
     accountId: z.string().min(1),

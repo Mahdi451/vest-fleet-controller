@@ -9,6 +9,9 @@ import {
   positive,
   nonnegative,
   decimal,
+  protectionRequestSchema,
+  type ProtectionRequest,
+  type ProtectionOrder,
   type Account,
   type RiskConfig,
   type Quote,
@@ -35,6 +38,14 @@ export class MockVestAdapter implements ExecutionAdapter {
     { fingerprint: string; result: OrderResult }
   >();
   private faults = new Map<string, Fault>();
+  private protection = new Map<
+    string,
+    { fingerprint: string; order: ProtectionOrder }
+  >();
+  private protectionFaults = new Map<
+    string,
+    'REJECT' | 'TIMEOUT_BEFORE_CREATE' | 'AMBIGUOUS_AFTER_CREATE'
+  >();
   private config: RiskConfig;
   constructor(
     config: RiskConfig,
@@ -148,8 +159,6 @@ export class MockVestAdapter implements ExecutionAdapter {
         entryPrice: result.entryPrice,
         fees: result.fees,
         error: result.error,
-        stop: order.preview.stop,
-        target: order.preview.target,
       });
       return structuredClone(result);
     };
@@ -167,9 +176,7 @@ export class MockVestAdapter implements ExecutionAdapter {
       !check.approved ||
       exposureViolations.length > 0 ||
       !new D(check.quantity).eq(order.preview.quantity) ||
-      JSON.stringify(order.config) !== JSON.stringify(this.config) ||
-      order.preview.stop !== check.stop ||
-      order.preview.target !== check.target
+      JSON.stringify(order.config) !== JSON.stringify(this.config)
     ) {
       result.error =
         exposureViolations[0]?.code ?? 'PRETRADE_REVALIDATION_FAILED';
@@ -207,12 +214,16 @@ export class MockVestAdapter implements ExecutionAdapter {
       side: order.intent.side,
       quantity: check.quantity,
       entryPrice: fill.toFixed(),
-      stop: check.stop,
-      target: check.target,
+      protectionStatus: 'NONE',
       leverage: order.intent.leverage,
-      requestId: order.requestId,
+      entryRequestId: order.requestId,
     });
-    a.executionStatus = 'FILLED';
+    a.executionStatus = 'UNKNOWN'; // A fill without confirmed protection is unsafe.
+    this.log('ENTRY_FILLED_UNPROTECTED', {
+      accountId: a.accountId,
+      requestId: order.requestId,
+      entryPrice: fill.toFixed(),
+    });
     markAccount(a, this.quote.price, this.clock());
     result.status = 'FILLED';
     result.filledSize = check.quantity;
@@ -228,6 +239,165 @@ export class MockVestAdapter implements ExecutionAdapter {
         error: 'SIMULATED_AMBIGUOUS_RESPONSE',
       };
     return result;
+  }
+  injectProtectionFault(
+    accountId: string,
+    type: ProtectionRequest['type'],
+    fault: 'REJECT' | 'TIMEOUT_BEFORE_CREATE' | 'AMBIGUOUS_AFTER_CREATE',
+  ) {
+    this.account(accountId);
+    this.protectionFaults.set(`${accountId}:${type}`, fault);
+    this.log('PROTECTION_FAULT_INJECTED', {
+      accountId,
+      protectionType: type,
+      error: fault,
+    });
+  }
+  private refreshProtection(accountId: string) {
+    const a = this.account(accountId),
+      p = a.positions[0];
+    if (!p) return;
+    const active = [...this.protection.values()]
+      .map((item) => item.order)
+      .filter(
+        (o) =>
+          o.accountId === accountId &&
+          o.entryRequestId === p.entryRequestId &&
+          o.status === 'ACTIVE',
+      );
+    p.protectionStatus =
+      active.some((o) => o.type === 'STOP_LOSS') &&
+      active.some((o) => o.type === 'TAKE_PROFIT')
+        ? 'ACTIVE'
+        : 'SUBMITTING';
+    a.executionStatus = p.protectionStatus === 'ACTIVE' ? 'FILLED' : 'UNKNOWN';
+    a.revision++;
+  }
+  private cancelProtection(order: ProtectionOrder) {
+    if (order.status !== 'ACTIVE') return;
+    order.status = 'CANCELED';
+    const a = this.account(order.accountId),
+      p = a.positions[0];
+    if (p?.entryRequestId === order.entryRequestId) {
+      p.protectionStatus = 'FAILED';
+      a.executionStatus = 'UNKNOWN';
+      a.revision++;
+    }
+    this.log('PROTECTION_CANCELED', {
+      accountId: order.accountId,
+      requestId: order.entryRequestId,
+      orderId: order.orderId,
+      protectionType: order.type,
+    });
+  }
+  private cancelEntryProtection(accountId: string, entryRequestId: string) {
+    for (const { order } of this.protection.values()) {
+      if (
+        order.accountId === accountId &&
+        order.entryRequestId === entryRequestId
+      )
+        this.cancelProtection(order);
+    }
+  }
+  async placeProtectionOrder(
+    input: ProtectionRequest,
+  ): Promise<ProtectionOrder> {
+    this.ready();
+    const request = protectionRequestSchema.parse(input);
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify(request))
+      .digest('hex');
+    const previous = this.protection.get(request.requestId);
+    if (previous) {
+      if (previous.fingerprint !== fingerprint)
+        throw new Error('IDEMPOTENCY_CONFLICT');
+      return structuredClone(previous.order);
+    }
+    const a = this.account(request.accountId),
+      p = a.positions[0];
+    const order: ProtectionOrder = {
+      ...request,
+      orderId: request.requestId,
+      status: 'REJECTED',
+      filledSize: '0',
+      error: null,
+    };
+    const faultKey = `${request.accountId}:${request.type}`;
+    const fault = this.protectionFaults.get(faultKey);
+    this.protectionFaults.delete(faultKey);
+    const duplicateType = [...this.protection.values()].some(
+      (item) =>
+        item.order.accountId === a.accountId &&
+        item.order.entryRequestId === request.entryRequestId &&
+        item.order.type === request.type,
+    );
+    const anchor = p
+      ? new D(request.triggerPrice).minus(p.entryPrice).mul(direction(p.side))
+      : new D(0);
+    const market = new D(this.quote.price)
+      .minus(request.triggerPrice)
+      .mul(direction(request.positionSide));
+    if (
+      !p ||
+      p.entryRequestId !== request.entryRequestId ||
+      p.symbol !== request.symbol ||
+      p.side !== request.positionSide ||
+      !new D(p.quantity).eq(request.quantity) ||
+      a.status !== 'ACTIVE' ||
+      duplicateType ||
+      (request.type === 'STOP_LOSS'
+        ? anchor.gte(0) || market.lte(0)
+        : anchor.lte(0) || market.gte(0))
+    ) {
+      order.error = 'INVALID_PROTECTION';
+    } else if (fault === 'REJECT' || fault === 'TIMEOUT_BEFORE_CREATE') {
+      p.protectionStatus = 'FAILED';
+      a.executionStatus = 'UNKNOWN';
+      a.revision++;
+      if (fault === 'TIMEOUT_BEFORE_CREATE')
+        throw new Error('SIMULATED_PROTECTION_TIMEOUT');
+      order.error = 'SIMULATED_PROTECTION_REJECTION';
+    } else order.status = 'ACTIVE';
+    this.protection.set(order.orderId, { fingerprint, order });
+    if (order.status === 'ACTIVE') this.refreshProtection(a.accountId);
+    this.log(`PROTECTION_${order.status}`, {
+      masterTradeId: request.masterTradeId,
+      accountId: a.accountId,
+      requestId: request.requestId,
+      entryRequestId: request.entryRequestId,
+      orderId: order.orderId,
+      protectionType: order.type,
+      triggerPrice: order.triggerPrice,
+      requestedSize: order.quantity,
+      reduceOnly: true,
+      error: order.error,
+    });
+    if (fault === 'AMBIGUOUS_AFTER_CREATE' && order.status === 'ACTIVE')
+      throw new Error('SIMULATED_PROTECTION_RESPONSE_LOST');
+    return structuredClone(order);
+  }
+  async getProtectionOrder(accountId: string, orderId: string) {
+    this.ready();
+    this.account(accountId);
+    const order = this.protection.get(orderId)?.order;
+    return structuredClone(order?.accountId === accountId ? order : null);
+  }
+  async getOpenOrders(accountId: string) {
+    this.ready();
+    this.account(accountId);
+    return structuredClone(
+      [...this.protection.values()]
+        .map((item) => item.order)
+        .filter((o) => o.accountId === accountId && o.status === 'ACTIVE'),
+    );
+  }
+  async cancelOrder(accountId: string, orderId: string) {
+    this.ready();
+    this.account(accountId);
+    const order = this.protection.get(orderId)?.order;
+    if (!order || order.accountId !== accountId)
+      throw new Error('PROTECTION_NOT_FOUND');
+    this.cancelProtection(order);
   }
   private close(a: Account, quantity?: string) {
     const p = a.positions[0];
@@ -248,12 +418,19 @@ export class MockVestAdapter implements ExecutionAdapter {
     const net = gross.minus(exitFee);
     a.balance = new D(a.balance).plus(net).toFixed();
     a.realizedPnl = new D(a.realizedPnl).plus(net).toFixed();
-    if (qty.eq(p.quantity)) a.positions = [];
-    else p.quantity = new D(p.quantity).minus(qty).toFixed();
+    if (qty.eq(p.quantity)) {
+      a.positions = [];
+      a.executionStatus = 'IDLE';
+      this.cancelEntryProtection(a.accountId, p.entryRequestId);
+      this.log('EXITED', {
+        accountId: a.accountId,
+        requestId: p.entryRequestId,
+      });
+    } else p.quantity = new D(p.quantity).minus(qty).toFixed();
     markAccount(a, this.quote.price, this.clock());
     this.log(a.status === 'BREACHED' ? 'BREACHED_CLOSE' : 'CLOSED', {
       accountId: a.accountId,
-      requestId: p.requestId,
+      requestId: p.entryRequestId,
       symbol: p.symbol,
       direction: p.side,
       filledSize: qty.toFixed(),
@@ -269,7 +446,13 @@ export class MockVestAdapter implements ExecutionAdapter {
   }
   async flattenAccount(id: string) {
     this.ready();
-    this.close(this.account(id));
+    const a = this.account(id);
+    // Also remove stale protection when the account is already flat.
+    for (const item of this.protection.values()) {
+      if (item.order.accountId === id && item.order.status === 'ACTIVE')
+        this.cancelProtection(item.order);
+    }
+    this.close(a);
   }
   async updatePrice(price: string) {
     this.ready();
@@ -283,11 +466,49 @@ export class MockVestAdapter implements ExecutionAdapter {
       markAccount(a, price, this.clock());
       const p = a.positions[0];
       if (!p) continue;
-      const trigger =
-        p.side === 'LONG'
-          ? new D(price).lte(p.stop) || new D(price).gte(p.target)
-          : new D(price).gte(p.stop) || new D(price).lte(p.target);
-      if (a.status === 'BREACHED' || trigger) this.close(a);
+      if (a.status === 'BREACHED') {
+        this.close(a);
+        continue;
+      }
+      const active = [...this.protection.values()]
+        .map((item) => item.order)
+        .filter((o) => o.accountId === a.accountId && o.status === 'ACTIVE');
+      for (const order of active) {
+        const current = a.positions[0];
+        // Reduce-only AND exact entry binding: old exits can never affect a later trade.
+        if (
+          !current ||
+          current.entryRequestId !== order.entryRequestId ||
+          current.side !== order.positionSide
+        ) {
+          this.cancelProtection(order);
+          continue;
+        }
+        const trigger =
+          order.type === 'STOP_LOSS'
+            ? current.side === 'LONG'
+              ? new D(price).lte(order.triggerPrice)
+              : new D(price).gte(order.triggerPrice)
+            : current.side === 'LONG'
+              ? new D(price).gte(order.triggerPrice)
+              : new D(price).lte(order.triggerPrice);
+        if (trigger && order.status === 'ACTIVE') {
+          const quantity = D.min(order.quantity, current.quantity).toFixed();
+          order.status = 'FILLED';
+          order.filledSize = quantity;
+          this.log('PROTECTION_FILLED', {
+            accountId: a.accountId,
+            requestId: current.entryRequestId,
+            orderId: order.orderId,
+            protectionType: order.type,
+            filledSize: quantity,
+            reduceOnly: true,
+          });
+          this.close(a, quantity);
+          // Explicit local sibling cancellation, not an assumed venue-native OCO feature.
+          this.cancelEntryProtection(a.accountId, order.entryRequestId);
+        }
+      }
     }
   }
   async applyFunding(longRatePerHour: string, hours: string) {

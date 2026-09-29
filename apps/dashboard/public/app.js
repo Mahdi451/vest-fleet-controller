@@ -170,13 +170,19 @@ function render() {
             : 'BLOCKED'
           : 'FLAT',
       p
-        ? `Entry ${number(p.entryPrice)}`
+        ? `Entry ${number(p.entryPrice)} · Protection ${p.protectionStatus}`
         : o && !o.approved
           ? o.reasons.includes('DRAWDOWN_RESERVE')
             ? 'Below drawdown reserve'
             : o.reasons.join(', ')
           : '',
-      p ? 'ok' : o && !o.approved ? 'bad' : 'muted',
+      p
+        ? p.protectionStatus === 'ACTIVE'
+          ? 'ok'
+          : 'bad'
+        : o && !o.approved
+          ? 'bad'
+          : 'muted',
     );
     $('accounts').append(row);
   }
@@ -293,7 +299,7 @@ async function execute() {
     const result = await api('execute', request);
     state = result.state;
     message(
-      `Execution: ${result.results.map((r) => `${r.accountId} ${r.status}${r.error ? ' (' + r.error + ')' : ''}`).join(' · ')}`,
+      `Execution: ${result.results.map((r) => `${r.accountId} ${r.state}${r.error ? ' (' + r.error + ')' : ''}`).join(' · ')}`,
     );
     preview = null;
     tradeId = null;

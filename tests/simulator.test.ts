@@ -11,7 +11,7 @@ describe('ten-account simulator', () => {
         const p = await s.controller.preview({ ...intent, side });
         const r = await s.controller.execute('win', p.previewId);
         expect(r.every((a) => a.status === 'FILLED')).toBe(true);
-        await s.adapter.updatePrice(side === 'LONG' ? '30480' : '30320');
+        await s.adapter.updatePrice(side === 'LONG' ? '30481' : '30319');
         const accounts = await s.adapter.listAccounts();
         expect(accounts).toHaveLength(10);
         expect(

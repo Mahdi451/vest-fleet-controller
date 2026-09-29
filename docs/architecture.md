@@ -27,15 +27,15 @@ an optional later UI implementation, not a dependency for running the current da
 
 ## Component ownership
 
-| Component       | Current responsibility                                                                 | Later extension                                                             |
-| --------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Account manager | Validated account snapshots; adapter inventory, enable state, fixed floor              | Durable fleet metadata and explicit sync service                            |
-| Risk engine     | Decimal formulas, all-in loss, size rounding, reserve, freshness, margin               | Verified instrument and account rule policies                               |
-| Controller      | Selection, preview, sequential fan-out, idempotency, reconciliation, circuit halt      | Recovery UI, bounded concurrency only after rate-limit verification         |
-| Adapter         | Simulation-only capability contract                                                    | Official supported transport or native copier                               |
-| Simulator       | Independent accounts, protected fills, costs, funding scenarios, withdrawal and breach | Deterministic event replay, persistent simulator snapshots, liquidity model |
-| Journal         | Durable master/child attempts and allowlisted audit events                             | Schema migrations, recovery reconciliation service                          |
-| Dashboard       | Local simulation controls                                                              | Price, fleet table, master controls, per-account preview, prominent flatten |
+| Component       | Current responsibility                                                                  | Later extension                                                             |
+| --------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Account manager | Validated account snapshots; adapter inventory, enable state, fixed floor               | Durable fleet metadata and explicit sync service                            |
+| Risk engine     | Decimal formulas, all-in loss, size rounding, reserve, freshness, margin                | Verified instrument and account rule policies                               |
+| Controller      | Selection, preview, sequential fan-out, idempotency, reconciliation, circuit halt       | Recovery UI, bounded concurrency only after rate-limit verification         |
+| Adapter         | Simulation-only capability contract                                                     | Official supported transport or native copier                               |
+| Simulator       | Independent accounts, unprotected entries, separate reduce-only exits, costs and breach | Deterministic event replay, persistent simulator snapshots, liquidity model |
+| Journal         | Durable master/child attempts and allowlisted audit events                              | Schema migrations, recovery reconciliation service                          |
+| Dashboard       | Local simulation controls                                                               | Price, fleet table, master controls, per-account preview, prominent flatten |
 
 ## Major assumptions and decisions
 
@@ -74,9 +74,16 @@ semantics. A native copier may not support independent follower sizing: if so it
 claim compatibility with this controller's risk guarantees. Capability negotiation and
 explicit refusal are preferable to silently weakening the risk model.
 
-Methods for cancellation, explicit leverage changes and subscriptions should be added
-when a supported implementation needs them. Current market entries are immediately
-filled/rejected/unknown; fake no-op cancellation methods would imply safety that is absent.
+The simulation contract separates `placeOrder` (entry only) from
+`placeProtectionOrder`, `getProtectionOrder`, `getOpenOrders` and `cancelOrder`.
+Positions reference an entry ID and protection status; SL/TP records are independent.
+The controller journals the unprotected interval, derives prices from the actual fill,
+verifies both exits and only then continues fan-out. Post-entry uncertainty triggers
+account cleanup and circuit halt. Simulator-owned sibling cancellation models OCO
+behavior without claiming native venue support. See [execution model](execution-model.md).
+
+Explicit leverage-change commands, live subscriptions, venue ID mapping and recovery
+must be designed only when a supported implementation and its capabilities are verified.
 
 ## Local dashboard boundary
 
