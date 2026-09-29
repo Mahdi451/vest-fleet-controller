@@ -18,6 +18,8 @@ current account and protection book after a close or market event. Simulator exi
 
 ## Entry and protection flow
 
+![Fill-first protection lifecycle](images/execution-flow.png)
+
 SIGNAL → MARKET ENTRY → ACTUAL FILL → CALCULATE PROTECTION → SUBMIT REDUCE-ONLY SL/TP
 → VERIFY PROTECTION → PROTECTED.
 

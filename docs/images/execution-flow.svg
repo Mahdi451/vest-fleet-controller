@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1100" viewBox="0 0 1500 1100">
+  <defs>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #edf3f7; }
+      .muted { fill: #a5b3c2; font-size: 21px; }
+      .title { font-size: 27px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+      .number { font-size: 21px; font-weight: 700; fill: #5ee3ba; }
+      .mint { fill: #5ee3ba; }
+      .amber { fill: #ffc776; }
+      .red { fill: #ff919a; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 1 L8 5 L0 9" fill="none" stroke="#778ea4" stroke-width="1.6"/></marker>
+  </defs>
+  <rect width="1500" height="1100" fill="#0b1118"/>
+  <text x="64" y="60" class="label mint">VEST FLEET CONTROLLER</text>
+  <text x="1436" y="60" class="label muted" text-anchor="end">SIMULATION ONLY</text>
+  <text x="64" y="127" font-size="45" font-weight="700">Protection starts at the actual fill</text>
+  <text x="64" y="170" class="muted">Signal selects direction. Destination fill anchors SL / TP. Both exits must be verified.</text>
+
+  <g fill="#111e2a" stroke="#2d4154" stroke-width="1.5">
+    <rect x="64" y="216" width="680" height="122" rx="16"/>
+    <rect x="64" y="371" width="680" height="122" rx="16" stroke="#9e723c"/>
+    <rect x="64" y="526" width="680" height="122" rx="16"/>
+    <rect x="64" y="681" width="680" height="145" rx="16"/>
+    <rect x="64" y="859" width="680" height="122" rx="16" stroke="#3eaa8c"/>
+  </g>
+  <g stroke="#778ea4" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M404 340 V364"/><path d="M404 495 V519"/><path d="M404 650 V674"/><path d="M404 828 V852"/>
+  </g>
+  <text x="94" y="252" class="number">01 / ENTRY_SUBMITTING</text>
+  <text x="94" y="291" class="title">Submit MARKET entry only</text>
+  <text x="94" y="319" class="muted">Revalidate risk and hedge rules; journal before submission.</text>
+
+  <text x="94" y="407" class="label amber">02 / ENTRY_FILLED_UNPROTECTED</text>
+  <text x="94" y="446" class="title">Confirm the actual fill</text>
+  <text x="94" y="474" class="muted">Authoritative ledger + matching position. Still unsafe.</text>
+
+  <text x="94" y="562" class="number">03 / CALCULATE PROTECTION</text>
+  <text x="94" y="601" class="title">Apply intent distances to fill price</text>
+  <text x="94" y="629" class="muted">Preview prices are estimates, never the final anchor.</text>
+
+  <text x="94" y="717" class="number">04 / PROTECTION_SUBMITTING</text>
+  <text x="94" y="756" class="title">Submit SL, then TP; verify both</text>
+  <text x="94" y="789" class="muted">Separate, entry-linked, reduce-only orders.</text>
+  <text x="94" y="814" class="muted">Reconcile active orders, entry and position.</text>
+
+  <text x="94" y="895" class="number">05 / PROTECTED</text>
+  <text x="94" y="934" class="title">Establishment confirmed</text>
+  <text x="94" y="962" class="muted">Only now continue to the next account.</text>
+
+  <rect x="810" y="216" width="626" height="354" rx="16" fill="#111e2a" stroke="#2d4154"/>
+  <text x="844" y="254" class="label mint">LONG EXAMPLE / EXACT DECIMALS</text>
+  <text x="844" y="296" class="muted">Stop distance 25 pts · Target distance 50 pts</text>
+  <path d="M844 318 H1402" stroke="#2d4154"/>
+  <text x="844" y="365" class="title">Actual fill</text><text x="1402" y="365" class="title" text-anchor="end">30,450.25</text>
+  <text x="844" y="421" class="title red">Stop loss</text><text x="1402" y="421" class="title red" text-anchor="end">30,425.25</text>
+  <text x="844" y="477" class="title mint">Take profit</text><text x="1402" y="477" class="title mint" text-anchor="end">30,500.25</text>
+  <text x="844" y="536" class="muted">SHORT: stop above fill; target below fill.</text>
+
+  <rect x="810" y="606" width="626" height="223" rx="16" fill="#281922" stroke="#b15d6a"/>
+  <text x="844" y="647" class="label red">UNRESOLVED POST-ENTRY FAILURE</text>
+  <text x="844" y="691" class="title">Attempt account flatten immediately</text>
+  <text x="844" y="729" class="muted">Keep child UNKNOWN; record cleanup separately.</text>
+  <text x="844" y="766" class="muted">Open circuit. Halt remaining fleet entries.</text>
+  <text x="844" y="803" class="muted">A flat snapshot does not erase uncertainty.</text>
+
+  <rect x="810" y="859" width="626" height="122" rx="16" fill="#111e2a" stroke="#2d4154"/>
+  <text x="844" y="898" class="label mint">ON EXIT / LOCAL SIBLING CANCELLATION</text>
+  <text x="844" y="937" class="muted">SL fills → cancel TP. TP fills → cancel SL.</text>
+  <text x="844" y="966" class="muted">Reduce-only exits cannot reverse exposure.</text>
+
+  <path d="M64 1020 H1436" stroke="#2d4154"/>
+  <text x="64" y="1060" class="muted">No native venue OCO assumed. Unprotected time, gaps and cleanup failures remain possible.</text>
+</svg>

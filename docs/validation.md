@@ -118,10 +118,19 @@ CLI smoke checks passed for LONG win and SHORT loss. Both independently establis
 10 protected entries, triggered all exits, produced the expected P&L direction and
 reported all accounts flat afterward. JSON preview contains estimated SL/TP fields
 for all ten accounts. Dashboard HTTP integration tests pass with the shared controller;
-the browser now displays protection status and execution state. Earlier browser
-screenshots document the preceding UI release; they were not regenerated for this change.
+the browser now displays protection status and execution state. Screenshots were subsequently refreshed for this state; see the visual refresh below.
 
 Unresolved integration gates: verified destination tick/trigger rules, request-to-venue
 order mapping, genuine server-side reduce-only guarantees, cancellation races, late
 request resolution, subscriptions and durable operator recovery. No live adapter,
 live trading or undocumented endpoint access was added.
+
+## Visual refresh — 2026-09-29
+
+Four actual application screenshots were regenerated after the protection refactor:
+preview, ten protected LONG positions, mobile protected positions and rejected 50x/25%
+margin allocation. The browser capture exercised preview, entry, flatten, reset and
+risk rejection, asserted ten ACTIVE protections, and detected no page errors or mobile
+page overflow. No execution code changed. A precise SVG/PNG lifecycle diagram and a
+separately labeled generated logo concept were added. Reproduction instructions are
+in [visual asset notes](visuals.md).

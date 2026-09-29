@@ -150,9 +150,9 @@ entry state to the initial fleet. It asks for confirmation because it discards s
 state. There is currently no re-arm-and-preserve-balances workflow. Audit files remain
 under `.runtime/dashboard/<session-id>.sqlite`.
 
-![Actual dashboard after all ten simulated long entries](docs/images/dashboard-positions.png)
+![Current dashboard after ten entries, each with ACTIVE protection and PROTECTED execution results](docs/images/dashboard-positions.png)
 
-A [mobile layout screenshot](docs/images/dashboard-mobile.png) is also included.
+A [mobile layout screenshot](docs/images/dashboard-mobile.png) shows the same protected-position state. These captures include the post-fill protection refactor.
 
 The service listens only on `127.0.0.1:4173`; use that exact address, not `localhost`.
 Host/Origin checks, a mutation token, a restrictive content security policy and no CORS
@@ -338,18 +338,9 @@ The controller stores a preview, then rechecks each participating account before
 submitting its independently sized child order. Dispatch is sequential in this release.
 A child may not grow beyond the preview quantity.
 
-```mermaid
-stateDiagram-v2
-    [*] --> PREVIEWED
-    PREVIEWED --> ENTRY_SUBMITTING: validate and journal
-    ENTRY_SUBMITTING --> ENTRY_FILLED_UNPROTECTED: authoritative fill
-    ENTRY_FILLED_UNPROTECTED --> PROTECTION_SUBMITTING: fill-relative SL/TP
-    PROTECTION_SUBMITTING --> PROTECTED: both reduce-only exits verified
-    ENTRY_SUBMITTING --> UNKNOWN: unresolved entry
-    PROTECTION_SUBMITTING --> UNKNOWN: protection failure
-    UNKNOWN --> HALTED: flatten attempted and fan-out stopped
-    PROTECTED --> EXITED: exit and cancel sibling
-```
+![Post-fill protection lifecycle, exact LONG example, and failure cleanup](docs/images/execution-flow.png)
+
+_Exact execution diagram; editable [SVG source](docs/images/execution-flow.svg)._
 
 MARKET entry is submitted alone. SL/TP prices are calculated only after authoritative
 fill confirmation, then submitted as separate reduce-only orders. For a LONG fill at
@@ -492,7 +483,7 @@ comments only. A private repository is still not a place to store credentials.
 | -------------------------------------- | --------------------------------------------------------------------- |
 | `apps/dashboard/server.ts`             | Loopback service, request validation and emergency coordination       |
 | `apps/dashboard/public/`               | Browser controls, account table and simulation status                 |
-| `docs/images/`                         | Actual application screenshots                                        |
+| `docs/images/`                         | Application screenshots, execution diagram and logo concept           |
 | `tests/dashboard.test.ts`              | HTTP security, execution, retry, reset and safety integration         |
 | `apps/controller/src/cli.ts`           | Command parsing, preview output and scenario execution                |
 | `packages/core/src/index.ts`           | Decimal primitives, schemas, account state and initial fleet          |
@@ -586,6 +577,18 @@ no multi-process coordination, no pyramiding/reversal and no live market data.
 
 The CLI uses Node's `--import tsx` loader so it does not depend on the separate `tsx`
 CLI's IPC listener. Use the documented pnpm scripts in restricted execution environments.
+
+## Visual identity concept
+
+![Original Vest Fleet Controller logo concept](docs/images/logo-concept.png)
+
+An original fleet-mark concept inspired by the geometric restraint of Vest Markets,
+with an independent silhouette and wordmark. This is a branding exploration, not an
+approved production icon or an official Vest identity. The dashboard keeps its current
+identity while the concept is reviewed. A clean SVG, small-size icon and monochrome
+variant are the next design steps if this direction is selected.
+
+[Visual asset notes, generation prompt and screenshot reproduction](docs/visuals.md).
 
 ## Further reading
 
