@@ -169,6 +169,15 @@ There is no remote instance reassignment endpoint.
 
 ## Known limitations and tracker acceptance
 
+Customer target correction: **Windows and macOS are the intended execution hosts**.
+The initial Ubuntu selection is a Linux reference implementation, not the customer
+deployment requirement. Current dashboard startup depends on Linux machine identity
+and Unix permissions. Native desktop support and validation remain open in
+[the desktop host gate](desktop-host-support.md); previous Linux results remain
+valid evidence for that implementation, not proof of Windows/macOS compatibility.
+The tracker’s host-definition and customer-onboarding items are reopened for these
+targets; the completed Linux reference guide is retained.
+
 The implementation and automated acceptance are distinct from invitation readiness.
 No physical iPhone/Android, real Home Screen installation, real screen lock/BFCache
 suspension, trusted HTTPS over a user's tailnet, clean supported-host installation or

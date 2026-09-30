@@ -1,10 +1,16 @@
-# Private phone access and first-host operations
+# Private phone access: Linux reference installation
 
 **SIMULATION ONLY.** No Vest account, password, token or funded execution is used.
-The first supported deployment target is **Ubuntu 24.04 LTS x86-64**, Node.js 24.x,
-pnpm 11.25.0, one owner and one always-on host. Linux integration tests and Chromium
-emulation run in the development environment; a clean Ubuntu installation and a real
-phone/tailnet trial remain acceptance checks, not claimed results.
+This guide describes the existing **Ubuntu 24.04 LTS x86-64 reference route**,
+Node.js 24.x and pnpm 11.25.0. Customer hosts must target **Windows and macOS**; native
+support is not implemented yet. Current dashboard startup requires Linux machine
+identity and Unix permissions, including for local operation. Customers must not be
+required to install Linux or WSL to use the product. See the
+[desktop host support gate](desktop-host-support.md).
+
+Linux integration tests and Chromium emulation run in the development environment;
+a clean Ubuntu installation and a real phone/tailnet trial remain unverified. This
+guide is retained as reference evidence, not Windows/macOS onboarding instructions.
 
 ## 1. Prepare the host and private network
 

@@ -19,10 +19,13 @@ sequential execution, fill-anchored reduce-only protection, account/group flatte
 audit history, explicit health and operator recovery. Preserve all current risk,
 hedge, journaling, duplicate prevention and uncertainty rules.
 
-Customers initially run one isolated execution instance on their own supported host;
-their phone controls that instance through private authenticated HTTPS. Validate one
-host platform first, chosen from permission and login compatibility evidence; do not
-promise Windows/macOS/Linux support before packaging and testing each target.
+Customers initially run one isolated execution instance on their own **Windows or
+macOS computer**; their phone controls it through private authenticated HTTPS. These
+are the customer deployment targets. Linux is a development/reference environment,
+not a required customer installation. Native desktop host support is the next gate;
+the current Linux machine identity and permission checks must be ported and tested
+without weakening ownership or secret protection. Release only the platforms with
+recorded native acceptance. See [desktop host support](desktop-host-support.md).
 
 Continuous watching of a leader account, additional markets, position additions,
 reversals, ongoing partial-fill remainders, live TP/SL replacement, public signup,
@@ -92,11 +95,11 @@ before that option is offered.
 API versus visible UI describes how we communicate with Vest. Local versus cloud
 describes where the execution instance runs. These are independent decisions.
 
-| Option                     | Benefits                                                                                      | Limits / release decision                                                                                                                                    |
-| -------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Customer computer          | Local session ownership, direct interactive login, quick personal feasibility test            | Sleep, reboots, home network and maintenance affect availability. Recommended first pilot.                                                                   |
-| Customer-owned VPS         | Can keep the worker/browser running while the phone disconnects; customer owns infrastructure | Verify Vest/identity-provider permission for the host, IP/location and login workflow; updates and outages remain possible. Optional after local validation. |
-| Managed dedicated instance | Simplest eventual customer experience; we provision, monitor and update each worker           | Requires accepted hosting/session terms, profile custody controls, tenant isolation, support and tested operations. Separate release gate.                   |
+| Option                     | Benefits                                                                                           | Limits / release decision                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Customer computer          | Windows/macOS target; local session ownership, direct interactive login, personal feasibility test | Sleep, reboots, home network and maintenance affect availability. Recommended first pilot.                                                                   |
+| Customer-owned VPS         | Can keep the worker/browser running while the phone disconnects; customer owns infrastructure      | Verify Vest/identity-provider permission for the host, IP/location and login workflow; updates and outages remain possible. Optional after local validation. |
+| Managed dedicated instance | Simplest eventual customer experience; we provision, monitor and update each worker                | Requires accepted hosting/session terms, profile custody controls, tenant isolation, support and tested operations. Separate release gate.                   |
 
 Tradecopia documents both local desktop execution and a hosted dedicated instance
 accessible from a browser [3]. Browser execution could also be hosted, if permitted;
@@ -153,6 +156,8 @@ validation cannot be compressed into a coding estimate. Re-estimate after stage 
 | G. Managed hosting              | Estimate after local pilot                             | Dedicated-instance provisioning, secure interactive login/profile custody, monitoring and incident procedures                         | Hosted permission/security/restore tests pass. Not required for the first customer-owned-host pilot.                                                                  |
 
 Stages A/B and fixture tests can progress while policy questions are being resolved.
+Native Windows/macOS host portability and onboarding are now required before
+customer-host acceptance; the Linux reference run does not satisfy that gate.
 Stages C–F are dependent gates. We can demonstrate mobile simulation promptly; we cannot
 assign a defensible connected-customer launch date before C. Do not combine effort
 bands into a calendar promise without measured session length and external resolution.

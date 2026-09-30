@@ -5,6 +5,10 @@ For installation and daily use, see the [README](README.md).
 
 ## Current baseline
 
+Customer deployment targets are Windows and macOS. Native dashboard startup is not
+supported yet; [desktop host portability and acceptance](docs/desktop-host-support.md)
+is the next gate. Current automated evidence is from Linux, not native desktop hosts.
+
 Mobile simulation and private HTTPS application work are now delivered around the
 existing engine. See [the current validation report](docs/mobile-private-validation.md),
 [access architecture](docs/private-access-architecture.md), and [host operations](docs/private-phone-access.md).

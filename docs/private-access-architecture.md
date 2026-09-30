@@ -4,6 +4,11 @@ One provisioned owner controls one execution instance and its ten synthetic acco
 The phone signs directly into that host. There is no shared cloud control plane,
 public signup, funded account connection or Vest login.
 
+Customer execution hosts target Windows and macOS. The current implementation uses
+Linux-specific host identity and Unix permission checks, so it does not yet support
+native Windows/macOS dashboard startup. The required portability and native
+acceptance work is tracked in [desktop host support](desktop-host-support.md).
+
 ## Boundaries
 
 The production loader accepts an exact HTTPS `*.ts.net` origin, a locally assigned

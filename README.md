@@ -29,6 +29,10 @@ scenarios.
 
 ## Quick start
 
+These commands currently require the Linux reference implementation. **Windows and
+macOS are the customer targets, but native dashboard startup is not supported yet.**
+See [the desktop host gate](docs/desktop-host-support.md).
+
 Install **Node.js 24.x** and **pnpm 11.25.0**, then clone the repository using your
 GitHub account's access:
 
@@ -42,7 +46,7 @@ pnpm dashboard
 Open **http://127.0.0.1:4173**. Keep the terminal running; press `Ctrl+C` to stop.
 Use that exact address rather than `localhost`. The dashboard runs on your computer
 and keeps loopback access as the default. For authenticated private phone access, follow
-the [supported host guide](docs/private-phone-access.md). Do not expose it through a public server or proxy.
+the [Linux reference host guide](docs/private-phone-access.md). Do not expose it through a public server or proxy.
 
 Each new simulation starts with ten accounts and a synthetic NQ/NDX price of **30,400**:
 
@@ -86,6 +90,11 @@ resume/re-arm control that preserves those balances. Unresolved durable commands
 keep their records for investigation. Restart and reconnect recover status without resubmitting an entry.
 
 ## Phone simulation
+
+Customer execution hosts target **Windows and macOS**. Native dashboard startup is
+not supported yet: host identity and permission checks currently depend on Linux.
+[Desktop host compatibility](docs/desktop-host-support.md) is the next acceptance gate;
+Linux is a reference environment, not a customer requirement.
 
 The phone layout supports Trade, Accounts and Activity, readable account risk cards,
 a persistent SIMULATION badge, entry confirmation and reachable FLATTEN ALL.
