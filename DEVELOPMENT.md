@@ -5,9 +5,9 @@ For installation and daily use, see the [README](README.md).
 
 ## Current baseline
 
-Customer deployment targets are Windows and macOS. Native dashboard startup is not
-supported yet; [desktop host portability and acceptance](docs/desktop-host-support.md)
-is the next gate. Current automated evidence is from Linux, not native desktop hosts.
+Customer deployment targets are Windows and macOS. Native identity, protected storage,
+startup configuration and diagnostics are implemented; [desktop host acceptance](docs/desktop-host-support.md)
+is the next gate. Record native CI and physical device results separately from Linux evidence.
 
 Mobile simulation and private HTTPS application work are now delivered around the
 existing engine. See [the current validation report](docs/mobile-private-validation.md),
@@ -53,6 +53,8 @@ An exclusive local owner lock prevents two dashboards using the same saved fleet
 | [Execution model](docs/execution-model.md)                                         | States, request identity, protection, failures and emergency handling                    |
 | [Simulator](docs/simulator.md)                                                     | Accounting, scenarios, assumptions and model limits                                      |
 | [Validation record](docs/validation.md)                                            | Test coverage, measured results and unvalidated behavior                                 |
+| [Native desktop host setup](docs/native-host-setup.md)                             | Windows/macOS development installation, private HTTPS, diagnostics and recovery          |
+| [Desktop/physical-phone acceptance](docs/desktop-phone-sanity-check.md)            | Actual device evidence, Home Screen, suspension, sleep and reboot checks                 |
 | [Visual assets](docs/visuals.md)                                                   | Branding, generation prompt and screenshot reproduction                                  |
 
 Keep detailed design and evidence in those documents; keep the README focused on
@@ -61,14 +63,22 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-1. Review the [browser execution investigation](docs/browser-execution.md) and [17-item reliability audit](docs/reliability-audit.md). Durable simulator recovery, periodic reconciliation, actual-fill risk and terminal partial fills are implemented.
-2. Add an operator reconciliation/re-arm workflow that preserves balances and resolves
-   pending or late requests without duplicate exposure.
-3. Strengthen restart/disconnect and cancellation-race scenarios before adding transport.
+1. Complete native host validation for Windows and macOS, preserving owner identity,
+   protected storage, durable commands and exclusive execution ownership.
+2. Follow the [native setup guide](docs/native-host-setup.md) and record physical
+   desktop/phone acceptance with the [sanity checklist](docs/desktop-phone-sanity-check.md).
+   Native CI is supporting evidence; Windows Server is not physical Windows 11 proof.
+3. Keep recovery conservative: preserve journals and UNKNOWN outcomes, reconcile first,
+   and never automatically re-arm or fail over. An operator re-arm workflow that
+   preserves balances remains separate future work.
 4. Verify funded-account execution permissions, authentication, market metadata and
-   protection capabilities. Update the evidence register with dated primary sources.
+   protection capabilities. Review the [browser investigation](docs/browser-execution.md)
+   and [reliability audit](docs/reliability-audit.md), then update dated primary evidence.
 5. Present the required pre-integration review before any live adapter work. No live
    trades or private endpoint probing are authorized by this development guide.
+6. Near final release, package signed Windows and Mac installations with the runtime
+   bundled and safe update/recovery behavior. Development setup currently uses Git,
+   Node and pnpm; it is not the intended final customer installation experience.
 
 ## Architecture
 
@@ -78,7 +88,7 @@ simulator and any future permitted adapter must use the same trade intent and ri
 ```mermaid
 flowchart TD
     CLI["Preview and simulation CLI"] --> Controller["Fleet controller"]
-    Browser["Local browser dashboard"] --> Server["Loopback HTTP service"]
+    Browser["Local browser dashboard"] --> Server["Loopback HTTP / configured authenticated HTTPS"]
     Server --> Controller
     Controller --> Risk["Independent risk calculations"]
     Risk --> Core["Validated account and trade models"]
@@ -134,6 +144,23 @@ pnpm format        # Apply formatting
 pnpm format:check  # Check formatting without changing files
 pnpm check         # Run all validation gates
 ```
+
+The [native host workflow](.github/workflows/native-host.yml) runs the full checks
+and a separate Playwright-backed acceptance suite on Ubuntu 24.04, Windows Server
+2025 x64, macOS 15 Apple silicon and macOS 15 Intel. Record actual run results before
+claiming those platforms validated; a workflow file is not a passing run. Its uploaded
+evidence is limited to redacted counts/platform metadata and synthetic screenshots,
+never TLS keys, host-access secrets, raw failure payloads or runtime journals.
+
+To repeat the separate browser suite locally:
+
+```sh
+pnpm exec vitest run tests/browser-execution.test.ts tests/mobile-dashboard.test.ts tests/private-mobile.test.ts
+```
+
+Use `pnpm.cmd` for native PowerShell if `.ps1` execution is restricted; no policy
+relaxation is needed. Actual phone Home Screen, screen lock and desktop sleep/reboot
+remain [manual acceptance](docs/desktop-phone-sanity-check.md).
 
 Useful invariants to preserve when extending the tool:
 
@@ -352,8 +379,10 @@ Simulator mutation events also cover price changes, funding, withdrawals and clo
 The logger uses an allowlist and fixed error codes instead of raw request or exception dumps.
 
 The repository ignores runtime databases, `.env` files, logs, keys, dependencies and
-build output. No credentials are needed, collected or committed. `.env.example` contains
-comments only. A private repository is still not a place to store credentials.
+build output. No Vest credentials are needed, collected or committed. Private phone
+access stores a protected host secret and salted verifier outside source control;
+the secret is never printed in diagnostics. `.env.example` contains comments only.
+A private repository is still not a place to store credentials.
 
 ## Visual identity follow-up
 

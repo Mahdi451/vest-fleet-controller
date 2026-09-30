@@ -29,9 +29,14 @@ scenarios.
 
 ## Quick start
 
-These commands currently require the Linux reference implementation. **Windows and
-macOS are the customer targets, but native dashboard startup is not supported yet.**
-See [the desktop host gate](docs/desktop-host-support.md).
+Native Windows and macOS host identity and private storage are implemented around
+the existing simulator. Native automated acceptance and physical desktop/phone
+checks are required before customer release; see [the desktop host gate](docs/desktop-host-support.md).
+
+The [native host setup guide](docs/native-host-setup.md) and
+[desktop/phone sanity checklist](docs/desktop-phone-sanity-check.md) describe the
+development beta and the evidence required before customer release. Signed Windows
+and Mac installation packages are scheduled near final release.
 
 Install **Node.js 24.x** and **pnpm 11.25.0**, then clone the repository using your
 GitHub account's access:
@@ -46,7 +51,7 @@ pnpm dashboard
 Open **http://127.0.0.1:4173**. Keep the terminal running; press `Ctrl+C` to stop.
 Use that exact address rather than `localhost`. The dashboard runs on your computer
 and keeps loopback access as the default. For authenticated private phone access, follow
-the [Linux reference host guide](docs/private-phone-access.md). Do not expose it through a public server or proxy.
+the [native host setup guide](docs/native-host-setup.md). Do not expose it through a public server or proxy.
 
 Each new simulation starts with ten accounts and a synthetic NQ/NDX price of **30,400**:
 
@@ -91,8 +96,8 @@ keep their records for investigation. Restart and reconnect recover status witho
 
 ## Phone simulation
 
-Customer execution hosts target **Windows and macOS**. Native dashboard startup is
-not supported yet: host identity and permission checks currently depend on Linux.
+Customer execution hosts target **Windows and macOS**. Native host identity,
+private storage and diagnostics are implemented; native acceptance is pending.
 [Desktop host compatibility](docs/desktop-host-support.md) is the next acceptance gate;
 Linux is a reference environment, not a customer requirement.
 
@@ -273,12 +278,14 @@ Audit journals remain on disk:
 
 The active-session pointer and ownership lock live beside the dashboard journals.
 Only one dashboard may use that runtime directory. After a crash, `controller.lock`
-may remain: inspect its PID and verify the owning process has stopped before removing
-that lock file. Leave `active-session.json` and all SQLite/WAL files intact. Normal
-shutdown releases the lock automatically.
+may remain: follow the [ownership recovery procedure](docs/native-host-setup.md#8-operate-restart-and-recover).
+Only after authoritative owner review may an operator archive the retained lock as
+evidence. Leave identity, manifests and all SQLite/WAL files intact. Normal shutdown
+releases the owned lock automatically.
 
 Keep the journal when investigating an uncertain result. Do not delete it to bypass
-a halt or retry an unresolved trade. No account credentials are needed or stored.
+a halt or retry an unresolved trade. No Vest account credentials are needed or stored;
+private phone access uses a separate protected host-access secret.
 
 ## Troubleshooting
 

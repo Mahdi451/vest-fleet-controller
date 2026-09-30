@@ -8,21 +8,23 @@ the product. Linux remains useful for development and reference testing.
 ## Current status
 
 The mobile interface, HTTPS/session authentication, command journal and simulator
-are implemented. However, native Windows/macOS dashboard startup is **not supported**.
-The committed Linux route is not proof of desktop-platform compatibility:
+are implemented. A small host-storage boundary now adds native Windows/macOS support:
 
-- `machineBinding()` reads `/etc/machine-id`; macOS and Windows need an appropriate
-  stable native host binding. Never replace a missing binding with a shared constant
-  or silently assign new owner/instance IDs.
-- Identity, configuration, keys and legacy adoption use Unix ownership/mode checks.
-  Windows requires actual access-control enforcement and validation rather than
-  accepting `chmod` as equivalent protection.
-- Identity publication opens and synchronizes a directory. Durable publication,
-  atomic replacement, file locks and path handling need native platform verification.
-- Installation, certificate provisioning, startup, shutdown and diagnostics currently
-  use Linux commands. Native Windows/macOS onboarding is missing.
-- All recorded automated/runtime evidence is from a Linux development host and
-  Chromium emulation. No native Windows or macOS acceptance is claimed.
+- Stable Windows MachineGuid and macOS IOPlatformUUID bindings preserve owner/instance
+  identity. Existing Linux machine hashes are unchanged; missing identity fails closed.
+- Windows verifies the current SID and actual protected DACLs through native handles;
+  macOS verifies ownership, modes and extended ACLs on the open file descriptor.
+- Private publication and exclusive locks preserve records and reject links, unsafe
+  permissions and competing owners. Windows flushes and publication verification
+  support process-crash tests; sudden power-loss rename durability is not claimed.
+- [Native setup](native-host-setup.md) documents per-user storage, private HTTPS,
+  startup/shutdown, diagnostics and conservative recovery.
+- [Native CI](../.github/workflows/native-host.yml) covers Windows Server 2025 x64,
+  macOS 15 ARM64/Intel and Ubuntu regression. Run results must be recorded before
+  claiming automated acceptance; workflow configuration alone is not evidence.
+
+Physical Windows 11/Mac sleep/reboot and real phone acceptance remain open. Use the
+[manual checklist](desktop-phone-sanity-check.md) to record those results.
 
 ## Next acceptance gate
 

@@ -2,11 +2,11 @@
 
 **SIMULATION ONLY.** No Vest account, password, token or funded execution is used.
 This guide describes the existing **Ubuntu 24.04 LTS x86-64 reference route**,
-Node.js 24.x and pnpm 11.25.0. Customer hosts must target **Windows and macOS**; native
-support is not implemented yet. Current dashboard startup requires Linux machine
-identity and Unix permissions, including for local operation. Customers must not be
-required to install Linux or WSL to use the product. See the
-[desktop host support gate](desktop-host-support.md).
+Node.js 24.x and pnpm 11.25.0. Customer hosts target **Windows and macOS**; use the
+[native setup guide](native-host-setup.md) for their identity, protected storage,
+startup and diagnostics. Native automated and physical acceptance are tracked
+separately in the [desktop host support gate](desktop-host-support.md). Customers
+must not be required to install Linux or WSL to use the product.
 
 Linux integration tests and Chromium emulation run in the development environment;
 a clean Ubuntu installation and a real phone/tailnet trial remain unverified. This
@@ -33,6 +33,31 @@ the phone will block entries when evidence ages or connectivity fails. This is n
 an always-available hosted service. Waking does not establish fresh protection by itself.
 
 ## 2. Clone, install and verify locally
+
+### Upgrade an existing Linux reference runtime
+
+Earlier versions could create `.runtime/dashboard` with mode `0755`; this version
+requires owner-only `0700`. Startup deliberately rejects the old permissions without
+changing records. This is an explicit in-place permissions migration, not a reset:
+
+1. Gracefully stop the original dashboard and verify no other process owns this
+   runtime. Preserve an encrypted or owner-private backup of the complete directory,
+   including SQLite WAL/SHM. A retained crash lock requires the separate ownership
+   recovery procedure; do not delete or archive it merely to change permissions.
+2. From the original source directory, inspect the actual directory with
+   `ls -ld -- .runtime/dashboard` and `stat -- .runtime/dashboard`. Confirm it is
+   a regular directory owned by your current `id -u`, not a symlink, with the
+   original host/path and records. Stop for unexpected ownership or permissions.
+3. Only after that review, run `chmod 700 -- .runtime/dashboard` as its existing
+   owner, without `sudo`, relocation, recursive record changes or identity edits.
+4. Run `pnpm host:doctor --runtime .runtime/dashboard`, then restart against the
+   same runtime. Confirm original owner/instance, retained journals and HALTED
+   recovery. Changing permissions does not resolve UNKNOWN or authorize re-arm.
+
+Existing journal contents, Linux machine hashes and identity bindings are preserved.
+Do not use a fresh runtime to bypass a failed upgrade or a safety halt.
+
+### Fresh installation
 
 ```sh
 git clone https://github.com/Mahdi451/vest-fleet-controller.git
