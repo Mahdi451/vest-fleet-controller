@@ -3,6 +3,8 @@
 Status checked 2026-09-30. This is the development checklist; the [README](../README.md)
 describes what a local user can do today. The [Vest fact register](vest-facts.md) and
 [browser investigation](browser-execution.md) carry sources and detailed evidence gates.
+The [customer implementation and acceptance plan](product-implementation-plan.md)
+covers sign-in, account connection, local/VPS hosting, staged effort and failure tests.
 
 ## What works today: local simulation prototype
 

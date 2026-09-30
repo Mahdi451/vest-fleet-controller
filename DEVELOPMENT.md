@@ -32,17 +32,18 @@ An exclusive local owner lock prevents two dashboards using the same saved fleet
 
 ## Documentation map
 
-| Reference                                                    | Use when working on                                                         |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| [Project specification and milestones](docs/project-plan.md) | Scope, original requirements and implementation sequence                    |
-| [Vest evidence register](docs/vest-facts.md)                 | Official facts, reported observations, contradictions and verification gaps |
-| [Browser execution](docs/browser-execution.md)               | Policy/UI investigation, synthetic browser implementation and trial gates   |
-| [Architecture](docs/architecture.md)                         | Component ownership, boundaries and adapter capabilities                    |
-| [Risk model](docs/risk-model.md)                             | Decimal sizing, costs, reserve, fill anchors and exposure rules             |
-| [Execution model](docs/execution-model.md)                   | States, request identity, protection, failures and emergency handling       |
-| [Simulator](docs/simulator.md)                               | Accounting, scenarios, assumptions and model limits                         |
-| [Validation record](docs/validation.md)                      | Test coverage, measured results and unvalidated behavior                    |
-| [Visual assets](docs/visuals.md)                             | Branding, generation prompt and screenshot reproduction                     |
+| Reference                                                                          | Use when working on                                                                      |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [Project specification and milestones](docs/project-plan.md)                       | Scope, original requirements and implementation sequence                                 |
+| [Customer implementation and acceptance plan](docs/product-implementation-plan.md) | Sign-in/account connection, local and hosted workers, release sequence and failure tests |
+| [Vest evidence register](docs/vest-facts.md)                                       | Official facts, reported observations, contradictions and verification gaps              |
+| [Browser execution](docs/browser-execution.md)                                     | Policy/UI investigation, synthetic browser implementation and trial gates                |
+| [Architecture](docs/architecture.md)                                               | Component ownership, boundaries and adapter capabilities                                 |
+| [Risk model](docs/risk-model.md)                                                   | Decimal sizing, costs, reserve, fill anchors and exposure rules                          |
+| [Execution model](docs/execution-model.md)                                         | States, request identity, protection, failures and emergency handling                    |
+| [Simulator](docs/simulator.md)                                                     | Accounting, scenarios, assumptions and model limits                                      |
+| [Validation record](docs/validation.md)                                            | Test coverage, measured results and unvalidated behavior                                 |
+| [Visual assets](docs/visuals.md)                                                   | Branding, generation prompt and screenshot reproduction                                  |
 
 Keep detailed design and evidence in those documents; keep the README focused on
 what users can do and how to operate the application. Do not describe a planned
