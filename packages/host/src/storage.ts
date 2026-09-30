@@ -94,7 +94,12 @@ function macApi() {
 function macNoAcl(fd: number): void {
   if (supportedHost() !== 'darwin') return;
   const api = (mac ??= macApi());
+  api.koffi.errno(0);
   const acl = api.get(fd, 0x100); // ACL_TYPE_EXTENDED, Apple's sys/acl.h.
+  const getErrno = api.koffi.errno();
+  // Apple's acl_get_fd_np returns NULL/ENOENT for an absent FILESEC_ACL
+  // property on this already validated descriptor. Other failures stay closed.
+  if (acl === null && getErrno === 2) return;
   if (!acl) throw failure('HOST_ACL_UNVERIFIABLE');
   try {
     if (api.valid(acl) !== 0) throw failure('HOST_ACL_UNVERIFIABLE');
