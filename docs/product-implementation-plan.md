@@ -2,8 +2,9 @@
 
 Prepared 2026-09-30. Scope: an invitation beta where each customer controls their own
 Vest Instant-account fleet through our mobile dashboard. The current build is a local
-simulation prototype; no real account connection, production browser driver, customer
-authentication or hosted execution service has been delivered.
+simulation prototype. Mobile UI, durable commands and private single-owner HTTPS
+authentication are delivered in the [validation report](mobile-private-validation.md);
+no real account connection, production browser driver or managed hosted service exists.
 
 Use [the prototype checklist](prototype-todo.md) for shipped functionality and the
 [fact register](vest-facts.md) and [browser investigation](browser-execution.md) for
@@ -49,7 +50,7 @@ Use immutable identity-provider subjects instead of email alone as ownership key
 Private-device authentication is acceptable for an initial supervised personal pilot;
 it is not a substitute for authorization between multiple customers.
 
-### Proposed connection journey — not currently implemented
+### Proposed connected journey — Vest steps remain blocked
 
 1. Sign into our app or the explicitly private personal pilot interface.
 2. Install/start the execution worker; pair it with the customer through an expiring,

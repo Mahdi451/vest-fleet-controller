@@ -1,6 +1,12 @@
 # Mobile/private beta implementation checkpoint
 
-Recorded 2026-09-30. **Implementation is not published or release-ready.**
+Recorded 2026-09-30. **Historical interrupted-run checkpoint.**
+
+Recovery found a fresh clone with no `9d6b85e` Git object or Phase B files in the
+searched project/temp locations. The implementation was reconstructed without
+recovering that commit. See the [current validation report](mobile-private-validation.md)
+for newly verified application work, publication and remaining hardware acceptance.
+The results below describe the earlier interrupted environment, not the current build.
 
 The execution environment disconnected during the combined acceptance run and subsequently
 reported `environment_offline: Environment is not connected`. The cause has not been established.

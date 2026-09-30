@@ -41,7 +41,8 @@ pnpm dashboard
 
 Open **http://127.0.0.1:4173**. Keep the terminal running; press `Ctrl+C` to stop.
 Use that exact address rather than `localhost`. The dashboard runs on your computer
-and is intended for local access; do not expose it through a public server or proxy.
+and keeps loopback access as the default. For authenticated private phone access, follow
+the [supported host guide](docs/private-phone-access.md). Do not expose it through a public server or proxy.
 
 Each new simulation starts with ten accounts and a synthetic NQ/NDX price of **30,400**:
 
@@ -58,7 +59,8 @@ Each new simulation starts with ten accounts and a synthetic NQ/NDX price of **3
 4. Select the accounts that should participate.
 5. Click **Refresh trade preview** and review each account's exposure, planned loss,
    remaining buffer and approval status.
-6. Click **LONG SELECTED** or **SHORT SELECTED** within five seconds of the preview.
+6. Click **LONG SELECTED** or **SHORT SELECTED**, then confirm the simulated entry
+   within five seconds of the preview. On a phone, use Trade / Accounts / Activity.
 7. Apply a synthetic price change to test P&L, stops and targets.
 
 Only approved accounts execute. Changing inputs or selection invalidates the preview.
@@ -78,8 +80,23 @@ new entries and requires no confirmation dialog. Review each account's result;
 `UNKNOWN` is not confirmation that the account is safely flat.
 
 After flattening or a circuit halt, **New simulation** starts a fresh fleet. It asks
-for confirmation because it discards current balances and positions. There is no
-resume/re-arm control that preserves those balances.
+for confirmation because it resets current balances and positions while preserving
+the previous journal. There is no
+resume/re-arm control that preserves those balances. Unresolved durable commands block reset;
+keep their records for investigation. Restart and reconnect recover status without resubmitting an entry.
+
+## Phone simulation
+
+The phone layout supports Trade, Accounts and Activity, readable account risk cards,
+a persistent SIMULATION badge, entry confirmation and reachable FLATTEN ALL.
+Connection reachability and evidence age are displayed separately. Stale/disconnected
+entry is blocked; lost responses and reloads query the existing durable command.
+No trading command is queued or replayed offline.
+
+See [mobile behavior](docs/mobile-beta.md), [private HTTPS setup and recovery](docs/private-phone-access.md),
+and [validation evidence and remaining physical-device checks](docs/mobile-private-validation.md).
+Home Screen icons/manifest are included. Physical phone installation and actual host
+sleep/reboot are still acceptance tasks; Chromium emulation is the recorded evidence.
 
 ## Choosing your exposure
 

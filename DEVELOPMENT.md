@@ -5,9 +5,15 @@ For installation and daily use, see the [README](README.md).
 
 ## Current baseline
 
+Mobile simulation and private HTTPS application work are now delivered around the
+existing engine. See [the current validation report](docs/mobile-private-validation.md),
+[access architecture](docs/private-access-architecture.md), and [host operations](docs/private-phone-access.md).
+The earlier outage checkpoint is historical; its missing local application commit
+was not recovered in this fresh clone. Implementation was reconstructed and verified.
+
 The application provides a working local dashboard and CLI backed by the same
-simulation controller. Live Vest execution is not implemented. The latest execution
-validation passed 155 tests in eight files; this is a dated result, not a guarantee about
+simulation controller. Live Vest execution is not implemented. The original simulation
+baseline passed 155 tests in eight files; this is a dated result, not a guarantee about
 subsequent changes. See the [validation record](docs/validation.md).
 
 Recent completed work:
@@ -166,7 +172,7 @@ Vest exchange API can be used for Capital accounts. It cannot serve this funded 
 
 Other current limits: one synthetic market, one net position per account, no order book,
 no continuing/incremental partial-entry fill stream, no maintenance-margin liquidation model, no trading calendar,
-no multi-process coordination, no pyramiding/reversal and no live market data.
+no distributed worker failover (local execution has an exclusive runtime lock), no pyramiding/reversal and no live market data.
 
 ## Trade intent and CLI reference
 

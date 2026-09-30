@@ -41,16 +41,22 @@ and permission scope. Do not assume this is authorized by same-owner copying rul
 
 ### Next coding iterations — independent of Vest execution permission
 
-- [ ] Polish the mobile dashboard around Accounts, Trade and Activity; provide large
+- [x] Polish the mobile dashboard around Accounts, Trade and Activity; provide large
       LONG/SHORT controls, leverage and equity-as-margin presets, a compact per-account
       risk preview, prominent flatten and explicit connection/protection status.
-- [ ] Add Home Screen installation assets and private HTTPS phone access with verified
+- [x] Add Home Screen installation assets and private HTTPS phone access with verified
       authentication, exact configured origins and mutation protection. Keep execution
       on the always-on host. No cached or queued offline trading commands.
 - [ ] Validate double taps, lost responses, reconnect and screen lock against the
       simulator. Reattach to the existing request rather than create a second trade.
 - [ ] Package a reproducible local simulator installation and short onboarding flow
       for a small invited group. The shipped build must clearly identify simulation.
+
+Application evidence: [current mobile/private validation](mobile-private-validation.md),
+[phone behavior](mobile-beta.md) and [host setup/recovery](private-phone-access.md).
+Automated phone emulation is verified; physical screen lock, trusted real-phone HTTPS,
+Home Screen installation, clean supported-host setup and host sleep/reboot remain open.
+The implementation checkpoint is historical; the recovered workspace required reconstruction.
 
 Planning target: a reviewable mobile simulation beta in **1–3 focused coding
 iterations**, subject to implementation results. This means sessions of active work,
