@@ -90,6 +90,17 @@ venues, continuous TP/SL editing, social signal following and parallel browser w
 Reliable execution, customer isolation, authentication and recovery cannot be deferred
 for any release that can affect customer funded accounts.
 
+### Near-final customer release packaging
+
+Scheduled near completion of the intended release scope, after feature/security and
+recovery acceptance. Native host support/setup remains the immediate priority.
+
+- [ ] Build a signed Windows `.exe` installer bundling runtime and application assets.
+- [ ] Build the equivalent signed/notarized macOS `.app`/`.dmg` release.
+- [ ] Add a launcher/status/graceful-shutdown flow around the existing engine/dashboard.
+- [ ] Validate clean installation, safe updates/recovery and uninstall, preserving
+      protected identity, credentials, journals and unresolved commands.
+
 ## Gate 1 — permitted integration path
 
 - [ ] Obtain written Vest confirmation for visible-UI automation of the user's Instant

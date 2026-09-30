@@ -51,11 +51,28 @@ queued offline entries, automatic failover or automatic re-arm.
 
 A platform is released only after its native acceptance passes. Windows and macOS
 are both product targets; an initial validated platform may ship first with the other
-explicitly pending. Exact supported versions/architectures and packaging are chosen
-and recorded during that work, not inferred from Node's general availability.
+explicitly pending. Exact supported versions/architectures are chosen and recorded
+during native validation, not inferred from Node's general availability.
 
 Desktop portability and device acceptance precede customer-host simulation readiness.
 The earlier estimate of one or two acceptance sessions assumed the Linux reference
 route; it does **not** estimate the Windows/macOS port. Re-estimate after platform and
 security inspection. Vest feasibility, written permission, the one-account driver
 and supervised fleet expansion remain later gates.
+
+## Near-final release packaging
+
+Final installers are deferred until features, security and recovery are nearly
+finalized for the intended release. The current focus is native host portability,
+setup and acceptance, not an installer or desktop-framework migration.
+
+- Windows: signed `.exe` installer with the supported runtime/application bundled.
+- macOS: equivalent signed/notarized `.app`, delivered through `.dmg` or a native package.
+- Launcher: start the existing engine, open the dashboard, show status and stop gracefully.
+- Storage/update: protect per-user secrets/runtime data separately from installation
+  files; preserve identities, journals and unresolved commands across updates.
+- Release validation: clean-machine install/launch/update/uninstall and recovery on
+  each supported platform. No Git, Node, pnpm or Linux installation required of users.
+
+See [the staged implementation plan](product-implementation-plan.md). A simulation
+installer does not claim that blocked Vest-connected functionality is available.

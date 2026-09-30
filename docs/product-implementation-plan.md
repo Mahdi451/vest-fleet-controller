@@ -145,15 +145,16 @@ elapsed calendar dates or autonomous background work. A session length and throu
 have not been measured. External permission, UI capability discovery and actual market
 validation cannot be compressed into a coding estimate. Re-estimate after stage C.
 
-| Stage                           | Effort target                                          | Concrete output                                                                                                                       | Release criterion                                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A. Mobile simulation            | 1–3 sessions                                           | Focused Trade/Accounts/Activity UI, Home Screen assets, stale/disconnected state, touch-safe preview and flatten                      | Phone browser tests pass; synthetic mode unmistakable; existing checks remain green.                                                                                  |
-| B. Private host connection      | 2–4 sessions                                           | HTTPS/auth configuration, instance ownership/pairing, expiring commands, status recovery, reproducible single-platform worker package | Unauthorized/replayed/cross-owner commands rejected; phone disconnect does not duplicate an accepted simulated job.                                                   |
-| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                            | Written permissions and all required capabilities proven. Stop or narrow the product if absent.                                                                       |
-| D. Permitted one-account driver | 2–4 sessions after C                                   | Visible UI transport, real account binding, entry/fill/protection/exit reconciliation; initially non-trading/read-only                | Contract and fault tests pass; no invented evidence, private endpoints or automatic write retries. Required pre-integration review complete before any funded action. |
-| E. Operational acceptance       | 2–4 sessions, reusing existing safeguards              | Session loss/restart/manual intervention/orphan handling, explicit recovery UI, diagnostics, worker monitoring and version gate       | Tests below pass; unknown exposure blocks entries; old/new worker ownership cannot overlap.                                                                           |
-| F. Supervised invitation pilot  | Several real permitted test/trading sessions; measured | Approved paper/test if available, then minimal one-account trial, two accounts, small fleet, up to ten                                | Separate trade authorization, correct fills and exits, complete protection/cleanup, agreed latency/drift limits and documented recovery.                              |
-| G. Managed hosting              | Estimate after local pilot                             | Dedicated-instance provisioning, secure interactive login/profile custody, monitoring and incident procedures                         | Hosted permission/security/restore tests pass. Not required for the first customer-owned-host pilot.                                                                  |
+| Stage                           | Effort target                                          | Concrete output                                                                                                                          | Release criterion                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A. Mobile simulation            | 1–3 sessions                                           | Focused Trade/Accounts/Activity UI, Home Screen assets, stale/disconnected state, touch-safe preview and flatten                         | Phone browser tests pass; synthetic mode unmistakable; existing checks remain green.                                                                                  |
+| B. Native private desktop host  | Re-estimate after portability review                   | Native Windows/macOS host identity/storage, HTTPS/auth, instance ownership, expiring commands, status recovery and setup instructions    | Native platform checks pass; unauthorized/replayed/cross-owner commands rejected; disconnect/restart cannot duplicate an accepted job.                                |
+| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                               | Written permissions and all required capabilities proven. Stop or narrow the product if absent.                                                                       |
+| D. Permitted one-account driver | 2–4 sessions after C                                   | Visible UI transport, real account binding, entry/fill/protection/exit reconciliation; initially non-trading/read-only                   | Contract and fault tests pass; no invented evidence, private endpoints or automatic write retries. Required pre-integration review complete before any funded action. |
+| E. Operational acceptance       | 2–4 sessions, reusing existing safeguards              | Session loss/restart/manual intervention/orphan handling, explicit recovery UI, diagnostics, worker monitoring and version gate          | Tests below pass; unknown exposure blocks entries; old/new worker ownership cannot overlap.                                                                           |
+| F. Supervised invitation pilot  | Several real permitted test/trading sessions; measured | Approved paper/test if available, then minimal one-account trial, two accounts, small fleet, up to ten                                   | Separate trade authorization, correct fills and exits, complete protection/cleanup, agreed latency/drift limits and documented recovery.                              |
+| G. Customer release packaging   | Estimate near feature/recovery completion              | Signed Windows `.exe` installer and signed/notarized macOS `.app`/`.dmg`; bundled runtime/assets, launcher and update/uninstall behavior | Clean-machine install/launch, safe update/recovery and uninstall tests pass; journals/identity preserved; platform and release scope explicit.                        |
+| H. Managed hosting              | Estimate after local pilot                             | Dedicated-instance provisioning, secure interactive login/profile custody, monitoring and incident procedures                            | Hosted permission/security/restore tests pass. Not required for the first customer-owned-host pilot.                                                                  |
 
 Stages A/B and fixture tests can progress while policy questions are being resolved.
 Native Windows/macOS host portability and onboarding are now required before
@@ -161,6 +162,49 @@ customer-host acceptance; the Linux reference run does not satisfy that gate.
 Stages C–F are dependent gates. We can demonstrate mobile simulation promptly; we cannot
 assign a defensible connected-customer launch date before C. Do not combine effort
 bands into a calendar promise without measured session length and external resolution.
+
+## Immediate implementation order
+
+1. **Portable host identity and protected storage.** Review a small OS boundary, then
+   implement native Windows/macOS identity, ownership/secret checks, durable file
+   publication, canonical paths and exclusive runtime locks. Preserve existing
+   Linux/runtime bindings and all command/journal safety state.
+2. **Native startup and first-host setup.** Configure and verify owner/instance,
+   localhost operation, private HTTPS/certificates, sign-in/revocation and actionable
+   diagnostics on Windows/macOS. Provide native setup/start/stop/recovery instructions.
+3. **Native automated validation.** Run the existing simulator/controller suites and
+   platform-specific security, lock, command and restart cases on Windows/macOS
+   runners. Mocks on Linux are not native-platform acceptance.
+4. **Desktop/phone operational acceptance.** Exercise authenticated HTTPS, one
+   protected simulated entry, screen lock/offline/reconnect without a duplicate,
+   flatten/reconcile/logout and actual desktop sleep/reboot/crash recovery. Record
+   native OS/architecture and physical device evidence.
+
+Vest feasibility remains a later permission/access gate. Existing permission questions
+may be resolved while desktop simulation work progresses, but no live driver or funded
+execution is authorized by the portability work.
+
+## Near-final customer release packaging
+
+Installer/release packaging is scheduled **near the end**, once the chosen release's
+features, security and recovery behavior are nearly finalized. It is not the next
+coding task. A simulation release may be packaged after its own acceptance; a connected
+release also requires the permission, capability and supervised-validation gates.
+
+Deliver a signed Windows `.exe` installer and an equivalent signed/notarized macOS
+`.app` distributed in a `.dmg` or suitable native package. Bundle the supported Node
+runtime and application/assets so customers do not install Git, Node, pnpm or Linux.
+A desktop launcher should start the existing engine, open the dashboard and expose
+clear status and graceful shutdown. Preserve the existing dashboard/controller rather
+than assuming a framework migration is necessary.
+
+Store configuration, secrets, identity and journals in protected per-user runtime
+storage, separate from application installation files. Updates must settle accepted
+work and preserve records/bindings; uninstall must not silently destroy unresolved
+records or credentials. Validate clean install, launch, update, interrupted update,
+shutdown/restart and uninstall on every supported native platform before publishing
+versioned release artifacts. Choose installer/signing tooling during that late-stage
+work and record checksums and supported OS/architectures with the release.
 
 ## Acceptance test matrix
 
