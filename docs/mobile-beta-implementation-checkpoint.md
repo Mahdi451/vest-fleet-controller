@@ -84,21 +84,21 @@ Do not infer that these final edits were validated.
 
 ## Major local files
 
-| Location | Purpose |
-| --- | --- |
-| `apps/dashboard/public/app.js` | Mobile command identity, status recovery, evidence age and private sign-in |
-| `apps/dashboard/public/index.html`, `style.css` | Three phone surfaces, entry confirmation, touch controls, login and safety labeling |
-| `apps/dashboard/public/manifest.webmanifest`, `brand/*.png` | Home Screen installation assets |
-| `apps/dashboard/server.ts` | Same engine behind freshness/command/auth/TLS boundaries and graceful shutdown |
-| `apps/dashboard/src/commands.ts` | Validated canonical command envelope and status |
-| `apps/dashboard/src/identity.ts` | Owner/instance and saved host/runtime binding |
-| `apps/dashboard/src/private-access.ts` | HTTPS configuration, scrypt credentials, sessions and origin/security policy |
-| `apps/dashboard/setup-private.ts`, `package.json` | Protected private-host provisioning command |
-| `packages/execution/src/journal.ts` | Command envelopes/aliases in existing SQLite journal |
-| `tests/dashboard-commands.test.ts`, `mobile-dashboard.test.ts` | Durable command and phone acceptance cases |
-| `tests/private-access.test.ts`, `private-mobile.test.ts`, `fixtures/private-host.ts` | Isolated HTTPS security and phone tests |
-| `docs/mobile-beta.md`, `private-phone-access.md`, `private-access-architecture.md` | Local policy, onboarding and architecture documentation |
-| `docs/images/mobile-trade.png`, `mobile-accounts.png` | Local rendered simulation evidence |
+| Location                                                                             | Purpose                                                                             |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `apps/dashboard/public/app.js`                                                       | Mobile command identity, status recovery, evidence age and private sign-in          |
+| `apps/dashboard/public/index.html`, `style.css`                                      | Three phone surfaces, entry confirmation, touch controls, login and safety labeling |
+| `apps/dashboard/public/manifest.webmanifest`, `brand/*.png`                          | Home Screen installation assets                                                     |
+| `apps/dashboard/server.ts`                                                           | Same engine behind freshness/command/auth/TLS boundaries and graceful shutdown      |
+| `apps/dashboard/src/commands.ts`                                                     | Validated canonical command envelope and status                                     |
+| `apps/dashboard/src/identity.ts`                                                     | Owner/instance and saved host/runtime binding                                       |
+| `apps/dashboard/src/private-access.ts`                                               | HTTPS configuration, scrypt credentials, sessions and origin/security policy        |
+| `apps/dashboard/setup-private.ts`, `package.json`                                    | Protected private-host provisioning command                                         |
+| `packages/execution/src/journal.ts`                                                  | Command envelopes/aliases in existing SQLite journal                                |
+| `tests/dashboard-commands.test.ts`, `mobile-dashboard.test.ts`                       | Durable command and phone acceptance cases                                          |
+| `tests/private-access.test.ts`, `private-mobile.test.ts`, `fixtures/private-host.ts` | Isolated HTTPS security and phone tests                                             |
+| `docs/mobile-beta.md`, `private-phone-access.md`, `private-access-architecture.md`   | Local policy, onboarding and architecture documentation                             |
+| `docs/images/mobile-trade.png`, `mobile-accounts.png`                                | Local rendered simulation evidence                                                  |
 
 The core risk engine, FleetController financial logic, hedge guard and simulator were
 preserved; no real Vest connectivity or order was added. The private sign-in is our host

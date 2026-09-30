@@ -38,6 +38,25 @@ export class SimulationStore {
     const manifest = this.directory
       ? join(this.directory, 'active-session.json')
       : null;
+    if (reset && manifest && existsSync(manifest)) {
+      const oldId = z
+        .string()
+        .uuid()
+        .parse(JSON.parse(readFileSync(manifest, 'utf8')).sessionId);
+      const oldPath = join(this.directory!, `${oldId}.sqlite`);
+      if (!existsSync(oldPath)) throw new Error('MISSING_SESSION_JOURNAL');
+      const old = new Journal(oldPath);
+      try {
+        if (
+          old
+            .commands()
+            .some((c) => c.status === 'PENDING' || c.status === 'UNKNOWN')
+        )
+          throw new Error('UNRESOLVED_COMMANDS_PRESERVED');
+      } finally {
+        old.close();
+      }
+    }
     const resuming = manifest !== null && existsSync(manifest) && !reset;
     const sessionId = resuming
       ? z

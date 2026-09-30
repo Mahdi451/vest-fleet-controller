@@ -37,6 +37,20 @@ const auditSchema = z.object({
   remainingAfterStop: z.string().optional(),
 });
 export type AuditEvent = z.infer<typeof auditSchema>;
+export const commandSchema = z.object({
+  id: z.string().regex(/^[a-f0-9]{64}$/),
+  payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
+  ownerId: z.string(),
+  instanceId: z.string(),
+  sessionId: z.string().uuid(),
+  previewId: z.string().length(64),
+  selected: z.array(z.string()),
+  createdAt: z.number(),
+  expiresAt: z.number(),
+  status: z.enum(['PREVIEWED', 'PENDING', 'COMPLETE', 'UNKNOWN']),
+  results: z.array(childResultSchema).optional(),
+});
+export type CommandEnvelope = z.infer<typeof commandSchema>;
 export class Journal {
   private db: DatabaseSync;
   constructor(path = ':memory:') {
@@ -46,6 +60,8 @@ export class Journal {
       CREATE TABLE IF NOT EXISTS children(id TEXT PRIMARY KEY, master_id TEXT NOT NULL, result TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, event TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS dashboard_commands(id TEXT PRIMARY KEY, envelope TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS command_aliases(id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, command_id TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS browser_actions(id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, account_id TEXT NOT NULL, state TEXT NOT NULL);`);
   }
   claim(
@@ -211,6 +227,47 @@ export class Journal {
             .all(limit)
             .reverse();
     return rows.map((r) => JSON.parse(String(r.event)) as AuditEvent);
+  }
+  saveCommand(command: CommandEnvelope) {
+    commandSchema.parse(command);
+    this.db
+      .prepare(
+        'INSERT INTO dashboard_commands VALUES(?,?) ON CONFLICT(id) DO UPDATE SET envelope=excluded.envelope',
+      )
+      .run(command.id, JSON.stringify(command));
+  }
+  command(id: string): CommandEnvelope | null {
+    const row = this.db
+      .prepare('SELECT envelope FROM dashboard_commands WHERE id=?')
+      .get(id);
+    return row ? commandSchema.parse(JSON.parse(String(row.envelope))) : null;
+  }
+  commands(): CommandEnvelope[] {
+    return this.db
+      .prepare('SELECT envelope FROM dashboard_commands ORDER BY rowid DESC')
+      .all()
+      .map((row) => commandSchema.parse(JSON.parse(String(row.envelope))));
+  }
+  bindCommandAlias(id: string, fingerprint: string, commandId: string) {
+    const row = this.db
+      .prepare('SELECT fingerprint,command_id FROM command_aliases WHERE id=?')
+      .get(id);
+    if (row) {
+      if (row.fingerprint !== fingerprint || row.command_id !== commandId)
+        throw new Error('IDEMPOTENCY_CONFLICT');
+      return;
+    }
+    this.db
+      .prepare('INSERT INTO command_aliases VALUES(?,?,?)')
+      .run(id, fingerprint, commandId);
+  }
+  recoverCommands() {
+    for (const command of this.commands()) {
+      if (command.status !== 'PENDING') continue;
+      command.status = 'UNKNOWN';
+      this.saveCommand(command);
+      this.halt();
+    }
   }
   close() {
     this.db.close();

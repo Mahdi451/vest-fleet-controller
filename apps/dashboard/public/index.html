@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101720" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Fleet Simulation" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
     <title>Vest Fleet Controller · Simulator</title>
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="stylesheet" href="/style.css" />
@@ -15,12 +23,41 @@
       </a>
       <div>
         <strong>VEST FLEET CONTROLLER</strong
-        ><small>Local trading workspace</small>
+        ><small>Private simulation workspace</small>
       </div>
       <span class="badge">SIMULATION ONLY</span>
-      <div class="connection" id="connection">Connecting…</div>
+      <button id="logout" hidden>Sign out</button>
     </header>
     <main>
+      <section id="login-panel" class="panel" hidden>
+        <h2>Sign in to your private simulation host</h2>
+        <p>
+          Use the access secret configured on your execution host. No Vest
+          credentials are needed.
+        </p>
+        <form id="login-form">
+          <label for="login-secret">Host access secret</label>
+          <input
+            id="login-secret"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit">Sign in</button>
+        </form>
+        <p id="login-message" role="alert"></p>
+      </section>
+      <section class="connection-panel" aria-live="polite">
+        <strong id="connection">Connecting to controller…</strong>
+        <span id="freshness">Evidence not verified</span>
+        <span id="command-status">No pending command</span>
+        <small id="instance">Execution instance not verified</small>
+      </section>
+      <nav class="phone-nav" aria-label="Simulation screens">
+        <button data-screen="trade" aria-current="page">Trade</button>
+        <button data-screen="accounts">Accounts</button>
+        <button data-screen="activity">Activity</button>
+      </nav>
       <section class="heading">
         <div>
           <span class="eyebrow">FLEET / COMMAND CENTER</span>
@@ -39,7 +76,7 @@
         Synthetic accounts and prices. No Vest connection. All actions below run
         in the simulator.
       </div>
-      <section class="metrics">
+      <section class="metrics" data-view="trade">
         <article>
           <span>NQ / NDX · SYNTHETIC</span><strong id="quote">—</strong
           ><small>Perpetual model · not CME futures</small>
@@ -58,7 +95,7 @@
         </article>
       </section>
       <div class="workspace">
-        <aside class="panel trade">
+        <aside class="panel trade" data-view="trade">
           <div class="panel-title">
             <h2>Master trade</h2>
             <span>01</span>
@@ -121,9 +158,12 @@
             <button id="long" class="long" disabled>↗ LONG SELECTED</button
             ><button id="short" class="short" disabled>↘ SHORT SELECTED</button>
           </div>
+          <div class="trade-preview" id="trade-preview">
+            Risk preview not loaded
+          </div>
           <p class="hint" id="expiry">Choose your exposure, then preview.</p>
         </aside>
-        <section class="panel fleet">
+        <section class="panel fleet" data-view="accounts">
           <div class="panel-title">
             <div>
               <h2>Account fleet</h2>
@@ -163,13 +203,13 @@
             <span>All-in loss budget ≠ margin allocation.</span
             ><span>Quantity is sized independently for every account.</span>
           </div>
-          <div id="message" role="status" aria-live="polite">
-            Loading simulation…
-          </div>
         </section>
       </div>
+      <div id="message" role="status" aria-live="polite">
+        Loading simulation…
+      </div>
       <div class="bottom">
-        <section class="panel">
+        <section class="panel" data-view="activity">
           <div class="panel-title">
             <h2>Move the simulated market</h2>
             <span>02</span>
@@ -191,7 +231,7 @@
             in explicit simulator scenarios.
           </p>
         </section>
-        <section class="panel">
+        <section class="panel" data-view="activity">
           <div class="panel-title">
             <h2>Activity</h2>
             <button id="reconcile" class="text-button">Reconcile</button>
@@ -204,6 +244,20 @@
           </p>
         </section>
       </div>
+      <dialog id="confirm-entry">
+        <form method="dialog">
+          <h2>Confirm simulated entry</h2>
+          <p id="confirm-details"></p>
+          <p>
+            SIMULATION ONLY · No live orders. Review account risk on the
+            Accounts screen before confirming.
+          </p>
+          <button value="cancel">Cancel</button>
+          <button id="confirm-submit" value="execute">
+            Confirm simulated entry
+          </button>
+        </form>
+      </dialog>
       <footer>
         MOCK VEST ADAPTER
         <span>Local only · no credentials · no live orders</span>

@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Vest Fleet Controller · SIMULATION",
+  "short_name": "Fleet Sim",
+  "description": "Private simulation only. Independent project, no Vest affiliation or live trading.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1017",
+  "theme_color": "#101720",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

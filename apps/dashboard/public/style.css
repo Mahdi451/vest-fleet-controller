@@ -551,3 +551,343 @@ footer {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* Phone screens use the same controller views and never queue entry commands. */
+[hidden] {
+  display: none !important;
+}
+button,
+select,
+input {
+  min-height: 44px;
+}
+.connection-panel {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  margin-bottom: 18px;
+  border: 1px solid #334154;
+  border-radius: 8px;
+  background: #111923;
+  overflow-wrap: anywhere;
+}
+.connection-panel span,
+.connection-panel small {
+  color: #bdc9d8;
+  font-size: 12px;
+}
+.phone-nav {
+  display: none;
+}
+#message {
+  margin-top: 20px;
+}
+#login-panel {
+  margin-bottom: 20px;
+}
+#login-form {
+  display: grid;
+  gap: 12px;
+  max-width: 480px;
+}
+#login-message {
+  color: #ff999d;
+}
+.trade-preview {
+  margin-top: 14px;
+  color: #e9eff8;
+  line-height: 1.8;
+}
+.activity {
+  height: auto;
+  min-height: 80px;
+  max-height: 360px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.text-button {
+  padding: 10px;
+  min-height: 44px;
+}
+.panel-title {
+  flex-wrap: wrap;
+}
+.actions {
+  gap: 16px;
+}
+.actions button {
+  min-height: 52px;
+}
+dialog {
+  width: min(480px, calc(100% - 24px));
+  padding: 22px;
+  color: #e9eff8;
+  background: #111923;
+  border: 1px solid #798eaa;
+  border-radius: 12px;
+}
+dialog::backdrop {
+  background: #000b;
+}
+dialog form {
+  display: grid;
+  gap: 16px;
+}
+dialog button {
+  min-height: 52px;
+}
+@media (max-width: 700px) {
+  header {
+    height: auto;
+    min-height: 80px;
+    padding: 12px;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  header strong {
+    font-size: 10px;
+    letter-spacing: 0.7px;
+  }
+  header small {
+    font-size: 10px;
+  }
+  .brand {
+    flex-basis: 34px;
+    width: 34px;
+  }
+  .brand img {
+    width: 34px;
+  }
+  .badge {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    padding: 8px;
+    white-space: nowrap;
+  }
+  main {
+    padding: 16px 12px 24px;
+  }
+  .phone-nav {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    gap: 6px;
+    padding: 8px 0;
+    background: #0b1017;
+    margin-bottom: 18px;
+  }
+  .phone-nav button {
+    flex: 1;
+    min-width: 0;
+    min-height: 48px;
+    padding: 10px;
+  }
+  .phone-nav button[aria-current='page'] {
+    background: #223026;
+    border-color: #9dbc69;
+    color: #cdeb8e;
+  }
+  [data-view] {
+    display: none;
+  }
+  [data-view].phone-active {
+    display: block;
+  }
+  .metrics.phone-active {
+    display: grid;
+  }
+  .heading h1 {
+    font-size: 25px;
+  }
+  .heading p {
+    font-size: 13px;
+  }
+  .flatten {
+    min-height: 60px;
+  }
+  .flatten small {
+    font-size: 12px;
+  }
+  .notice {
+    font-size: 12px;
+    margin: 16px 0;
+  }
+  .metrics article {
+    padding: 12px;
+    min-width: 0;
+  }
+  .metrics strong {
+    font-size: clamp(18px, 5vw, 23px);
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+  }
+  .metrics span {
+    font-size: 9px;
+    letter-spacing: 0.2px;
+  }
+  .metrics small {
+    font-size: 11px;
+  }
+  .workspace,
+  .bottom {
+    display: block;
+    margin-top: 0;
+  }
+  .panel {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .trade label {
+    font-size: 13px;
+    gap: 8px;
+  }
+  .trade label span {
+    font-size: 11px;
+  }
+  .hint {
+    font-size: 12px;
+  }
+  input,
+  select {
+    font-size: 16px;
+  }
+  .presets button,
+  .actions button {
+    font-size: 12px;
+  }
+  .actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .summary {
+    grid-template-columns: 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+  .summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .summary span {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .summary strong {
+    margin: 0;
+    font-size: 19px;
+    white-space: nowrap;
+  }
+  .table-wrap {
+    overflow: visible;
+  }
+  table,
+  tbody {
+    display: block;
+    white-space: normal;
+  }
+  thead {
+    display: none;
+  }
+  tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    border: 1px solid #334154;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  td {
+    display: block;
+    padding: 5px 0;
+    border: 0;
+    min-width: 0;
+    font-size: 13px;
+  }
+  td::before {
+    content: attr(data-label);
+    display: block;
+    color: #a1afc1;
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
+  td strong {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  td small {
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  td:first-child {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  td input {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    margin: 8px;
+  }
+  td:last-child {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid #334154;
+  }
+  .table-note {
+    font-size: 11px;
+  }
+  .market {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .market input {
+    max-width: none;
+  }
+  .market button {
+    font-size: 12px;
+    white-space: normal;
+  }
+  .activity div {
+    flex-wrap: wrap;
+    border-bottom: 1px solid #25303e;
+    padding: 8px 0;
+  }
+}
+@media (max-width: 700px) {
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .phone-nav {
+    position: static;
+  }
+  main {
+    padding-bottom: calc(108px + env(safe-area-inset-bottom));
+  }
+  .flatten {
+    position: fixed;
+    z-index: 4;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+    width: calc(100% - 24px);
+    box-shadow:
+      0 0 0 8px #0b1017,
+      0 -8px 24px #0b1017;
+  }
+}
+@media (max-width: 700px) {
+  td input {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+  }
+}
