@@ -3,6 +3,10 @@
 Engineering handoff, implementation reference and planning for `vest-fleet-controller`.
 For installation and daily use, see the [README](README.md).
 
+Native host implementation, test evidence and remaining physical-device checks are
+recorded in the [native validation report](docs/native-host-validation.md). Signed
+Windows and Mac packages remain scheduled near final release, after acceptance.
+
 ## Current baseline
 
 Customer deployment targets are Windows and macOS. Native identity, protected storage,

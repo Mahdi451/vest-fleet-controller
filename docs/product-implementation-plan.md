@@ -165,6 +165,11 @@ bands into a calendar promise without measured session length and external resol
 
 ## Immediate implementation order
 
+The native identity/storage boundary and native startup/setup instructions are now
+implemented. Native runner results and remaining limitations are recorded in the
+[validation report](native-host-validation.md). Physical desktop/phone acceptance
+is the next operational gate; the order below records the work required for it.
+
 1. **Portable host identity and protected storage.** Review a small OS boundary, then
    implement native Windows/macOS identity, ownership/secret checks, durable file
    publication, canonical paths and exclusive runtime locks. Preserve existing

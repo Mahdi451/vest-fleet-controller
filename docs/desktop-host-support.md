@@ -23,6 +23,10 @@ are implemented. A small host-storage boundary now adds native Windows/macOS sup
   macOS 15 ARM64/Intel and Ubuntu regression. Run results must be recorded before
   claiming automated acceptance; workflow configuration alone is not evidence.
 
+See the [native validation report](native-host-validation.md) for actual runner
+results, source commits and test limitations. The identity/storage boundary,
+native setup and test matrix are implemented; the physical trial is next.
+
 Physical Windows 11/Mac sleep/reboot and real phone acceptance remain open. Use the
 [manual checklist](desktop-phone-sanity-check.md) to record those results.
 

@@ -30,8 +30,9 @@ scenarios.
 ## Quick start
 
 Native Windows and macOS host identity and private storage are implemented around
-the existing simulator. Native automated acceptance and physical desktop/phone
-checks are required before customer release; see [the desktop host gate](docs/desktop-host-support.md).
+the existing simulator. See [native automated results](docs/native-host-validation.md).
+Physical desktop/phone checks remain required before customer release; see
+[the desktop host gate](docs/desktop-host-support.md).
 
 The [native host setup guide](docs/native-host-setup.md) and
 [desktop/phone sanity checklist](docs/desktop-phone-sanity-check.md) describe the
@@ -97,7 +98,7 @@ keep their records for investigation. Restart and reconnect recover status witho
 ## Phone simulation
 
 Customer execution hosts target **Windows and macOS**. Native host identity,
-private storage and diagnostics are implemented; native acceptance is pending.
+private storage and diagnostics are implemented; physical acceptance is pending.
 [Desktop host compatibility](docs/desktop-host-support.md) is the next acceptance gate;
 Linux is a reference environment, not a customer requirement.
 

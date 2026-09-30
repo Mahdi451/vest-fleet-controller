@@ -52,12 +52,14 @@ and permission scope. Do not assume this is authorized by same-owner copying rul
 - [ ] Package a reproducible local simulator installation and short onboarding flow
       for a small invited group. The shipped build must clearly identify simulation.
 
-Customer hosts target Windows and macOS. Native host identity, protected storage,
-onboarding and acceptance are the next gate; Linux is a reference implementation,
+Customer hosts target Windows and macOS. Native host identity, protected storage
+and onboarding instructions are implemented. Physical acceptance is the next gate;
+Linux is a reference implementation,
 not a customer requirement. See [desktop host support](desktop-host-support.md).
 
 Application evidence: [current mobile/private validation](mobile-private-validation.md),
-[phone behavior](mobile-beta.md) and [host setup/recovery](private-phone-access.md).
+[native desktop validation](native-host-validation.md), [phone behavior](mobile-beta.md)
+and [native host setup/recovery](native-host-setup.md).
 Automated phone emulation is verified; physical screen lock, trusted real-phone HTTPS,
 Home Screen installation, clean supported-host setup and host sleep/reboot remain open.
 The implementation checkpoint is historical; the recovered workspace required reconstruction.
