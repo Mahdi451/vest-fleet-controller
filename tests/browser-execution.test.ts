@@ -24,7 +24,9 @@ beforeAll(async () => {
 afterAll(async () => {
   await browser?.close();
 });
-const c = { ...config, maxDataAgeMs: 60000, maxPreviewAgeMs: 60000 }; // Test browser duration; production defaults unchanged.
+// Fixture browser calls use the existing three-second maximum on shared native CI.
+// Production defaults and the quarantine/deadline assertions remain unchanged.
+const c = { ...config, maxDataAgeMs: 60000, maxPreviewAgeMs: 60000 };
 async function setup() {
   const journal = new Journal();
   const mock = new MockVestAdapter(c, Date.now, undefined, '30400');
@@ -37,6 +39,7 @@ async function setup() {
   }));
   const adapter = new BrowserExecutionAdapter(f.dom, bindings, journal, {
     maxAgeMs: 60000,
+    timeoutMs: 3000,
   });
   await adapter.connect();
   const coordinator = new SequentialBrowserCoordinator(
@@ -258,6 +261,7 @@ describe('fixture-only visible browser execution', () => {
     await execute(s, ['01']);
     const restored = new BrowserExecutionAdapter(s.dom, s.bindings, s.journal, {
       maxAgeMs: 60000,
+      timeoutMs: 3000,
     });
     await restored.connect();
     expect(restored.health().state).toBe('RECOVERY_REQUIRED');
@@ -324,6 +328,7 @@ describe('fixture-only visible browser execution', () => {
         }));
         const adapter = new BrowserExecutionAdapter(f.dom, bindings, journal, {
           maxAgeMs: 60000,
+          timeoutMs: 3000,
         });
         await adapter.connect();
         const coordinator = new SequentialBrowserCoordinator(
@@ -362,7 +367,7 @@ describe('fixture-only visible browser execution', () => {
           restored.dom,
           bindings,
           journal,
-          { maxAgeMs: 60000 },
+          { maxAgeMs: 60000, timeoutMs: 3000 },
         );
         await restoredAdapter.connect();
         const recovered = new SequentialBrowserCoordinator(

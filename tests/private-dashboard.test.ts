@@ -44,6 +44,9 @@ async function api(
         port,
         path: `/api/${path}`,
         rejectUnauthorized: false,
+        // The test deliberately stops and replaces the server on this port.
+        // Do not borrow a pooled socket belonging to its previous incarnation.
+        agent: false,
         method: data === undefined ? 'GET' : 'POST',
         headers: {
           Host: `localhost:${port}`,
