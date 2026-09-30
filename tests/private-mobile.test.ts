@@ -180,6 +180,13 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
             a.positions.length === 1 &&
             a.positions[0]!.protectionStatus === 'ACTIVE',
         ),
+        JSON.stringify({
+          halted: protectedState.halted,
+          health: protectedState.health,
+          results: protectedState.commands.map(
+            (command: { results: unknown }) => command.results,
+          ),
+        }),
       ).toBe(true);
       expect(entryPosts).toBe(1);
       if (process.env.CAPTURE_MOBILE_EVIDENCE === '1') {
