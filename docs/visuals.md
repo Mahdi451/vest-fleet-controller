@@ -4,8 +4,8 @@ Updated 2026-09-29. All application captures use the real local simulator with s
 accounts and prices. No generated trading UI, fabricated balances or live Vest session
 is represented as a screenshot.
 
-The current captures include the health indicator and Reconcile action added by the
-simulator beta reliability work.
+The current captures include the SVG header logo, health indicator and Reconcile
+action. The capture script also checks header image loading and favicon delivery.
 
 | Asset                                 | Purpose                                                         | Source                                  |
 | ------------------------------------- | --------------------------------------------------------------- | --------------------------------------- |
@@ -45,10 +45,22 @@ in this repo. The generated concept uses a different fleet/F symbol with repeate
 facets, mint accents, a dark background and the line “Independent fleet control”.
 It is not a claim of affiliation or official endorsement.
 
-The raster is a concept presentation, not a finalized small-size logo. Before adopting
-it in the app, produce a clean editable SVG, simplify if needed at 16/24/32px, verify
-monochrome contrast, and create a transparent mark. The dashboard's current identity
-is unchanged. No extra marketing claims or apparent live-trading capability were added.
+The raster remains the full concept presentation at the top of the README. The dashboard
+uses a clean vector interpretation of its angular fleet/F motif, without raster textures.
+Trading controls keep their existing colors; mint identifies the brand.
+
+| Variant               | File under `apps/dashboard/public/brand/` | Usage                                                                                                              |
+| --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Mint fleet mark       | `mark.svg`                                | Transparent; dashboard header at 60 × 40 px, 42 × 28 px on mobile                                                  |
+| Monochrome fleet mark | `mark-mono.svg`                           | Transparent; defaults to black. Inline SVG inherits `currentColor`; an external image does not inherit page color. |
+| Small F icon          | `favicon.svg`                             | Simplified central F with a dark tile for contrast in light and dark browser tabs; checked at 16/24/32 px          |
+
+![Dashboard mark, monochrome mark and small-size favicon](images/brand-variants.png)
+
+Use the full fleet mark for larger placements. Use the simplified favicon below 32 px;
+do not shrink the full wordmark into a browser tab. These SVGs have no embedded scripts,
+fonts or external resources. The monochrome variant is a reusable source asset and is
+not an exposed dashboard route. No live-trading capability or official affiliation is implied.
 
 ### Generation record
 

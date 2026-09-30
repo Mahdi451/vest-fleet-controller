@@ -341,8 +341,8 @@ comments only. A private repository is still not a place to store credentials.
 ## Visual identity follow-up
 
 The generated logo is embedded at the top of the user README. Preserve that approved
-placement. The raster still needs a clean SVG, small-size icon and monochrome variant
-before replacing the dashboard identity. The original prompt and source reference are
+placement. The dashboard now uses an editable transparent SVG mark, with a simplified
+favicon and a monochrome variant under `apps/dashboard/public/brand/`. The original prompt and source reference are
 recorded in [visual asset notes](docs/visuals.md). Technical diagrams must remain exact;
 application screenshots must come from the running simulator, not generated mockups.
 

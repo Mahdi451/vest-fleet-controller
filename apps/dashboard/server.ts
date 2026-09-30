@@ -141,6 +141,8 @@ export async function createDashboard(
     '/': ['index.html', 'text/html; charset=utf-8'],
     '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
     '/style.css': ['style.css', 'text/css; charset=utf-8'],
+    '/brand/mark.svg': ['brand/mark.svg', 'image/svg+xml'],
+    '/brand/favicon.svg': ['brand/favicon.svg', 'image/svg+xml'],
   };
   const server = createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

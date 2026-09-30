@@ -40,17 +40,18 @@ header small {
 .brand {
   display: grid;
   place-content: center;
-  background: #d6f777;
-  color: #102218;
-  width: 43px;
-  height: 43px;
-  font-weight: 900;
-  font-size: 19px;
+  flex: 0 0 60px;
+  width: 60px;
+  height: 44px;
   text-decoration: none;
-  border-radius: 10px;
 }
-.brand span {
-  display: none;
+.brand img {
+  display: block;
+}
+.brand:focus-visible {
+  outline: 2px solid #19ddb5;
+  outline-offset: 5px;
+  border-radius: 3px;
 }
 .badge,
 .tag {
@@ -483,6 +484,14 @@ footer {
   }
   header strong {
     font-size: 10px;
+  }
+  .brand {
+    flex-basis: 42px;
+    width: 42px;
+  }
+  .brand img {
+    width: 42px;
+    height: 28px;
   }
   .badge {
     margin-left: auto;
