@@ -25,6 +25,59 @@ These checks establish a **functioning simulation prototype**, not permission or
 readiness to automate funded trades. The ten accounts, quotes, fills, fees, rules and
 browser pages are synthetic assumptions. A halted session has no automatic safe re-arm.
 
+## Fast first release — product scope
+
+The user clarified on 2026-09-30 that speed to market and a clean Tradecopia-like
+customer experience are priorities. Ship a narrow invitation beta in small reviewed
+iterations. An earlier 4–8 week estimate was not based on measured Vest integration
+work and is not a project deadline. AI-assisted coding can shorten implementation;
+permission, visible evidence and supervised validation remain external dependencies.
+
+Working scope: each customer controls their own funded-account fleet. Copying the
+operator's trades into other customers' accounts is a separate, unresolved product
+and permission scope. Do not assume this is authorized by same-owner copying rules.
+
+### Next coding iterations — independent of Vest execution permission
+
+- [ ] Polish the mobile dashboard around Accounts, Trade and Activity; provide large
+      LONG/SHORT controls, leverage and equity-as-margin presets, a compact per-account
+      risk preview, prominent flatten and explicit connection/protection status.
+- [ ] Add Home Screen installation assets and private HTTPS phone access with verified
+      authentication, exact configured origins and mutation protection. Keep execution
+      on the always-on host. No cached or queued offline trading commands.
+- [ ] Validate double taps, lost responses, reconnect and screen lock against the
+      simulator. Reattach to the existing request rather than create a second trade.
+- [ ] Package a reproducible local simulator installation and short onboarding flow
+      for a small invited group. The shipped build must clearly identify simulation.
+
+Planning target: a reviewable mobile simulation beta in **1–3 focused coding
+iterations**, subject to implementation results. This means sessions of active work,
+not unattended background development or a guaranteed date.
+
+### First connected invitation beta — after Gates 1–4
+
+- [ ] One verified market, MARKET entry, one SL and one TP, configurable per-account
+      leverage/margin allocation, sequential execution and the existing safety rules.
+- [ ] An isolated execution instance for each customer, initially on their own host.
+      Keep sessions, browser ownership, account allowlists, journals and recovery
+      independent. A shared hosted service needs a separate reviewed isolation design.
+- [ ] Complete setup, disconnect/recovery and diagnostic-export instructions with
+      secret redaction; make degraded/unknown outcomes obvious to the operator.
+- [ ] Validate one supervised account and then a small same-owner fleet before
+      increasing the allowed account count. Permissions must cover the customer product.
+
+Measure the connected one-account workflow before estimating the remaining release
+date. Target the smallest useful release; do not equate a mobile demo with a copier.
+Current dashboard commands fan out user-entered intents. Automatic copying of entries
+or exits made directly on a leader account requires authoritative visible event
+detection, duplicate handling, sizing and a reviewed follower exit policy; it has not
+been implemented. Treat that as a later gate unless the first-release scope changes.
+
+Defer billing automation, public self-service signup, analytics suites, multiple
+venues, continuous TP/SL editing, social signal following and parallel browser workers.
+Reliable execution, customer isolation, authentication and recovery cannot be deferred
+for any release that can affect customer funded accounts.
+
 ## Gate 1 — permitted integration path
 
 - [ ] Obtain written Vest confirmation for visible-UI automation of the user's Instant
