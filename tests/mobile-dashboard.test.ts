@@ -51,7 +51,6 @@ async function fixture(
   } finally {
     await page.unrouteAll({ behavior: 'wait' });
     await context.close();
-    await new Promise<void>((resolve) => app.server.close(() => resolve()));
     await app.close();
   }
 }

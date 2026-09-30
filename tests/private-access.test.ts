@@ -1,6 +1,6 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID, X509Certificate, generateKeyPairSync } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -13,6 +13,8 @@ import {
 } from '../apps/dashboard/src/private-access.ts';
 import { loadLocalIdentity } from '../apps/dashboard/src/identity.ts';
 import { privateHost } from './fixtures/private-host.ts';
+import { grantEveryoneRead, writeFixtureFile } from './fixtures/runtime.ts';
+import { protectDirectory } from '../packages/host/src/storage.ts';
 
 function request(headers: Record<string, string> = {}) {
   const req = new IncomingMessage(new Socket());
@@ -209,14 +211,21 @@ describe('private host access boundary', () => {
   });
   it('requires owner-only regular configuration and keys', async () => {
     const path = join(fixture.directory, 'permission-check.json');
-    await writeFile(path, '{}', { mode: 0o600 });
+    await writeFixtureFile(path, '{}', { mode: 0o600 });
     expect((await protectedFile(path)).toString()).toBe('{}');
-    await chmod(path, 0o644);
-    await expect(protectedFile(path)).rejects.toThrow('owner-only');
+    if (process.platform === 'win32') {
+      grantEveryoneRead(path);
+      await expect(protectedFile(path)).rejects.toThrow();
+    } else {
+      await chmod(path, 0o644);
+      await expect(protectedFile(path)).rejects.toThrow('owner-only');
+    }
   });
   it('production loader rejects localhost even though tests use isolated TLS', async () => {
     const path = join(fixture.directory, 'config.json');
-    await writeFile(path, JSON.stringify(fixture.config), { mode: 0o600 });
+    await writeFixtureFile(path, JSON.stringify(fixture.config), {
+      mode: 0o600,
+    });
     await expect(loadPrivateAccess(path)).rejects.toThrow('Tailscale');
     await expect(
       validatePrivateConfiguration({ ...fixture.config, active: false }),
@@ -253,7 +262,7 @@ describe('private host access boundary', () => {
       destination = join(fixture.directory, 'binding-destination');
     await loadLocalIdentity(source);
     await loadLocalIdentity(destination);
-    await writeFile(
+    await writeFixtureFile(
       join(destination, 'identity.json'),
       await readFile(join(source, 'identity.json')),
     );
@@ -262,7 +271,8 @@ describe('private host access boundary', () => {
     );
     const missing = join(fixture.directory, 'missing-identity');
     await mkdir(missing, { mode: 0o700 });
-    await writeFile(join(missing, 'existing.sqlite'), 'preserved');
+    await protectDirectory(missing);
+    await writeFixtureFile(join(missing, 'existing.sqlite'), 'preserved');
     await expect(loadLocalIdentity(missing)).rejects.toThrow(
       'operator recovery',
     );
@@ -278,7 +288,7 @@ describe('private host access boundary', () => {
     ]);
     expect(identities[0]).toEqual(identities[1]);
     expect(await loadLocalIdentity(path)).toEqual(identities[0]);
-    await writeFile(join(path, 'identity.json'), '{}');
+    await writeFixtureFile(join(path, 'identity.json'), '{}');
     await expect(loadLocalIdentity(path)).rejects.toThrow();
     expect(await readFile(join(path, 'identity.json'), 'utf8')).toBe('{}');
   });

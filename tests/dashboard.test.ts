@@ -50,9 +50,6 @@ beforeEach(async () => {
   sessionId = state.sessionId;
 });
 afterEach(async () => {
-  await new Promise<void>((resolve, reject) =>
-    app.server.close((error) => (error ? reject(error) : resolve())),
-  );
   await app.close();
 });
 describe('local dashboard API', () => {

@@ -1,0 +1,106 @@
+name: Native host validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-host:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04 x64 regression
+            runner: ubuntu-24.04
+          - name: Windows Server 2025 x64
+            runner: windows-2025
+          - name: macOS 15 Apple silicon
+            runner: macos-15
+          - name: macOS 15 Intel
+            runner: macos-15-intel
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.25.0
+      - name: Install locked dependencies
+        id: install
+        run: pnpm install --frozen-lockfile
+      - name: Record runner and runtime
+        run: |
+          node -e 'console.log(JSON.stringify({ platform: process.platform, arch: process.arch, osRelease: require("node:os").release(), node: process.version }))'
+          pnpm --version
+      - name: Install Chromium and browser dependencies
+        id: chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Typecheck, lint, format and full test suite
+        id: check
+        run: pnpm check
+      - name: Separate browser and private-phone acceptance suite
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.chromium.outcome == 'success' }}
+        env:
+          CAPTURE_MOBILE_EVIDENCE: '1'
+        run: |
+          node -e 'for (const file of ["docs/images/mobile-private-trade.png", "docs/images/mobile-private-accounts.png"]) require("node:fs").rmSync(file, { force: true })'
+          pnpm exec vitest run tests/browser-execution.test.ts tests/mobile-dashboard.test.ts tests/private-mobile.test.ts --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/native-browser-results.json"
+          node -e 'const fs=require("node:fs"), path=require("node:path"), directory=path.join(process.env.RUNNER_TEMP,"native-mobile-evidence"); fs.mkdirSync(directory); for(const name of ["mobile-private-trade.png","mobile-private-accounts.png"]) fs.copyFileSync(path.join("docs/images",name),path.join(directory,name))'
+      - name: Create safe browser result summary
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          FULL_CHECK_RESULT: ${{ steps.check.outcome }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { release } from 'node:os';
+          const source = join(process.env.RUNNER_TEMP, 'native-browser-results.json');
+          const report = existsSync(source) ? JSON.parse(readFileSync(source, 'utf8')) : undefined;
+          // Never upload raw failure messages, environment values, TLS material or runtime records.
+          const summary = {
+            platform: process.platform,
+            architecture: process.arch,
+            osRelease: release(),
+            node: process.version,
+            fullCheck: process.env.FULL_CHECK_RESULT,
+            browserSuite: report ? {
+              success: report.success,
+              passed: report.numPassedTests,
+              failed: report.numFailedTests,
+              pending: report.numPendingTests,
+              total: report.numTotalTests,
+            } : { result: 'No browser report produced; inspect job status.' },
+            physicalPhoneValidation: false,
+            windows11PhysicalValidation: false,
+          };
+          writeFileSync(join(process.env.RUNNER_TEMP, 'native-host-summary.json'), JSON.stringify(summary, null, 2));
+          NODE
+      - name: Upload safe validation evidence
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-host-${{ matrix.runner }}
+          path: |
+            ${{ runner.temp }}/native-host-summary.json
+            ${{ runner.temp }}/native-mobile-evidence/mobile-private-trade.png
+            ${{ runner.temp }}/native-mobile-evidence/mobile-private-accounts.png
+          if-no-files-found: warn
+          retention-days: 14
+          include-hidden-files: false

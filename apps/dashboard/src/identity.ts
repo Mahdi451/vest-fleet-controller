@@ -1,14 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
 import {
-  link,
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  realpath,
-  rename,
-  rm,
-} from 'node:fs/promises';
+  ensurePrivateDirectory,
+  canonicalRuntime,
+  publishPrivateFileSync,
+} from '../../../packages/host/src/storage.ts';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { machineBinding, protectedFile } from './private-access.ts';
@@ -48,48 +44,18 @@ async function publishIdentity(
   identity: PersistedIdentity,
   replace = false,
 ): Promise<void> {
-  const path = join(directory, 'identity.json'),
-    temporary = join(directory, `.identity-${randomUUID()}.tmp`);
-  const handle = await open(temporary, 'wx', 0o600);
-  try {
-    await handle.writeFile(`${JSON.stringify(identity)}\n`);
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-  try {
-    if (replace) await rename(temporary, path);
-    else
-      try {
-        await link(temporary, path);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      }
-    const directoryHandle = await open(directory, 'r');
-    try {
-      await directoryHandle.sync();
-    } finally {
-      await directoryHandle.close();
-    }
-  } finally {
-    await rm(temporary, { force: true });
-  }
+  publishPrivateFileSync(
+    join(directory, 'identity.json'),
+    `${JSON.stringify(identity)}\n`,
+    replace,
+  );
 }
 /** Caller holds SimulationStore's exclusive lock before legacy adoption/resumption and engine opening. */
 export async function loadLocalIdentity(
   directory: string,
 ): Promise<ExecutionIdentity> {
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  const runtimeDirectory = await realpath(directory),
-    runtimeInfo = await lstat(runtimeDirectory);
-  if (
-    !runtimeInfo.isDirectory() ||
-    runtimeInfo.uid !== process.getuid?.() ||
-    (runtimeInfo.mode & 0o022) !== 0
-  )
-    throw new Error(
-      'Runtime directory must be owned by the current user and not writable by others',
-    );
+  await ensurePrivateDirectory(directory);
+  const runtimeDirectory = canonicalRuntime(directory);
   const machineHash = await machineBinding(),
     path = join(runtimeDirectory, 'identity.json');
   const readIdentity = async () => {

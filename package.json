@@ -18,10 +18,13 @@
     "format:check": "prettier --check .",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "dashboard": "node --import tsx apps/dashboard/server.ts",
-    "setup:private": "node --import tsx apps/dashboard/setup-private.ts"
+    "setup:private": "node --import tsx apps/dashboard/setup-private.ts",
+    "host:doctor": "node --import tsx apps/dashboard/host.ts doctor",
+    "host:protect": "node --import tsx apps/dashboard/host.ts protect"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",
+    "koffi": "3.3.2",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
   },

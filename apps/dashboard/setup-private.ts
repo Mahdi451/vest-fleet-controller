@@ -1,5 +1,10 @@
 import { randomBytes } from 'node:crypto';
-import { lstat, mkdir, realpath, rm, writeFile } from 'node:fs/promises';
+import { lstat, rm } from 'node:fs/promises';
+import {
+  ensurePrivateDirectory,
+  canonicalRuntime,
+  publishPrivateFileSync,
+} from '../../packages/host/src/storage.ts';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SimulationStore } from '../../packages/simulator/src/storage.ts';
@@ -35,8 +40,8 @@ export async function setupPrivateAccess(
   const directory = resolve(
     parameters.get('--runtime') ?? '.runtime/dashboard',
   );
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  const runtimeDirectory = await realpath(directory);
+  await ensurePrivateDirectory(directory);
+  const runtimeDirectory = canonicalRuntime(directory);
   const store = new SimulationStore(runtimeDirectory);
   try {
     const configPath = join(runtimeDirectory, 'private-access.json');
@@ -68,12 +73,16 @@ export async function setupPrivateAccess(
       ...secretVerifier(secret),
     };
     await validatePrivateConfiguration(config);
-    await writeFile(secretPath, `${secret}\n`, { flag: 'wx', mode: 0o600 });
+    if (!publishPrivateFileSync(secretPath, `${secret}\n`))
+      throw new Error('PRIVATE_ACCESS_ALREADY_PROVISIONED');
     try {
-      await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, {
-        flag: 'wx',
-        mode: 0o600,
-      });
+      if (
+        !publishPrivateFileSync(
+          configPath,
+          `${JSON.stringify(config, null, 2)}\n`,
+        )
+      )
+        throw new Error('PRIVATE_ACCESS_ALREADY_PROVISIONED');
     } catch (error) {
       await rm(secretPath);
       throw error;

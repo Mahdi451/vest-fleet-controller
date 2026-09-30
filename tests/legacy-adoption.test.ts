@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -18,10 +17,12 @@ import {
   LEGACY_BINDING_KEY,
 } from '../apps/dashboard/src/legacy-adoption.ts';
 import { config, NOW } from './helpers.ts';
+import { privateRuntimeAsync, writeFixtureFile } from './fixtures/runtime.ts';
+import { protectFile } from '../packages/host/src/storage.ts';
 let directory: string;
 let store: SimulationStore | undefined;
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'vfc-adoption-'));
+  directory = await privateRuntimeAsync('vfc-adoption-');
 });
 afterEach(async () => {
   store?.close();
@@ -56,8 +57,9 @@ async function legacySession(
     journal.bindCommandAlias(randomUUID(), 'old-fingerprint', command.id);
   }
   journal.close();
+  await protectFile(path);
   if (active)
-    await writeFile(
+    await writeFixtureFile(
       join(directory, 'active-session.json'),
       JSON.stringify({ sessionId }),
       { mode: 0o600 },
@@ -161,7 +163,7 @@ describe('in-place legacy ownership adoption', () => {
     lock();
     const names = await inspectLegacyRuntime(directory);
     const identity = { ownerId: randomUUID(), instanceId: randomUUID() };
-    await writeFile(
+    await writeFixtureFile(
       join(directory, 'identity.json'),
       JSON.stringify({
         ...identity,
@@ -226,7 +228,7 @@ describe('in-place legacy ownership adoption', () => {
     await expect(loadLocalIdentity(directory)).rejects.toThrow(
       'operator recovery',
     );
-    await writeFile(
+    await writeFixtureFile(
       join(directory, 'active-session.json'),
       JSON.stringify({ sessionId: randomUUID() }),
     );
@@ -234,7 +236,7 @@ describe('in-place legacy ownership adoption', () => {
       'operator recovery',
     );
     const old = await legacySession();
-    await writeFile(join(directory, 'private-access.json'), '{}', {
+    await writeFixtureFile(join(directory, 'private-access.json'), '{}', {
       mode: 0o600,
     });
     await expect(loadLocalIdentity(directory)).rejects.toThrow(
@@ -260,9 +262,11 @@ describe('in-place legacy ownership adoption', () => {
         (row) => row.key === LEGACY_BINDING_KEY,
       ),
     ).toBe(true);
-    const copied = await mkdtemp(join(tmpdir(), 'vfc-copied-'));
+    const copied = await privateRuntimeAsync('vfc-copied-');
     try {
-      await writeFile(join(copied, 'identity.json'), saved, { mode: 0o600 });
+      await writeFixtureFile(join(copied, 'identity.json'), saved, {
+        mode: 0o600,
+      });
       await expect(loadLocalIdentity(copied)).rejects.toThrow(
         'different host or runtime',
       );
@@ -274,7 +278,7 @@ describe('in-place legacy ownership adoption', () => {
     await legacySession();
     lock();
     const names = await inspectLegacyRuntime(directory);
-    await writeFile(
+    await writeFixtureFile(
       join(directory, 'identity.json'),
       JSON.stringify({
         ownerId: randomUUID(),

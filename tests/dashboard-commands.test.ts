@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { createDashboard } from '../apps/dashboard/server.ts';
 import {
@@ -10,6 +9,7 @@ import {
 } from '../packages/execution/src/journal.ts';
 import { MockVestAdapter } from '../packages/simulator/src/index.ts';
 import { config, intent } from './helpers.ts';
+import { privateRuntime } from './fixtures/runtime.ts';
 let app: Awaited<ReturnType<typeof createDashboard>>;
 let base: string, token: string, directory: string;
 async function start() {
@@ -34,11 +34,10 @@ const preview = async (): Promise<{ command: CommandEnvelope }> =>
 const execute = (command: CommandEnvelope) =>
   post('execute', { commandId: command.id, payloadHash: command.payloadHash });
 async function stop() {
-  await new Promise<void>((resolve) => app.server.close(() => resolve()));
   await app.close();
 }
 beforeEach(async () => {
-  directory = mkdtempSync(join(tmpdir(), 'vfc-command-'));
+  directory = privateRuntime('vfc-command-');
   await start();
 });
 afterEach(async () => {

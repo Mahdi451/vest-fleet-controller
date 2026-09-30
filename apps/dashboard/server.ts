@@ -5,7 +5,8 @@ import {
 } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { realpath } from 'node:fs/promises';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -634,46 +635,64 @@ export async function createDashboard(
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const config = riskConfigSchema.parse(
-    parse(
-      readFileSync(
-        new URL('../../config/example.yaml', import.meta.url),
-        'utf8',
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  try {
+    const config = riskConfigSchema.parse(
+      parse(
+        readFileSync(
+          new URL('../../config/example.yaml', import.meta.url),
+          'utf8',
+        ),
       ),
-    ),
-  );
-  mkdirSync('.runtime/dashboard', { recursive: true });
-  const { values } = parseArgs({
-    options: {
-      'new-simulation': { type: 'boolean', default: false },
-      'private-config': { type: 'string' },
-    },
-  });
-  const access = values['private-config']
-    ? await loadPrivateAccess(values['private-config'])
-    : undefined;
-  const app = await createDashboard(
-    config,
-    access?.config.runtimeDirectory ?? '.runtime/dashboard',
-    values['new-simulation'],
-    access,
-  );
-  app.server.listen(
-    access?.config.port ?? 4173,
-    access?.config.bindAddress ?? '127.0.0.1',
-    () =>
-      console.log(
-        `Simulation dashboard: ${access?.config.origin ?? 'http://127.0.0.1:4173'} | No live trading`,
-      ),
-  );
-  app.server.on('error', () => {
-    console.error('DASHBOARD_START_FAILED: port 4173 may be in use');
-    process.exitCode = 1;
-    void app.close();
-  });
-  for (const signal of ['SIGINT', 'SIGTERM'])
-    process.once(signal, () => {
+    );
+    const { values } = parseArgs({
+      options: {
+        'new-simulation': { type: 'boolean', default: false },
+        'private-config': { type: 'string' },
+        runtime: { type: 'string' },
+      },
+    });
+    const access = values['private-config']
+      ? await loadPrivateAccess(values['private-config'])
+      : undefined;
+    if (
+      access &&
+      values.runtime &&
+      resolve(values.runtime) !== access.config.runtimeDirectory
+    )
+      throw new Error('EXECUTION_INSTANCE_MISMATCH');
+    const app = await createDashboard(
+      config,
+      access?.config.runtimeDirectory ?? values.runtime ?? '.runtime/dashboard',
+      values['new-simulation'],
+      access,
+    );
+    app.server.listen(
+      access?.config.port ?? 4173,
+      access?.config.bindAddress ?? '127.0.0.1',
+      () =>
+        console.log(
+          `Simulation dashboard: ${access?.config.origin ?? 'http://127.0.0.1:4173'} | No live trading`,
+        ),
+    );
+    app.server.on('error', () => {
+      console.error(
+        'DASHBOARD_START_FAILED: configured address/port may be unavailable; run host:doctor.',
+      );
+      process.exitCode = 1;
       void app.close();
     });
+    for (const signal of ['SIGINT', 'SIGTERM'])
+      process.once(signal, () => {
+        void app.close();
+      });
+  } catch {
+    console.error(
+      'DASHBOARD_START_REJECTED: run host:doctor, preserve runtime records, and review identity/permissions/configuration.',
+    );
+    process.exitCode = 1;
+  }
 }

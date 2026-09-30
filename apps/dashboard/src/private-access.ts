@@ -6,7 +6,16 @@ import {
   timingSafeEqual,
   X509Certificate,
 } from 'node:crypto';
-import { lstat, readFile, realpath } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
+import {
+  machineBinding,
+  protectedFile,
+  validateRuntimeDirectorySync,
+} from '../../../packages/host/src/storage.ts';
+export {
+  machineBinding,
+  protectedFile,
+} from '../../../packages/host/src/storage.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import { isAbsolute } from 'node:path';
@@ -52,25 +61,6 @@ export function secretVerifier(
     ),
   };
 }
-export async function machineBinding(): Promise<string> {
-  const id = (await readFile('/etc/machine-id', 'utf8')).trim();
-  if (!/^[a-f0-9]{32}$/i.test(id))
-    throw new Error('Linux machine identity is unavailable');
-  return digest(id);
-}
-export async function protectedFile(path: string): Promise<Buffer> {
-  const info = await lstat(path);
-  if (
-    !info.isFile() ||
-    info.uid !== process.getuid?.() ||
-    (info.mode & 0o077) !== 0
-  ) {
-    throw new Error(
-      'Private configuration and keys require an owner-only regular file',
-    );
-  }
-  return readFile(path);
-}
 export async function validatePrivateConfiguration(
   config: PrivateAccessConfig,
 ): Promise<{ cert: Buffer; key: Buffer; minVersion: 'TLSv1.2' }> {
@@ -110,15 +100,7 @@ export async function validatePrivateConfiguration(
     );
   if (!assigned)
     throw new Error('Private bind address is not assigned to this host');
-  const runtimeInfo = await lstat(config.runtimeDirectory);
-  if (
-    !runtimeInfo.isDirectory() ||
-    runtimeInfo.uid !== process.getuid?.() ||
-    (runtimeInfo.mode & 0o022) !== 0
-  )
-    throw new Error(
-      'Runtime directory must be owned by the current user and not writable by others',
-    );
+  validateRuntimeDirectorySync(config.runtimeDirectory);
   if (
     !isAbsolute(config.runtimeDirectory) ||
     (await realpath(config.runtimeDirectory)) !== config.runtimeDirectory ||

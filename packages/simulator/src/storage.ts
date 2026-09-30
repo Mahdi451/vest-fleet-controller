@@ -1,13 +1,12 @@
+import { existsSync } from 'node:fs';
 import {
-  existsSync,
-  mkdirSync,
-  openSync,
-  closeSync,
-  readFileSync,
-  writeFileSync,
-  renameSync,
-  unlinkSync,
-} from 'node:fs';
+  ensurePrivateDirectorySync,
+  protectedFileSync,
+  publishPrivateFileSync,
+  writeExclusivePrivateFileSync,
+  removeOwnedPrivateFileSync,
+  validateRuntimeFileSync,
+} from '../../host/src/storage.ts';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -19,20 +18,11 @@ export class SimulationStore {
   private owner = JSON.stringify({ pid: process.pid, id: randomUUID() });
   constructor(private readonly directory?: string) {
     if (!directory) return;
-    mkdirSync(directory, { recursive: true });
+    ensurePrivateDirectorySync(directory);
     const path = join(directory, 'controller.lock');
-    let fd: number;
-    try {
-      fd = openSync(path, 'wx', 0o600);
-    } catch {
+    if (!writeExclusivePrivateFileSync(path, this.owner))
       throw new Error('SIMULATION_STORE_LOCKED');
-    }
-    try {
-      writeFileSync(fd, this.owner);
-      this.lock = path;
-    } finally {
-      closeSync(fd);
-    }
+    this.lock = path;
   }
   open(reset = false) {
     const manifest = this.directory
@@ -42,9 +32,12 @@ export class SimulationStore {
       const oldId = z
         .string()
         .uuid()
-        .parse(JSON.parse(readFileSync(manifest, 'utf8')).sessionId);
+        .parse(
+          JSON.parse(protectedFileSync(manifest).toString('utf8')).sessionId,
+        );
       const oldPath = join(this.directory!, `${oldId}.sqlite`);
       if (!existsSync(oldPath)) throw new Error('MISSING_SESSION_JOURNAL');
+      validateRuntimeFileSync(oldPath);
       const old = new Journal(oldPath);
       try {
         if (old.hasUnresolvedExecution())
@@ -58,24 +51,28 @@ export class SimulationStore {
       ? z
           .string()
           .uuid()
-          .parse(JSON.parse(readFileSync(manifest!, 'utf8')).sessionId)
+          .parse(
+            JSON.parse(protectedFileSync(manifest!).toString('utf8')).sessionId,
+          )
       : randomUUID();
     const path = this.directory
       ? join(this.directory, `${sessionId}.sqlite`)
       : ':memory:';
     if (resuming && !existsSync(path))
       throw new Error('MISSING_SESSION_JOURNAL');
+    if (resuming) validateRuntimeFileSync(path);
+    const newFile = path !== ':memory:' && !existsSync(path);
+    // Create a fresh journal with native private permissions before SQLite opens
+    // it. Existing journals retain their authoritative contents and permissions.
+    if (newFile && !writeExclusivePrivateFileSync(path, ''))
+      throw new Error('SESSION_JOURNAL_COLLISION');
     const journal = new Journal(path);
     try {
       const saved = journal.loadSimulator();
       if (saved === null && journal.hasTrades())
         throw new Error('MISSING_SIMULATOR_SNAPSHOT');
       if (manifest && !resuming) {
-        const temporary = `${manifest}.${randomUUID()}.tmp`;
-        writeFileSync(temporary, JSON.stringify({ sessionId }), {
-          mode: 0o600,
-        });
-        renameSync(temporary, manifest);
+        publishPrivateFileSync(manifest, JSON.stringify({ sessionId }), true);
       }
       return { journal, sessionId, saved, restored: saved !== null };
     } catch (error) {
@@ -84,8 +81,7 @@ export class SimulationStore {
     }
   }
   close() {
-    if (this.lock && readFileSync(this.lock, 'utf8') === this.owner)
-      unlinkSync(this.lock);
+    if (this.lock) removeOwnedPrivateFileSync(this.lock, this.owner);
     this.lock = null;
   }
 }

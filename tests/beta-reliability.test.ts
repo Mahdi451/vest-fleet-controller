@@ -1,12 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  mkdtempSync,
-  rmSync,
-  readFileSync,
-  writeFileSync,
-  existsSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -18,6 +11,7 @@ import { MockVestAdapter } from '../packages/simulator/src/index.ts';
 import { SimulationStore } from '../packages/simulator/src/storage.ts';
 import { createDashboard } from '../apps/dashboard/server.ts';
 import { config, intent, NOW, setup } from './helpers.ts';
+import { privateRuntime, writeFixtureFileSync } from './fixtures/runtime.ts';
 
 let s: Awaited<ReturnType<typeof setup>>;
 beforeEach(async () => {
@@ -260,7 +254,7 @@ describe('durable simulator recovery', () => {
   it.each(['ENTRY_FILLED_UNPROTECTED', 'PROTECTION_ACTIVE'])(
     'recovers a real process kill at %s and fails closed',
     async (stage) => {
-      const directory = mkdtempSync(join(tmpdir(), 'vest-crash-'));
+      const directory = privateRuntime('vest-crash-');
       const path = join(directory, 'journal.sqlite');
       try {
         const child = spawnSync(
@@ -268,9 +262,23 @@ describe('durable simulator recovery', () => {
           ['--import', 'tsx', 'tests/fixtures/crash-worker.ts', path, stage],
           { cwd: process.cwd(), timeout: 10000 },
         );
-        expect(child.signal, child.stderr.toString()).toBe('SIGKILL');
+        expect(child.error, child.stderr.toString()).toBeUndefined();
+        expect(child.stderr.toString()).not.toMatch(
+          /CRASH_INJECTION_NOT_REACHED|(?:^|\n)\w*Error:/,
+        );
+        if (process.platform === 'win32') {
+          expect(
+            child.signal === 'SIGKILL' ||
+              (child.status !== null && child.status !== 0),
+          ).toBe(true);
+        } else {
+          expect(child.signal, child.stderr.toString()).toBe('SIGKILL');
+        }
         const journal = new Journal(path);
         try {
+          expect(journal.events().some((event) => event.status === stage)).toBe(
+            true,
+          );
           const adapter = new MockVestAdapter(
             config,
             () => NOW,
@@ -364,14 +372,14 @@ describe('durable simulator recovery', () => {
     ).toThrow();
   });
   it('refuses a second store owner and requires deliberate stale-lock recovery', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'vest-owner-'));
+    const directory = privateRuntime('vest-owner-');
     try {
       const first = new SimulationStore(directory);
       expect(() => new SimulationStore(directory)).toThrow(
         'SIMULATION_STORE_LOCKED',
       );
       first.close();
-      writeFileSync(
+      writeFixtureFileSync(
         join(directory, 'controller.lock'),
         JSON.stringify({ pid: 999999999, id: 'stale' }),
       );
@@ -383,10 +391,10 @@ describe('durable simulator recovery', () => {
     }
   });
   it('does not invent a fresh fleet when the active session journal is missing', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'vest-missing-'));
+    const directory = privateRuntime('vest-missing-');
     try {
       const store = new SimulationStore(directory);
-      writeFileSync(
+      writeFixtureFileSync(
         join(directory, 'active-session.json'),
         JSON.stringify({ sessionId: randomUUID() }),
       );
@@ -397,7 +405,7 @@ describe('durable simulator recovery', () => {
     }
   });
   it('refuses a missing snapshot for a journal with execution history', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'vest-no-snapshot-'));
+    const directory = privateRuntime('vest-no-snapshot-');
     try {
       const store = new SimulationStore(directory);
       const session = store.open();
@@ -410,7 +418,7 @@ describe('durable simulator recovery', () => {
     }
   });
   it('restores a dashboard fleet on restart, halts entries, and retains the old journal on reset', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'vest-dashboard-'));
+    const directory = privateRuntime('vest-dashboard-');
     let app: Awaited<ReturnType<typeof createDashboard>> | undefined;
     const start = async () => {
       app = await createDashboard(config, directory);
@@ -435,7 +443,6 @@ describe('durable simulator recovery', () => {
     };
     const stop = async () => {
       if (app) {
-        await new Promise<void>((done) => app!.server.close(() => done()));
         await app.close();
         app = undefined;
       }

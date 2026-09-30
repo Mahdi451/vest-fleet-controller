@@ -1,5 +1,6 @@
+import { validateRuntimeFileSync } from '../../../packages/host/src/storage.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { lstat, readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { commandSchema } from '../../../packages/execution/src/journal.ts';
@@ -175,14 +176,8 @@ export async function inspectLegacyRuntime(
       if (!names.includes(entry.replace(/-(wal|shm)$/, ''))) throw recovery();
     for (const name of names) {
       databaseName.parse(name);
-      const path = join(directory, name),
-        info = await lstat(path);
-      if (
-        !info.isFile() ||
-        info.uid !== process.getuid?.() ||
-        (info.mode & 0o022) !== 0
-      )
-        throw recovery();
+      const path = join(directory, name);
+      validateRuntimeFileSync(path);
       const db = new DatabaseSync(path, { readOnly: true });
       try {
         checkDatabase(db, name.slice(0, -7), expected);
