@@ -48,6 +48,9 @@ allocated as margin; `MARGIN_PERCENT` now supports this independently from drawd
 The private repository is `Mahdi451/vest-fleet-controller`; the initial implementation
 and detailed README are maintained on `main`.
 
+Use the [prototype completion checklist](prototype-todo.md) for the current ordered
+tasks, stopping conditions and definition of a Vest-connected prototype.
+
 1. Continue M3 with a reviewed operator re-arm workflow. Durable simulator snapshots, halted restart, periodic reconciliation and terminal partial fills are implemented; see [reliability audit](reliability-audit.md). Dashboard flatten coordinates with active batches.
 2. Obtain direct current Instant terms and staff/source permalinks for unresolved facts.
    Add evidence without promoting observations into permanent account rules.
