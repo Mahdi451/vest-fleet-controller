@@ -10,6 +10,7 @@ import {
   nonnegative,
   decimal,
   protectionRequestSchema,
+  protectionOrderSchema,
   type ProtectionRequest,
   type ProtectionOrder,
   type Account,
@@ -23,10 +24,34 @@ import type {
   OrderRequest,
   OrderResult,
 } from '../../execution/src/adapter.ts';
+import { z } from 'zod';
+import { resultSchema } from '../../execution/src/adapter.ts';
 import { createHash } from 'node:crypto';
 import type { AuditEvent } from '../../execution/src/journal.ts';
 
-export type Fault = 'REJECT' | 'TIMEOUT_BEFORE_FILL' | 'AMBIGUOUS_AFTER_FILL';
+const snapshotSchema = z
+  .object({
+    version: z.literal(1),
+    config: riskConfigSchema,
+    quote: quoteSchema,
+    accounts: z.array(accountSchema).min(1),
+    orders: z.array(
+      z.object({ fingerprint: z.string(), result: resultSchema }).strict(),
+    ),
+    protection: z.array(
+      z
+        .object({ fingerprint: z.string(), order: protectionOrderSchema })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type Fault =
+  | 'REJECT'
+  | 'TIMEOUT_BEFORE_FILL'
+  | 'AMBIGUOUS_AFTER_FILL'
+  | 'PARTIAL_FILL'
+  | 'PARTIAL_FILL_PENDING';
 export class MockVestAdapter implements ExecutionAdapter {
   readonly name = 'MockVestAdapter';
   readonly mode = 'SIMULATION' as const;
@@ -53,8 +78,37 @@ export class MockVestAdapter implements ExecutionAdapter {
     fleet?: Account[],
     price = '30400',
     private readonly audit: (event: AuditEvent) => void = () => {},
+    private readonly persist: (snapshot: unknown) => void = () => {},
+    savedSnapshot?: unknown,
   ) {
     this.config = riskConfigSchema.parse(config);
+    if (savedSnapshot !== undefined) {
+      const saved = snapshotSchema.parse(savedSnapshot);
+      if (JSON.stringify(saved.config) !== JSON.stringify(this.config))
+        throw new Error('SIMULATION_CONFIG_CHANGED');
+      if (
+        new Set(saved.accounts.map((a) => a.accountId)).size !==
+          saved.accounts.length ||
+        new Set(saved.orders.map((o) => o.result.requestId)).size !==
+          saved.orders.length ||
+        new Set(saved.protection.map((o) => o.order.orderId)).size !==
+          saved.protection.length
+      )
+        throw new Error('INVALID_SIMULATION_SNAPSHOT');
+      const ids = new Set(saved.accounts.map((a) => a.accountId));
+      if (
+        saved.orders.some((o) => !ids.has(o.result.accountId)) ||
+        saved.protection.some((o) => !ids.has(o.order.accountId))
+      )
+        throw new Error('INVALID_SIMULATION_SNAPSHOT');
+      this.accounts = new Map(saved.accounts.map((a) => [a.accountId, a]));
+      this.quote = saved.quote;
+      this.orders = new Map(saved.orders.map((o) => [o.result.requestId, o]));
+      this.protection = new Map(
+        saved.protection.map((o) => [o.order.orderId, o]),
+      );
+      return;
+    }
     const validated = (fleet ?? initialFleet(clock())).map((a) =>
       accountSchema.parse(a),
     );
@@ -68,6 +122,16 @@ export class MockVestAdapter implements ExecutionAdapter {
     });
     for (const a of this.accounts.values()) markAccount(a, price, clock());
   }
+  exportSnapshot() {
+    return structuredClone({
+      version: 1 as const,
+      config: this.config,
+      quote: this.quote,
+      accounts: [...this.accounts.values()],
+      orders: [...this.orders.values()],
+      protection: [...this.protection.values()],
+    });
+  }
   async connect() {
     this.connected = true;
     this.log('CONNECTED');
@@ -77,6 +141,9 @@ export class MockVestAdapter implements ExecutionAdapter {
     this.log('DISCONNECTED');
   }
   private log(status: string, fields: Partial<AuditEvent> = {}) {
+    // Persist even intermediate unsafe states before emitting their audit event.
+    // Restart always halts and reconciles; it never certifies a snapshot as protected.
+    this.persist(this.exportSnapshot());
     this.audit({
       timestamp: this.clock(),
       masterTradeId: 'SIMULATOR',
@@ -202,8 +269,22 @@ export class MockVestAdapter implements ExecutionAdapter {
         direction(order.intent.side),
       ),
     );
+    const partial =
+      fault === 'PARTIAL_FILL' || fault === 'PARTIAL_FILL_PENDING';
+    const filledQuantity = partial
+      ? new D(check.quantity)
+          .div(2)
+          .div(this.config.sizeStep)
+          .floor()
+          .mul(this.config.sizeStep)
+          .toFixed()
+      : check.quantity;
+    if (new D(filledQuantity).lte(0)) {
+      result.error = 'PARTIAL_BELOW_SIZE_STEP';
+      return record();
+    }
     const entryFee = fill
-      .mul(check.quantity)
+      .mul(filledQuantity)
       .mul(fee.entryFeeRate)
       .plus(fee.accountCost);
     a.balance = new D(a.balance).minus(entryFee).toFixed();
@@ -212,7 +293,7 @@ export class MockVestAdapter implements ExecutionAdapter {
     a.positions.push({
       symbol: order.intent.symbol,
       side: order.intent.side,
-      quantity: check.quantity,
+      quantity: filledQuantity,
       entryPrice: fill.toFixed(),
       protectionStatus: 'NONE',
       leverage: order.intent.leverage,
@@ -225,8 +306,9 @@ export class MockVestAdapter implements ExecutionAdapter {
       entryPrice: fill.toFixed(),
     });
     markAccount(a, this.quote.price, this.clock());
-    result.status = 'FILLED';
-    result.filledSize = check.quantity;
+    result.status = partial ? 'PARTIALLY_FILLED' : 'FILLED';
+    if (partial) result.remainderCanceled = fault === 'PARTIAL_FILL';
+    result.filledSize = filledQuantity;
     result.entryPrice = fill.toFixed();
     result.fees = entryFee.toFixed();
     record();
@@ -510,6 +592,7 @@ export class MockVestAdapter implements ExecutionAdapter {
         }
       }
     }
+    this.log('PRICE_APPLIED', { marketPrice: price });
   }
   async applyFunding(longRatePerHour: string, hours: string) {
     this.ready();

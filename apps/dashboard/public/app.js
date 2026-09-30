@@ -8,6 +8,8 @@ let state,
   side = 'LONG',
   busy = false,
   uncertain = false;
+let uiVersion = 0,
+  polling = false;
 const selected = new Set([
   '01',
   '02',
@@ -76,7 +78,7 @@ function controls() {
   $('short').disabled = !!blocked || side !== 'SHORT';
   $('preview').disabled = busy || uncertain;
   $('expiry').textContent = uncertain
-    ? 'Execution response lost. Use FLATTEN ALL or inspect the activity before starting a new simulation.'
+    ? 'Connection or execution outcome uncertain. Use FLATTEN ALL and inspect the activity before starting a new simulation.'
     : state?.halted
       ? 'Entries halted. Start a new simulation to reset the fleet.'
       : fresh && !approved
@@ -113,7 +115,8 @@ function render() {
   $('circuit').textContent = state.halted
     ? 'Entries halted · flatten remains available'
     : 'Entry checks active';
-  $('connection').textContent = '● Local simulator connected';
+  $('connection').textContent =
+    `● Simulator · ${state.health?.state ?? 'DEGRADED'}`;
   $('selection').textContent =
     `${selected.size} accounts selected · reserve ${money(state.config.minimumRemainingDrawdownAfterStop)} each`;
   const orders = preview?.orders ?? [];
@@ -212,6 +215,7 @@ async function refresh() {
 }
 async function action(fn) {
   if (busy) return;
+  uiVersion++;
   busy = true;
   render();
   try {
@@ -312,6 +316,7 @@ async function execute() {
 $('long').onclick = () => action(execute);
 $('short').onclick = () => action(execute);
 $('flatten').onclick = async () => {
+  uiVersion++;
   $('flatten').disabled = true;
   preview = null;
   try {
@@ -341,6 +346,14 @@ async function move(price) {
 $('apply').onclick = () => action(() => move($('price').value));
 $('down').onclick = () => action(() => move(Number(state.quote.price) - 80));
 $('up').onclick = () => action(() => move(Number(state.quote.price) + 80));
+$('reconcile').onclick = () =>
+  action(async () => {
+    const result = await api('reconcile', {});
+    state = result.state;
+    message(
+      `Reconciliation: ${state.health.state}. ${state.health.issues.map((i) => i.accountId + ' ' + i.code).join(' · ') || 'Books checked.'} Reconciliation does not re-arm halted entries.`,
+    );
+  });
 $('reset').onclick = () => {
   if (
     window.confirm(
@@ -356,6 +369,38 @@ $('reset').onclick = () => {
       message('New simulation started. Starting balances restored.');
     });
 };
+// Observe reconciliation/cleanup performed by the service even when the user is idle.
+setInterval(async () => {
+  if (!state || busy || polling) return;
+  polling = true;
+  const version = uiVersion;
+  try {
+    const next = await api('state');
+    if (busy || version !== uiVersion) return;
+    if (sessionId !== next.sessionId) {
+      preview = null;
+      tradeId = null;
+    }
+    state = next;
+    token = next.token;
+    sessionId = next.sessionId;
+    if (state.halted) {
+      preview = null;
+      tradeId = null;
+    }
+    render();
+  } catch {
+    if (!busy && version === uiVersion) {
+      uncertain = true;
+      preview = null;
+      tradeId = null;
+      $('connection').textContent = 'Disconnected · entries blocked';
+      controls();
+    }
+  } finally {
+    polling = false;
+  }
+}, 2000);
 setInterval(() => {
   if (state) controls();
 }, 250);

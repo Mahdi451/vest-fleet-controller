@@ -149,3 +149,22 @@ the mandatory same-market rule always runs and future verified correlation rules
 add violations, never remove its violations. No correlation groups, statistical
 thresholds or NQ/SPX equivalence are enabled. Rule-level NQ/NDX aliases are local display
 normalization only; executable intents remain NDX-only and no Vest API symbol is certified.
+
+## Actual-execution reassessment
+
+After authoritative fill confirmation, `assessFilledRisk()` uses actual filled quantity
+q and fill F. Let S be stop distance, s exit slippage allowance, x exit-fee rate and f
+funding allowance. The conservative remaining-loss estimate is:
+
+`futureLoss = q(S+s) + q(F+S+s)x + q(F+S+s)f`
+
+`totalLoss = paidEntryFees + futureLoss`
+
+`remainingAfterStop = afterFeeBalance − futureLoss − currentEffectiveFloor`
+
+The entry fee includes any fixed account cost; it is counted once, not subtracted
+again from after-fee balance. Require totalLoss within the approved preview loss,
+positive remaining reserve, consistent equity/drawdown state, active account and
+sufficient current margin. Quantity is never increased after fill. The prior slippage,
+fee and balance checks remain in force. Failure triggers cleanup and a circuit halt.
+Terminal partial fills use their actual size; a pending remainder is not accepted.

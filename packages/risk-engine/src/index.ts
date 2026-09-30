@@ -198,3 +198,47 @@ export function sizeTrade(
     estimatedTarget: target.toFixed(),
   };
 }
+
+/** Reassess stop loss from actual execution; entry fees are already debited from after.balance. */
+export function assessFilledRisk(
+  after: Account,
+  intent: TradeIntent,
+  config: RiskConfig,
+  entryFees: string,
+  plannedLoss: string,
+) {
+  const a = accountSchema.parse(after),
+    t = intentSchema.parse(intent),
+    c = riskConfigSchema.parse(config);
+  const p = a.positions[0];
+  if (!p) throw new Error('NO_FILLED_POSITION');
+  const q = new D(p.quantity),
+    fill = new D(p.entryPrice),
+    slip = new D(c.slippagePointsPerSide);
+  const costs = costsFor(a, c);
+  const exitBasis = fill.plus(t.stopDistancePoints).plus(slip);
+  const futureLoss = q
+    .mul(new D(t.stopDistancePoints).plus(slip))
+    .plus(q.mul(exitBasis).mul(costs.exitFeeRate))
+    .plus(q.mul(exitBasis).mul(c.fundingRateAllowance));
+  const totalLoss = futureLoss.plus(nonnegative.parse(entryFees));
+  const remaining = new D(a.balance).minus(futureLoss).minus(effectiveFloor(a));
+  const margin = q.mul(fill).div(t.leverage);
+  const approved =
+    a.status === 'ACTIVE' &&
+    p.side === t.side &&
+    p.symbol === t.symbol &&
+    new D(p.leverage).eq(t.leverage) &&
+    new D(a.equity).eq(new D(a.balance).plus(a.unrealizedPnl)) &&
+    new D(a.remainingDrawdown).eq(remainingDrawdown(a)) &&
+    new D(a.equity).gt(effectiveFloor(a)) &&
+    totalLoss.lte(nonnegative.parse(plannedLoss)) &&
+    remaining.gte(c.minimumRemainingDrawdownAfterStop) &&
+    remaining.gt(0) &&
+    margin.lte(D.min(a.balance, a.equity));
+  return {
+    approved,
+    totalLoss: totalLoss.toFixed(),
+    remainingAfterStop: remaining.toFixed(),
+  };
+}

@@ -10,7 +10,7 @@ Date: 2026-09-29. Scope: local simulation-only implementation, including post-fi
 | TypeScript strict checking | Passed                                                                             |
 | ESLint                     | Passed                                                                             |
 | Prettier check             | Passed                                                                             |
-| Vitest                     | **96 tests passed, 6 files passed**                                                |
+| Vitest                     | **124 tests passed, 7 files passed**                                               |
 | Preview CLI                | Passed; all ten independently sized accounts displayed                             |
 | JSON preview               | Passed                                                                             |
 | Partial-failure CLI        | Seven filled, account 08 rejected, 09–10 blocked                                   |
@@ -51,11 +51,9 @@ These are reproducible simulation results, not live quotes or trading recommenda
 - No verified Instant API/copy authorization, live market symbol or market specifications.
 - No exchange paper environment, small real account or multi-account real validation.
 - No live adapter or remotely authenticated controller service.
-- No persistent simulator state recovery, service multi-process coordination, operator reconciliation or re-arm workflow preserving balances.
-  Dashboard flatten coordination and explicit new-simulation reset are implemented.
+- No distributed coordination or operator re-arm workflow preserving balances. Durable local simulator restore, exclusive owner lock and operator/periodic reconciliation are now implemented. Dashboard flatten and explicit new-simulation reset remain available.
 
-Next technical step: persistent simulator/reconciliation recovery and an operator re-arm
-workflow within the local dashboard. Live integration remains gated by the facts
+Next technical step: a reviewed operator recovery/re-arm workflow for resolved outcomes, then verified live transport capabilities. Live integration remains gated by the facts
 register and the user's requested pre-integration review.
 
 ## Dashboard follow-up
@@ -134,3 +132,24 @@ risk rejection, asserted ten ACTIVE protections, and detected no page errors or 
 page overflow. No execution code changed. A precise SVG/PNG lifecycle diagram and a
 separately labeled generated logo concept were added. Reproduction instructions are
 in [visual asset notes](visuals.md).
+
+## Simulator beta hardening — 2026-09-29
+
+Formatting, ESLint, strict type checking and the full suite pass: **124 tests in seven
+files**, 28 more than the previous 96-test baseline. Existing hedge, protection,
+idempotency, circuit, flatten and accounting cases remain green.
+
+New coverage includes LONG/SHORT terminal partial fills and exact protection quantity,
+unconfirmed remainders, actual-fill fee/reserve reassessment, health freshness and stage
+metrics, manual closes/quantity changes, missing SL/TP, orphan cancellation, inventory
+loss, disconnect/reconnect, reconciliation timeout and audit/persistence failure.
+
+Durability coverage includes real child-process SIGKILL after entry fill and after SL
+activation, restoration and fail-closed cleanup, persisted entry/SL/TP deduplication,
+configuration/schema rejection, exclusive-owner/stale locks, missing journal/snapshot
+refusal, and HTTP dashboard restart with protected positions plus archived-session reset.
+Health and authenticated reconciliation endpoints and periodic scans are also exercised.
+
+No WebSocket/429/signing tests are claimed: those transports do not exist. No live
+adapter, credentials, private endpoints or real orders were introduced. See the
+[17-item audit](reliability-audit.md) for the precise remaining boundaries.

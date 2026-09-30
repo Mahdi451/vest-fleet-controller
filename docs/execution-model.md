@@ -66,7 +66,10 @@ Each child performs these steps sequentially:
 
 The simulation contract uses client request IDs as protection order IDs. A future
 adapter must provide documented request-to-venue-ID lookup before changing this contract.
-Full entry fills are required; partial fills have no establishment success path.
+Full fills and confirmed terminal partial fills can establish protection. A partial
+result must be positive, smaller than the request, and explicitly confirm its remainder
+canceled. Both exits use actual filled quantity. Pending or incremental fills remain
+unsupported and fail closed; no growing position is certified protected.
 
 ## Dispatch and failure policy
 
@@ -124,8 +127,11 @@ SQLite stores states and protection request intent before side effects. An unfin
 master or unknown child opens the circuit on restart. Legacy child results lacking
 execution states also halt; replay raises `LEGACY_RESULT_REQUIRES_RECONCILIATION`.
 Preserve old journals for inspection; no automatic migration can certify old protection.
-There is no automatic reset/re-arm or persistent simulator restore. Multiple processes,
-manual venue trades and disconnect recovery remain outside this prototype.
+The dashboard now restores its simulator snapshot with entries halted and reconciles
+it; unsafe interrupted entries trigger cleanup. There is no automatic reset/re-arm.
+An exclusive local store lock rejects a second owner; after a crash, verify the owning
+process is stopped before removing the stale lock. Multiple-host coordination, manual
+venue trades and real transport recovery remain outside this beta.
 
 ## Audit
 
@@ -147,3 +153,26 @@ exposure is ignored as specified. A pre-existing conflict blocks the fleet befor
 entry; a conflict introduced during fan-out halts later children. Diagnostics identify
 conflicting accounts with `CROSS_ACCOUNT_HEDGE_GUARD`. Flatten/close bypass this rule.
 Correlated-market rules remain additive extension points with no active blocking policy.
+
+## Ongoing reconciliation and health
+
+`reconcile()` shares the controller busy guard with entry and flatten. It reads account
+inventory, positions, entry ledger and active protection; confirms expected identity,
+side, size and fill-relative triggers; detects missing inventory, external/unverified
+closes, canceled protection and snapshot accounting divergence. Orphans are canceled
+and checked through both exact-ID lookup and the active-order book. Any divergence
+latches the circuit; unsafe positions trigger affected-account cleanup. No scan clears
+unknown journal outcomes or automatically re-arms entries.
+
+The dashboard runs this operation at startup and every second when idle, and exposes
+an authenticated Reconcile action. Disconnect/read timeouts halt; reconnect allows a
+new inspection but does not restore entry permission. A stale synthetic quote produces
+DEGRADED health, not a fabricated fresh market timestamp. Browser state polls every
+two seconds so background cleanup and halt become visible without another user action.
+
+SAFE means a recent, fresh book check with no active operation and no circuit halt.
+DEGRADED means stale/missing fresh evidence or work in progress. HALTED takes precedence.
+Fill timing measures submission-to-authoritative-confirmation; protection timing measures
+confirmation-to-verified-protection. These are local monotonic durations, not venue fill
+timestamps. Audit records timing/risk; process-local counters report reconciliation
+runs/failures, divergences, entries, partial fills and protection failures.

@@ -30,6 +30,11 @@ const auditSchema = z.object({
   error: z.string().nullable().optional(),
   adapter: z.string(),
   latency: z.number().optional(),
+  fillLatencyMs: z.number().nonnegative().optional(),
+  protectionLatencyMs: z.number().nonnegative().optional(),
+  reconciliationLatencyMs: z.number().nonnegative().optional(),
+  actualPlannedLoss: z.string().optional(),
+  remainingAfterStop: z.string().optional(),
 });
 export type AuditEvent = z.infer<typeof auditSchema>;
 export class Journal {
@@ -100,6 +105,28 @@ export class Journal {
       .all(master)
       .map((r) => JSON.parse(String(r.result)) as ChildResult);
   }
+  allChildren(): ChildResult[] {
+    return this.db
+      .prepare('SELECT result FROM children')
+      .all()
+      .map((row) => childResultSchema.parse(JSON.parse(String(row.result))));
+  }
+  saveSimulator(snapshot: unknown) {
+    this.db
+      .prepare(
+        "INSERT OR REPLACE INTO settings(key,value) VALUES('simulator',?)",
+      )
+      .run(JSON.stringify(snapshot));
+  }
+  loadSimulator(): unknown | null {
+    const row = this.db
+      .prepare("SELECT value FROM settings WHERE key='simulator'")
+      .get();
+    return row ? JSON.parse(String(row.value)) : null;
+  }
+  hasTrades(): boolean {
+    return !!this.db.prepare('SELECT 1 FROM trades LIMIT 1').get();
+  }
   finish(id: string, result: ChildResult[]) {
     this.db
       .prepare('UPDATE trades SET result=? WHERE id=?')
@@ -131,11 +158,20 @@ export class Journal {
       .prepare('INSERT INTO audit(event) VALUES(?)')
       .run(JSON.stringify(auditSchema.parse(event)));
   }
-  events(): AuditEvent[] {
-    return this.db
-      .prepare('SELECT event FROM audit ORDER BY id')
-      .all()
-      .map((r) => JSON.parse(String(r.event)) as AuditEvent);
+  events(limit?: number): AuditEvent[] {
+    if (
+      limit !== undefined &&
+      (!Number.isInteger(limit) || limit < 1 || limit > 1000)
+    )
+      throw new Error('INVALID_AUDIT_LIMIT');
+    const rows =
+      limit === undefined
+        ? this.db.prepare('SELECT event FROM audit ORDER BY id').all()
+        : this.db
+            .prepare('SELECT event FROM audit ORDER BY id DESC LIMIT ?')
+            .all(limit)
+            .reverse();
+    return rows.map((r) => JSON.parse(String(r.event)) as AuditEvent);
   }
   close() {
     this.db.close();

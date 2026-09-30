@@ -7,7 +7,7 @@ For installation and daily use, see the [README](README.md).
 
 The application provides a working local dashboard and CLI backed by the same
 simulation controller. Live Vest execution is not implemented. The latest execution
-validation passed 96 tests in six files; this is a dated result, not a guarantee about
+validation passed 124 tests in seven files; this is a dated result, not a guarantee about
 subsequent changes. See the [validation record](docs/validation.md).
 
 Recent completed work:
@@ -20,6 +20,13 @@ Recent completed work:
   halt, sibling cancellation, idempotency and reconciliation tests.
 - Refreshed browser screenshots, an exact execution diagram and a logo presentation.
   The logo is now the README header; dashboard icon/SVG refinement remains separate.
+
+## Beta reliability update
+
+The [reliability audit](docs/reliability-audit.md) classifies all 17 requested items,
+records the implemented change set, and distinguishes simulator readiness from live
+integration gates. Recovery is conservative: restart and reconciliation never re-arm.
+An exclusive local owner lock prevents two dashboards using the same saved fleet.
 
 ## Documentation map
 
@@ -40,7 +47,7 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-1. Persist simulator snapshots and recover them consistently with the execution journal.
+1. Review the [17-item reliability audit](docs/reliability-audit.md). Durable simulator recovery, periodic reconciliation, actual-fill risk and terminal partial fills are implemented.
 2. Add an operator reconciliation/re-arm workflow that preserves balances and resolves
    pending or late requests without duplicate exposure.
 3. Strengthen restart/disconnect and cancellation-race scenarios before adding transport.
@@ -101,7 +108,7 @@ There is no live-adapter implementation. Keep `main` simple; use `feature/*` whe
 
 ## Development checks
 
-The post-fill protection release passed **96 tests in six files**, strict TypeScript checks,
+The simulator beta hardening release passed **124 tests in seven files**, strict TypeScript checks,
 ESLint and formatting checks. See [validation results](docs/validation.md) for the tested
 runtime, CLI checks and limits. This is a dated validation result, not a live CI badge.
 
@@ -132,9 +139,9 @@ Useful invariants to preserve when extending the tool:
 | -------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
 | M0: research         | Evidence register exists; key facts unresolved | Verify current Instant rules and supported execution                              |
 | M1: core             | Implemented                                    | Extend only with verified rule/instrument metadata                                |
-| M2: simulator        | Initial version implemented                    | Persist simulator snapshots and deterministic recovery                            |
+| M2: simulator        | Initial version implemented                    | Durable snapshots implemented; full deterministic event replay remains            |
 | M3: controller       | Initial version implemented                    | Operator reconciliation; dashboard coordinates emergency handling                 |
-| M4: dashboard        | Local simulator implemented                    | Persistent recovery and operator re-arm workflow remain                           |
+| M4: dashboard        | Local simulator implemented                    | Durable halted recovery implemented; operator re-arm remains                      |
 | M5: Vest integration | Deliberately blocked                           | Officially documented or explicitly permitted execution path                      |
 | M6: validation       | Unit/integration/simulator stages only         | Paper environment if available, then separately authorized staged real validation |
 
@@ -152,7 +159,7 @@ Vest exchange API supports Capital accounts. Account observations belong in the
 [evidence register](docs/vest-facts.md), with their uncertainty preserved.
 
 Other current limits: one synthetic market, one net position per account, no order book,
-no partial entry fills, no maintenance-margin liquidation model, no trading calendar,
+no continuing/incremental partial-entry fill stream, no maintenance-margin liquidation model, no trading calendar,
 no multi-process coordination, no pyramiding/reversal and no live market data.
 
 ## Trade intent and CLI reference
@@ -308,19 +315,19 @@ not increase the allowed loss to preserve an earlier size.
 
 ## State, logs and restart behavior
 
-| Data                           | Storage                    | Survives process exit? |
-| ------------------------------ | -------------------------- | ---------------------- |
-| Account balances and positions | Mock adapter memory        | No                     |
-| Mock order ledger              | Mock adapter memory        | No                     |
-| Preview objects                | Controller memory          | No                     |
-| Master/child execution records | `.runtime/<run-id>.sqlite` | Yes                    |
-| Structured audit events        | Same SQLite database       | Yes                    |
-| Configured assumptions         | YAML and source control    | Yes                    |
+| Data                           | Storage                            | Survives process exit? |
+| ------------------------------ | ---------------------------------- | ---------------------- |
+| Account balances and positions | Memory + dashboard SQLite snapshot | Yes, dashboard         |
+| Mock order ledger              | Memory + dashboard SQLite snapshot | Yes, dashboard         |
+| Preview objects                | Controller memory                  | No                     |
+| Master/child execution records | `.runtime/<run-id>.sqlite`         | Yes                    |
+| Structured audit events        | Same SQLite database               | Yes                    |
+| Configured assumptions         | YAML and source control            | Yes                    |
 
 SQLite records the child as submitting/unknown **before** invoking the adapter.
 An unfinished master or unknown child halts a new controller using that journal.
-There is no automatic recovery or circuit-reset workflow that preserves simulated balances.
-The dashboard can explicitly discard its current simulated fleet and start a new session.
+There is no automatic re-arm or circuit-reset workflow. Restoring saved balances never authorizes new entries.
+The dashboard restores its active session halted and reconciles before any further operation. It can explicitly start a new session while retaining previous journals. CLI runs remain isolated.
 
 Audit records include timestamp, trade/account/request IDs, direction, requested and
 filled quantity, protection levels, fees, status, error code, adapter and latency.

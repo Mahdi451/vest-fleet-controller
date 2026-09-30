@@ -32,7 +32,7 @@ account's balance. Circuit-breaker policy may prevent later accounts from partic
 - This is a deterministic quote-driven simulator, not a backtest engine or Vest replica.
 - It models one net position per account and one synthetic linear market.
 - Equity uses the supplied synthetic quote; bid/ask spread is represented only through
-  configured slippage. There is no order book, queue, liquidity/partial entry fill model,
+  configured slippage. There is no order book, queue, liquidity or incremental fill-stream model,
   maintenance-margin liquidation formula, trading calendar or real market feed.
 - There is no automatic funding clock or Vest payout API. Withdrawal semantics are
   assumptions for experimentation, not promises about current Vest rules.
@@ -43,9 +43,10 @@ account's balance. Circuit-breaker policy may prevent later accounts from partic
   Full closes cancel siblings; reduce-only exits cap size after partial manual closes.
   Orders linked to an older entry cannot reverse or close a newer position.
 - A price gap or funding charge beyond the configured allowance can breach an account.
-- The adapter's account/order state is in memory. A controller can reopen its SQLite
-  journal against the same adapter; a new CLI invocation is a new isolated simulation.
-- Full replayable simulator persistence and UI emergency recovery remain later work.
+- Dashboard snapshots persist account/order state and deduplication in SQLite. Startup
+  restores that session halted and reconciles it. Each CLI invocation remains isolated.
+- Snapshot recovery is not full deterministic event replay. Operator re-arm, external
+  event-stream recovery and distributed ownership remain later work.
 
 ## Hedge policy scenarios
 
@@ -69,3 +70,21 @@ With default quote 30,400 and one-point slippage, LONG fills at 30,401 and its 8
 TP triggers at 30,481; SHORT fills at 30,399 and TP triggers at 30,319. CLI win/loss
 scenarios now move relative to actual fill, rather than the preview quote. The trigger
 is not the exit fill: adverse exit slippage and market gaps still apply.
+
+## Durable beta scenarios
+
+`PARTIAL_FILL` fills half the requested quantity, rounded down to the configured step,
+and confirms the remainder canceled. `PARTIAL_FILL_PENDING` deliberately leaves the
+remainder unconfirmed; the controller attempts flatten and halts. These fault modes
+exercise terminal-versus-pending policy, not a liquidity model.
+
+Snapshots include version, configuration, quote, accounts, entry ledger, protective
+orders and request fingerprints. Fault-injection settings are not persisted. Every
+simulator audit event first checkpoints its current state, including intermediate
+unsafe states; price-update completion checkpoints refreshed flat accounts too.
+Restore validates schema, identity references and exact configuration compatibility.
+Missing/corrupt state is never silently replaced when execution history exists.
+
+Real process-kill tests terminate between entry and protection or after SL activation,
+then reopen SQLite and reconcile. Interrupted exposure is cleaned up and later accounts
+remain flat. Protected-session restart preserves positions and orders with entries halted.

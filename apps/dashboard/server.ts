@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage } from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { parse } from 'yaml';
 import { z } from 'zod';
 import {
@@ -12,7 +13,8 @@ import {
 } from '../../packages/core/src/index.ts';
 import { MockVestAdapter } from '../../packages/simulator/src/index.ts';
 import { FleetController } from '../../packages/execution/src/controller.ts';
-import { Journal } from '../../packages/execution/src/journal.ts';
+import { SimulationStore } from '../../packages/simulator/src/storage.ts';
+import type { Journal } from '../../packages/execution/src/journal.ts';
 
 const previewSchema = z
   .object({
@@ -47,8 +49,10 @@ async function body(req: IncomingMessage): Promise<unknown> {
 export async function createDashboard(
   config: RiskConfig,
   journalDirectory?: string,
+  startNew = false,
 ) {
   const token = randomUUID();
+  const store = new SimulationStore(journalDirectory);
   let sessionId: string;
   let journal: Journal;
   let adapter: MockVestAdapter;
@@ -57,34 +61,81 @@ export async function createDashboard(
   let emergencyRequested = false;
   let pending: Promise<unknown> = Promise.resolve();
   let lastResults: unknown = null;
-  async function initialize() {
-    sessionId = randomUUID();
-    journal = new Journal(
-      journalDirectory ? `${journalDirectory}/${sessionId}.sqlite` : ':memory:',
-    );
+  async function initialize(reset = false) {
+    const session = store.open(reset);
+    sessionId = session.sessionId;
+    journal = session.journal;
     adapter = new MockVestAdapter(
       config,
       Date.now,
       undefined,
       '30400',
       (event) => journal.log(event),
+      (saved) => {
+        try {
+          journal.saveSimulator(saved);
+        } catch {
+          emergencyRequested = true;
+          try {
+            journal.halt();
+          } catch {
+            /* The server entry veto remains set. */
+          }
+          throw new Error('SIMULATION_PERSISTENCE_FAILED');
+        }
+      },
+      session.saved ?? undefined,
     );
     await adapter.connect();
     controller = new FleetController(adapter, config, journal);
-    emergencyRequested = false;
+    emergencyRequested = session.restored;
     lastResults = null;
+    if (session.restored) controller.requestHalt();
+    await controller.reconcile();
   }
-  await initialize();
+  try {
+    await initialize(startNew);
+  } catch (error) {
+    try {
+      if (journal!) journal.close();
+    } finally {
+      store.close();
+    }
+    throw error;
+  }
+  let closing = false;
+  const reconciliationTimer = setInterval(() => {
+    if (busy || closing) return;
+    busy = true;
+    pending = controller
+      .reconcile()
+      .catch(() => {
+        emergencyRequested = true;
+        try {
+          controller.requestHalt();
+        } catch {
+          /* Existing halt remains latched. */
+        }
+      })
+      .finally(() => {
+        busy = false;
+      });
+  }, 1000);
+  reconciliationTimer.unref();
   const snapshot = async () => ({
     mode: 'SIMULATION_ONLY',
     token,
     sessionId,
-    halted: emergencyRequested || journal.halted(),
+    halted:
+      emergencyRequested ||
+      journal.halted() ||
+      controller.health().state === 'HALTED',
+    health: controller.health(),
     quote: await adapter.getQuote(),
     accounts: await adapter.listAccounts(),
     config,
     lastResults,
-    events: journal.events().slice(-15),
+    events: journal.events(15),
   });
   const assets: Record<string, [string, string]> = {
     '/': ['index.html', 'text/html; charset=utf-8'],
@@ -121,6 +172,10 @@ export async function createDashboard(
       return;
     }
     try {
+      if (req.method === 'GET' && path === '/api/health') {
+        reply(200, controller.health());
+        return;
+      }
       if (req.method === 'GET' && path === '/api/state') {
         reply(200, await snapshot());
         return;
@@ -134,6 +189,7 @@ export async function createDashboard(
           '/api/price',
           '/api/enabled',
           '/api/reset',
+          '/api/reconcile',
         ].includes(path)
       ) {
         reply(404, { error: 'NOT_FOUND' });
@@ -186,6 +242,10 @@ export async function createDashboard(
           lastResults = await controller.flattenAll();
           return { results: lastResults, state: await snapshot() };
         }
+        if (path === '/api/reconcile') {
+          z.object({}).strict().parse(input);
+          await controller.reconcile();
+        }
         if (path === '/api/price') {
           const request = z.object({ price: positive }).strict().parse(input);
           await adapter.updatePrice(request.price);
@@ -200,7 +260,7 @@ export async function createDashboard(
             .parse(input);
           await adapter.disconnect();
           journal.close();
-          await initialize();
+          await initialize(true);
         }
         return { state: await snapshot() };
       })();
@@ -222,9 +282,15 @@ export async function createDashboard(
   return {
     server,
     close: async () => {
+      closing = true;
+      clearInterval(reconciliationTimer);
       await pending.catch(() => {});
-      await adapter.disconnect();
-      journal.close();
+      try {
+        await adapter.disconnect();
+      } finally {
+        journal.close();
+        store.close();
+      }
     },
   };
 }
@@ -239,7 +305,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ),
   );
   mkdirSync('.runtime/dashboard', { recursive: true });
-  const app = await createDashboard(config, '.runtime/dashboard');
+  const { values } = parseArgs({
+    options: { 'new-simulation': { type: 'boolean', default: false } },
+  });
+  const app = await createDashboard(
+    config,
+    '.runtime/dashboard',
+    values['new-simulation'],
+  );
   app.server.listen(4173, '127.0.0.1', () =>
     console.log(
       'Simulation dashboard: http://127.0.0.1:4173 | No live trading',

@@ -191,12 +191,13 @@
         <section class="panel">
           <div class="panel-title">
             <h2>Activity</h2>
+            <button id="reconcile" class="text-button">Reconcile</button>
             <button id="reset" class="text-button">New simulation</button>
           </div>
           <div id="activity" class="activity">No activity yet.</div>
           <p class="hint">
-            Reset restores starting balances. Audit journals remain on disk;
-            positions do not survive a restart.
+            Reset starts a new fleet and retains prior journals. Restart
+            restores the saved fleet with entries halted for review.
           </p>
         </section>
       </div>

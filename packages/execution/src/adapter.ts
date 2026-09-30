@@ -10,18 +10,21 @@ import type { RiskPreview } from '../../risk-engine/src/index.ts';
 import { z } from 'zod';
 import {
   executionStateSchema,
+  intentSchema,
+  decimal,
   nonnegative,
   positive,
 } from '../../core/src/index.ts';
 
-const resultSchema = z
+export const resultSchema = z
   .object({
     requestId: z.string(),
     accountId: z.string(),
-    status: z.enum(['FILLED', 'REJECTED', 'UNKNOWN']),
+    status: z.enum(['FILLED', 'PARTIALLY_FILLED', 'REJECTED', 'UNKNOWN']),
     filledSize: nonnegative,
     entryPrice: positive.nullable(),
     fees: nonnegative,
+    remainderCanceled: z.boolean().optional(),
     error: z.string().nullable(),
   })
   .strict();
@@ -36,7 +39,8 @@ export function validateResult(
   return result;
 }
 
-export type OrderStatus = 'FILLED' | 'REJECTED' | 'UNKNOWN';
+export type OrderStatus =
+  'FILLED' | 'PARTIALLY_FILLED' | 'REJECTED' | 'UNKNOWN';
 export interface OrderRequest {
   requestId: string;
   masterTradeId: string;
@@ -53,11 +57,17 @@ export interface OrderResult {
   filledSize: string;
   entryPrice: string | null;
   fees: string;
+  /** Required true for accepting a terminal partial fill. No future fills may remain. */
+  remainderCanceled?: boolean | undefined;
   error: string | null;
 }
 // Raw entry acknowledgements and established child outcomes are distinct contracts.
 export const childResultSchema = resultSchema.extend({
   state: executionStateSchema,
+  intent: intentSchema.optional(),
+  entryWasPartial: z.boolean().optional(),
+  actualPlannedLoss: nonnegative.optional(),
+  remainingAfterStop: decimal.optional(),
   protectionOrderIds: z.array(z.string()),
   stopPrice: positive.optional(),
   targetPrice: positive.optional(),

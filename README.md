@@ -43,7 +43,7 @@ Open **http://127.0.0.1:4173**. Keep the terminal running; press `Ctrl+C` to sto
 Use that exact address rather than `localhost`. The dashboard runs on your computer
 and is intended for local access; do not expose it through a public server or proxy.
 
-Each session starts with ten accounts and a synthetic NQ/NDX price of **30,400**:
+Each new simulation starts with ten accounts and a synthetic NQ/NDX price of **30,400**:
 
 | Accounts    | Starting session balance | Drawdown floor | Available buffer |
 | ----------- | -----------------------: | -------------: | ---------------: |
@@ -123,6 +123,17 @@ Opposite-direction NQ/NDX exposure across **enabled** accounts is blocked. Unsel
 accounts still count; disabled accounts are excluded from this entry check. Unchecking
 an account only changes participation—it does not disable the account or close it.
 
+## Health and reconciliation
+
+The header reports **SAFE**, **DEGRADED**, or **HALTED**. SAFE means the simulator's
+books passed a recent check. DEGRADED means data is stale or an operation is in
+progress. HALTED means entries are blocked; flatten remains available.
+
+The service checks existing positions and protection every second when idle. Click
+**Reconcile** for an immediate check. Unexpected position changes, missing protection
+or orphan orders halt entries; unsafe exposure is cleaned up. Reconciliation never
+re-arms a halted session. Refresh the trade preview to refresh the synthetic quote.
+
 ## Stops, targets and execution results
 
 Protection is created **after the MARKET entry fills**. Final stop and target prices
@@ -131,6 +142,9 @@ a 25-point stop and 50-point target produce:
 
 - **Stop loss:** 30,425.25
 - **Take profit:** 30,500.25
+
+A terminal partial fill receives protection for its actual filled quantity. If the
+unfilled remainder cannot be confirmed canceled, execution fails closed.
 
 For SHORT, the stop is above the fill and the target is below it. Both exits are
 reduce-only; a filled exit cancels its sibling in the simulator.
@@ -190,8 +204,16 @@ for interactive LONG, SHORT and FLATTEN controls.
 
 ## Configuration
 
-Edit [config/example.yaml](config/example.yaml), then restart the dashboard to apply
-changes. For a separate CLI profile, use `--config path/to/profile.yaml`.
+Edit [config/example.yaml](config/example.yaml) to change assumptions. Saved sessions
+require the same configuration they were created with. To apply changed assumptions,
+stop the dashboard and explicitly start a new simulation:
+
+```sh
+pnpm dashboard --new-simulation
+```
+
+This starts a fresh fleet and retains the previous journal. For a separate CLI profile,
+use `--config path/to/profile.yaml`.
 
 | Setting                                 | Default                               |
 | --------------------------------------- | ------------------------------------- |
@@ -209,33 +231,47 @@ integer milliseconds. Funding is not automatically charged as time passes.
 
 ## Sessions and local data
 
-Balances, positions and orders remain in memory while the dashboard runs. Stopping
-the server or choosing **New simulation** discards that fleet. Restarting does not
-restore open positions or resume account balances.
+The dashboard saves balances, positions, entry/protection orders and duplicate-request
+records locally. Restarting restores the active session **with entries halted**, then
+reconciles it. Valid protected positions remain visible; interrupted or unsafe exposure
+triggers cleanup. No market moves are simulated while the application is offline.
+
+Use Reconcile and FLATTEN ALL to review the restored fleet. **New simulation** or
+`--new-simulation` explicitly starts over; previous journals remain available. CLI
+scenario commands still start isolated fleets.
 
 Audit journals remain on disk:
 
 - Dashboard sessions: `.runtime/dashboard/<session-id>.sqlite`
 - CLI runs: `.runtime/<run-id>.sqlite`
 
+The active-session pointer and ownership lock live beside the dashboard journals.
+Only one dashboard may use that runtime directory. After a crash, `controller.lock`
+may remain: inspect its PID and verify the owning process has stopped before removing
+that lock file. Leave `active-session.json` and all SQLite/WAL files intact. Normal
+shutdown releases the lock automatically.
+
 Keep the journal when investigating an uncertain result. Do not delete it to bypass
 a halt or retry an unresolved trade. No account credentials are needed or stored.
 
 ## Troubleshooting
 
-| Message or symptom                    | What to do                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `DASHBOARD_START_FAILED`              | Check whether port 4173 is already in use.                                                              |
-| `DRAWDOWN_RESERVE`                    | Reduce exposure or omit the account; planned loss leaves too little buffer.                             |
-| `INSUFFICIENT_MARGIN`                 | Reduce requested exposure; margin plus entry costs exceeds available funds.                             |
-| `PREVIEW_EXPIRED` or stale data       | Refresh the preview and review it again.                                                                |
-| `EXISTING_POSITION`                   | Close the account's current position before opening another.                                            |
-| `CROSS_ACCOUNT_HEDGE_GUARD`           | An enabled account holds opposite same-market exposure.                                                 |
-| `UNKNOWN` or `PROTECTION_UNCONFIRMED` | Review account outcomes and attempt FLATTEN ALL. Preserve the journal; do not blindly resend.           |
-| `IDEMPOTENCY_CONFLICT`                | A request identity was reused with different inputs; do not reuse it for a different trade.             |
-| `COMMAND_FAILED`                      | Check CLI arguments and quoted YAML decimals.                                                           |
-| A new run shows starting balances     | Expected: sessions do not persist simulated balances.                                                   |
-| A stop loses more than estimated      | A market gap or costs can exceed the planned allowance; stop fills are not guaranteed at their trigger. |
+| Message or symptom                                       | What to do                                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `DASHBOARD_START_FAILED`                                 | Check whether port 4173 is already in use.                                                                    |
+| `DRAWDOWN_RESERVE`                                       | Reduce exposure or omit the account; planned loss leaves too little buffer.                                   |
+| `INSUFFICIENT_MARGIN`                                    | Reduce requested exposure; margin plus entry costs exceeds available funds.                                   |
+| `PREVIEW_EXPIRED` or stale data                          | Refresh the preview and review it again.                                                                      |
+| `EXISTING_POSITION`                                      | Close the account's current position before opening another.                                                  |
+| `CROSS_ACCOUNT_HEDGE_GUARD`                              | An enabled account holds opposite same-market exposure.                                                       |
+| `UNKNOWN` or `PROTECTION_UNCONFIRMED`                    | Review account outcomes and attempt FLATTEN ALL. Preserve the journal; do not blindly resend.                 |
+| `IDEMPOTENCY_CONFLICT`                                   | A request identity was reused with different inputs; do not reuse it for a different trade.                   |
+| `SIMULATION_STORE_LOCKED`                                | Another dashboard owns the runtime directory, or a crash left a lock. Follow the recovery instructions above. |
+| `SIMULATION_CONFIG_CHANGED`                              | Restore the saved configuration or explicitly use `--new-simulation` for a fresh fleet.                       |
+| `MISSING_SESSION_JOURNAL` / `MISSING_SIMULATOR_SNAPSHOT` | Stop and restore the saved data; do not delete recovery files to force a fresh account state.                 |
+| `COMMAND_FAILED`                                         | Check CLI arguments and quoted YAML decimals.                                                                 |
+| A CLI run shows starting balances                        | Expected: CLI runs are isolated; the dashboard restores its saved session.                                    |
+| A stop loses more than estimated                         | A market gap or costs can exceed the planned allowance; stop fills are not guaranteed at their trigger.       |
 
 ---
 

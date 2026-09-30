@@ -66,6 +66,21 @@ describe('local dashboard API', () => {
     expect(state.accounts).toHaveLength(10);
     expect(state.accounts[0].balance).toBe('504.55');
   });
+  it('reports health, runs periodic reconciliation, and never re-arms through the reconcile route', async () => {
+    const before = await (await fetch(`${base}/api/health`)).json();
+    expect(before.state).toBe('SAFE');
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const after = await (await fetch(`${base}/api/health`)).json();
+    expect(after.metrics.reconciliationRuns).toBeGreaterThan(
+      before.metrics.reconciliationRuns,
+    );
+    expect(
+      (await post('reconcile', {}, { 'X-Session-Token': 'wrong' })).status,
+    ).toBe(403);
+    await post('flatten', {});
+    const reconciled = await (await post('reconcile', {})).json();
+    expect(reconciled.state.health.state).toBe('HALTED');
+  });
   it('rejects cross-origin writes, missing tokens, non-loopback Hosts and invalid payloads', async () => {
     expect(
       (await post('flatten', {}, { Origin: 'https://example.com' })).status,

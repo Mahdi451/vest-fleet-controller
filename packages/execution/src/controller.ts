@@ -5,6 +5,9 @@ import {
   riskConfigSchema,
   isFresh,
   accountSchema,
+  quoteSchema,
+  remainingDrawdown,
+  direction,
   protectionOrderSchema,
   type ExecutionState,
   type ProtectionRequest,
@@ -16,6 +19,7 @@ import {
 import {
   sizeTrade,
   protectionPrices,
+  assessFilledRisk,
   type RiskPreview,
 } from '../../risk-engine/src/index.ts';
 import {
@@ -42,6 +46,294 @@ export class FleetController {
   private busy = false;
   private circuitOpen: boolean;
   private config: RiskConfig;
+  private lastReconciliation: {
+    timestamp: number;
+    dataFresh: boolean;
+    issues: Array<{ accountId: string; code: string }>;
+  } | null = null;
+  private knownAccountIds: Set<string> | null = null;
+  private metrics = {
+    entries: 0,
+    partialFills: 0,
+    protectionFailures: 0,
+    reconciliationRuns: 0,
+    reconciliationFailures: 0,
+    divergences: 0,
+    lastFillLatencyMs: 0,
+    lastProtectionLatencyMs: 0,
+    lastReconciliationLatencyMs: 0,
+  };
+  health() {
+    const fresh =
+      this.lastReconciliation !== null &&
+      this.lastReconciliation.dataFresh &&
+      isFresh(
+        this.lastReconciliation.timestamp,
+        this.clock(),
+        this.config.maxDataAgeMs,
+      );
+    return {
+      state: this.circuitOpen
+        ? 'HALTED'
+        : this.busy || !fresh
+          ? 'DEGRADED'
+          : 'SAFE',
+      busy: this.busy,
+      lastReconciledAt: this.lastReconciliation?.timestamp ?? null,
+      issues: structuredClone(this.lastReconciliation?.issues ?? []),
+      metrics: { ...this.metrics },
+    };
+  }
+  /** Read authoritative books, halt on divergence, clean unsafe exposure without re-arming. */
+  async reconcile() {
+    if (this.busy) throw new Error('CONTROLLER_BUSY');
+    this.busy = true;
+    const started = performance.now();
+    const issues: Array<{ accountId: string; code: string }> = [];
+    const issue = (accountId: string, code: string) => {
+      issues.push({ accountId, code });
+      this.circuitOpen = true;
+    };
+    this.metrics.reconciliationRuns++;
+    let dataFresh = false;
+    try {
+      const quote = quoteSchema.parse(
+        await this.deadline(this.adapter.getQuote()),
+      );
+      const accounts = (await this.deadline(this.adapter.listAccounts())).map(
+        (a) => accountSchema.parse(a),
+      );
+      if (
+        accounts.length === 0 ||
+        new Set(accounts.map((a) => a.accountId)).size !== accounts.length
+      )
+        throw new Error('DUPLICATE_ACCOUNT_ID');
+      if (this.knownAccountIds) {
+        for (const id of this.knownAccountIds) {
+          if (!accounts.some((a) => a.accountId === id))
+            issue(id, 'ACCOUNT_MISSING');
+        }
+      }
+      this.knownAccountIds ??= new Set(accounts.map((a) => a.accountId));
+      dataFresh =
+        isFresh(quote.timestamp, this.clock(), this.config.maxDataAgeMs) &&
+        accounts.every((a) =>
+          isFresh(a.lastSyncTimestamp, this.clock(), this.config.maxDataAgeMs),
+        );
+      const children = this.journal.allChildren();
+      for (const original of accounts) {
+        const id = original.accountId;
+        try {
+          const a = accountSchema.parse(
+            await this.deadline(this.adapter.getAccountState(id)),
+          );
+          if (a.accountId !== id) throw new Error('ACCOUNT_IDENTITY_MISMATCH');
+          const open = (
+            await this.deadline(this.adapter.getOpenOrders(id))
+          ).map((o) => protectionOrderSchema.parse(o));
+          if (open.some((o) => o.accountId !== id || o.status !== 'ACTIVE'))
+            throw new Error('ORDER_BOOK_MISMATCH');
+          const p = a.positions[0];
+          const orphan = open.filter(
+            (o) =>
+              !p ||
+              o.entryRequestId !== p.entryRequestId ||
+              o.positionSide !== p.side ||
+              o.symbol !== p.symbol,
+          );
+          for (const order of orphan) {
+            issue(id, 'ORPHAN_PROTECTION');
+            await this.deadline(this.adapter.cancelOrder(id, order.orderId));
+            const canceled = protectionOrderSchema.parse(
+              await this.deadline(
+                this.adapter.getProtectionOrder(id, order.orderId),
+              ),
+            );
+            if (
+              canceled.accountId !== id ||
+              canceled.orderId !== order.orderId ||
+              canceled.status !== 'CANCELED'
+            )
+              throw new Error('ORPHAN_CANCEL_UNCONFIRMED');
+          }
+          if (orphan.length) {
+            const remaining = (
+              await this.deadline(this.adapter.getOpenOrders(id))
+            ).map((o) => protectionOrderSchema.parse(o));
+            if (
+              remaining.some((o) =>
+                orphan.some((old) => old.orderId === o.orderId),
+              )
+            )
+              throw new Error('ORPHAN_CANCEL_UNCONFIRMED');
+          }
+          if (
+            children.some((c) => c.accountId === id && c.status === 'UNKNOWN')
+          )
+            issue(id, 'UNRESOLVED_REQUEST');
+          if (p) {
+            const child = children.find(
+              (c) => c.requestId === p.entryRequestId && c.accountId === id,
+            );
+            const raw = await this.deadline(
+              this.adapter.getOrder(p.entryRequestId),
+            );
+            const ledger = raw
+              ? validateResult(raw, p.entryRequestId, id)
+              : null;
+            const expected = child?.intent
+              ? protectionPrices(p.entryPrice, child.intent)
+              : null;
+            const positionMatches =
+              child?.state === 'PROTECTED' &&
+              child.intent &&
+              expected &&
+              child.intent.symbol === p.symbol &&
+              child.intent.side === p.side &&
+              new D(child.intent.leverage).eq(p.leverage) &&
+              child.entryPrice !== null &&
+              new D(child.entryPrice).eq(p.entryPrice) &&
+              new D(child.filledSize).eq(p.quantity) &&
+              ledger &&
+              (ledger.status === 'FILLED' ||
+                (ledger.status === 'PARTIALLY_FILLED' &&
+                  ledger.remainderCanceled === true)) &&
+              new D(ledger.filledSize).eq(p.quantity) &&
+              ledger.entryPrice !== null &&
+              new D(ledger.entryPrice).eq(p.entryPrice);
+            const protectedPosition =
+              positionMatches &&
+              p.protectionStatus === 'ACTIVE' &&
+              open.length === 2 &&
+              (['STOP_LOSS', 'TAKE_PROFIT'] as const).every((type) =>
+                open.some(
+                  (o) =>
+                    o.orderId === hash([p.entryRequestId, type]) &&
+                    child.protectionOrderIds.includes(o.orderId) &&
+                    o.requestId === o.orderId &&
+                    o.type === type &&
+                    o.entryRequestId === p.entryRequestId &&
+                    o.positionSide === p.side &&
+                    o.symbol === p.symbol &&
+                    o.reduceOnly &&
+                    new D(o.quantity).eq(p.quantity) &&
+                    new D(o.filledSize).isZero() &&
+                    new D(o.triggerPrice).eq(
+                      type === 'STOP_LOSS'
+                        ? expected.stopPrice
+                        : expected.targetPrice,
+                    ),
+                ),
+              );
+            const unrealized = new D(quote.price)
+              .minus(p.entryPrice)
+              .mul(p.quantity)
+              .mul(direction(p.side));
+            const accountingMatches =
+              new D(a.equity).eq(new D(a.balance).plus(unrealized)) &&
+              new D(a.remainingDrawdown).eq(remainingDrawdown(a));
+            const crossed =
+              expected &&
+              (p.side === 'LONG'
+                ? new D(quote.price).lte(expected.stopPrice) ||
+                  new D(quote.price).gte(expected.targetPrice)
+                : new D(quote.price).gte(expected.stopPrice) ||
+                  new D(quote.price).lte(expected.targetPrice));
+            if (
+              !protectedPosition ||
+              !accountingMatches ||
+              crossed ||
+              a.status !== 'ACTIVE'
+            ) {
+              issue(
+                id,
+                !positionMatches
+                  ? 'POSITION_DIVERGENCE'
+                  : 'PROTECTION_DIVERGENCE',
+              );
+              await this.cleanupAccount(id);
+            }
+          } else {
+            for (const child of children.filter(
+              (c) => c.accountId === id && c.state === 'PROTECTED',
+            )) {
+              const exits = await Promise.all(
+                child.protectionOrderIds.map(async (orderId) => {
+                  const raw = await this.deadline(
+                    this.adapter.getProtectionOrder(id, orderId),
+                  );
+                  return raw ? protectionOrderSchema.parse(raw) : null;
+                }),
+              );
+              const exited = exits.some(
+                (o) =>
+                  o &&
+                  o.accountId === id &&
+                  o.entryRequestId === child.requestId &&
+                  o.status === 'FILLED' &&
+                  new D(o.filledSize).eq(child.filledSize),
+              );
+              if (!exited) issue(id, 'EXTERNAL_OR_UNVERIFIED_EXIT');
+            }
+          }
+          const after = accountSchema.parse(
+            await this.deadline(this.adapter.getAccountState(id)),
+          );
+          if (
+            !issues.some((i) => i.accountId === id) &&
+            after.revision !== a.revision
+          )
+            issue(id, 'RECONCILIATION_RACE');
+        } catch {
+          issue(id, 'ACCOUNT_RECONCILIATION_FAILED');
+          await this.cleanupAccount(id);
+        }
+      }
+      // A missing inventory member must not make its historical exposure disappear.
+      for (const child of children)
+        if (!accounts.some((a) => a.accountId === child.accountId))
+          issue(child.accountId, 'ACCOUNT_MISSING');
+    } catch {
+      issue('FLEET', 'RECONCILIATION_FAILED');
+    } finally {
+      this.metrics.lastReconciliationLatencyMs = Math.max(
+        0,
+        performance.now() - started,
+      );
+      this.metrics.divergences += issues.length;
+      if (issues.length) this.metrics.reconciliationFailures++;
+      this.lastReconciliation = { timestamp: this.clock(), dataFresh, issues };
+      this.busy = false;
+    }
+    try {
+      if (issues.length) this.halt();
+      this.journal.log({
+        timestamp: this.clock(),
+        masterTradeId: 'RECONCILIATION',
+        status: issues.length ? 'RECONCILIATION_FAILED' : 'RECONCILED',
+        adapter: this.adapter.name,
+        reconciliationLatencyMs: this.metrics.lastReconciliationLatencyMs,
+      });
+      for (const item of issues)
+        this.journal.log({
+          timestamp: this.clock(),
+          masterTradeId: 'RECONCILIATION',
+          accountId: item.accountId,
+          status: 'DIVERGENCE',
+          error: item.code,
+          adapter: this.adapter.name,
+        });
+    } catch {
+      this.circuitOpen = true;
+      try {
+        this.journal.halt();
+      } catch {
+        /* Keep in-memory halt even if storage fails. */
+      }
+      throw new Error('RECONCILIATION_AUDIT_FAILED');
+    }
+    return this.health();
+  }
   constructor(
     private readonly adapter: ExecutionAdapter,
     config: RiskConfig,
@@ -236,6 +528,7 @@ export class FleetController {
           fees: '0',
           error: null,
           state: 'REJECTED',
+          intent: preview.intent,
           protectionOrderIds: [],
         };
         let actual = planned;
@@ -256,6 +549,8 @@ export class FleetController {
         } else {
           let submitted = false;
           let entryConfirmed = false;
+          let entryStarted = 0;
+          let protectionStarted = 0;
           try {
             const state = await this.deadline(
               this.adapter.getAccountState(planned.accountId),
@@ -303,6 +598,8 @@ export class FleetController {
               result.error = null;
               this.transition(masterTradeId, result, 'ENTRY_SUBMITTING'); // Durable BEFORE entry side effect.
               submitted = true;
+              entryStarted = performance.now();
+              this.metrics.entries++;
               try {
                 // An entry acknowledgement alone can never establish a protected trade.
                 validateResult(
@@ -345,25 +642,50 @@ export class FleetController {
                 Object.assign(result, ledger);
                 result.state = 'REJECTED';
               } else {
-                if (ledger?.status === 'FILLED')
+                const terminalPartial =
+                  ledger?.status === 'PARTIALLY_FILLED' &&
+                  ledger.remainderCanceled === true &&
+                  new D(ledger.filledSize).gt(0) &&
+                  new D(ledger.filledSize).lt(actual.quantity);
+                if (
+                  ledger?.status === 'FILLED' ||
+                  ledger?.status === 'PARTIALLY_FILLED'
+                )
                   Object.assign(result, ledger, { status: 'UNKNOWN' });
                 if (
                   !ledger ||
-                  ledger.status !== 'FILLED' ||
+                  (ledger.status !== 'FILLED' && !terminalPartial) ||
                   !ledger.entryPrice ||
                   after.accountId !== state.accountId ||
                   !position ||
                   after.positions.length !== 1 ||
                   position.symbol !== preview.intent.symbol ||
                   position.side !== preview.intent.side ||
-                  !new D(position.quantity).eq(actual.quantity) ||
-                  !new D(ledger.filledSize).eq(actual.quantity) ||
+                  !new D(position.quantity).eq(ledger.filledSize) ||
+                  (!terminalPartial &&
+                    !new D(ledger.filledSize).eq(actual.quantity)) ||
                   !new D(ledger.entryPrice).eq(position.entryPrice) ||
                   !new D(position.leverage).eq(preview.intent.leverage) ||
                   after.status !== 'ACTIVE'
                 )
                   throw new Error('ENTRY_RECONCILIATION_FAILED');
                 entryConfirmed = true;
+                protectionStarted = performance.now();
+                this.metrics.lastFillLatencyMs = Math.max(
+                  0,
+                  protectionStarted - entryStarted,
+                );
+                if (terminalPartial) this.metrics.partialFills++;
+                this.journal.log({
+                  timestamp: this.clock(),
+                  masterTradeId,
+                  accountId: state.accountId,
+                  requestId,
+                  status: 'ENTRY_CONFIRMED',
+                  adapter: this.adapter.name,
+                  fillLatencyMs: this.metrics.lastFillLatencyMs,
+                });
+                result.entryWasPartial = terminalPartial;
                 this.transition(
                   masterTradeId,
                   result,
@@ -383,6 +705,16 @@ export class FleetController {
                   )
                 )
                   throw new Error('FILL_RISK_CHANGED');
+                const filledRisk = assessFilledRisk(
+                  after,
+                  preview.intent,
+                  this.config,
+                  ledger.fees,
+                  actual.totalPlannedLoss,
+                );
+                result.actualPlannedLoss = filledRisk.totalLoss;
+                result.remainingAfterStop = filledRisk.remainingAfterStop;
+                if (!filledRisk.approved) throw new Error('FILL_RISK_CHANGED');
                 const prices = protectionPrices(
                   position.entryPrice,
                   preview.intent,
@@ -398,7 +730,7 @@ export class FleetController {
                   entryRequestId: requestId,
                   symbol: preview.intent.symbol,
                   positionSide: preview.intent.side,
-                  quantity: actual.quantity,
+                  quantity: ledger.filledSize,
                   type,
                   triggerPrice:
                     type === 'STOP_LOSS'
@@ -468,8 +800,10 @@ export class FleetController {
                 if (
                   this.circuitOpen ||
                   !confirmedLedger ||
-                  confirmedLedger.status !== 'FILLED' ||
-                  !new D(confirmedLedger.filledSize).eq(actual.quantity) ||
+                  confirmedLedger.status !== ledger.status ||
+                  confirmedLedger.remainderCanceled !==
+                    ledger.remainderCanceled ||
+                  !new D(confirmedLedger.filledSize).eq(ledger.filledSize) ||
                   confirmedLedger.entryPrice !== ledger.entryPrice ||
                   finalState.accountId !== state.accountId ||
                   finalState.status !== 'ACTIVE' ||
@@ -478,7 +812,7 @@ export class FleetController {
                   finalPosition.entryRequestId !== requestId ||
                   finalPosition.symbol !== preview.intent.symbol ||
                   finalPosition.side !== preview.intent.side ||
-                  !new D(finalPosition.quantity).eq(actual.quantity) ||
+                  !new D(finalPosition.quantity).eq(ledger.filledSize) ||
                   !new D(finalPosition.leverage).eq(preview.intent.leverage) ||
                   finalPosition.entryPrice !== position.entryPrice ||
                   finalPosition.protectionStatus !== 'ACTIVE'
@@ -487,6 +821,21 @@ export class FleetController {
                 result.status = 'FILLED';
                 result.error = null;
                 this.transition(masterTradeId, result, 'PROTECTED');
+                this.metrics.lastProtectionLatencyMs = Math.max(
+                  0,
+                  performance.now() - protectionStarted,
+                );
+                this.journal.log({
+                  timestamp: this.clock(),
+                  masterTradeId,
+                  accountId: state.accountId,
+                  requestId,
+                  status: 'PROTECTION_VERIFIED',
+                  adapter: this.adapter.name,
+                  protectionLatencyMs: this.metrics.lastProtectionLatencyMs,
+                  actualPlannedLoss: result.actualPlannedLoss!,
+                  remainingAfterStop: result.remainingAfterStop!,
+                });
               }
             }
           } catch {
@@ -498,6 +847,7 @@ export class FleetController {
                 : 'EXECUTION_UNCERTAIN'
               : 'ACCOUNT_READ_FAILED';
             if (submitted) {
+              if (entryConfirmed) this.metrics.protectionFailures++;
               // Halt and reduce exposure even if journaling has failed. Do not hide uncertainty after cleanup.
               this.circuitOpen = true;
               try {

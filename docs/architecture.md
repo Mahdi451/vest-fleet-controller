@@ -33,7 +33,7 @@ an optional later UI implementation, not a dependency for running the current da
 | Risk engine     | Decimal formulas, all-in loss, size rounding, reserve, freshness, margin                | Verified instrument and account rule policies                               |
 | Controller      | Selection, preview, sequential fan-out, idempotency, reconciliation, circuit halt       | Recovery UI, bounded concurrency only after rate-limit verification         |
 | Adapter         | Simulation-only capability contract                                                     | Official supported transport or native copier                               |
-| Simulator       | Independent accounts, unprotected entries, separate reduce-only exits, costs and breach | Deterministic event replay, persistent simulator snapshots, liquidity model |
+| Simulator       | Independent accounts, unprotected entries, separate reduce-only exits, costs and breach | Deterministic event replay and liquidity model                              |
 | Journal         | Durable master/child attempts and allowlisted audit events                              | Schema migrations, recovery reconciliation service                          |
 | Dashboard       | Local simulation controls                                                               | Price, fleet table, master controls, per-account preview, prominent flatten |
 
@@ -58,8 +58,7 @@ an optional later UI implementation, not a dependency for running the current da
    scenarios test reject, timeout and ambiguous-after-fill responses.
 7. Breach is permanent in a simulation run. Equity at or below the effective floor
    breaches and closes positions at the current simulated price plus adverse slippage.
-8. Simulator state is in memory; audit and deduplication records are durable. Restarting
-   the adapter is a new simulation, not resuming the same account reality.
+8. The dashboard persists validated simulator snapshots in its session journal and restores them halted. CLI runs remain isolated. An exclusive local owner lock prevents concurrent use of the same dashboard store.
 9. Circuit halts have no automatic reset. There is no live credential or execution mode
    flag that can turn this prototype into a funded-account trader.
 10. Leverage is checked as a configurable ceiling and margin requirement; venue-specific
@@ -99,8 +98,18 @@ Previews expire after the configured five seconds and are invalidated by UI chan
 The client preserves request identity during execution and blocks new entries on lost
 responses. Session IDs prevent old browser requests from trading after a simulator reset.
 
-Dashboard sessions retain balances in memory until reset/exit. Each new session gets a
-new SQLite journal. There is no persistent simulator restore or re-arm of a halted session.
+Dashboard sessions persist accounts, quote, entry/protection books and request fingerprints
+in SQLite. `SimulationStore` selects the active session through an atomic manifest and
+holds an exclusive owner lock. Restart restores the session, latches the halt and
+reconciles; an explicit new simulation rotates the session while preserving the old
+journal. Re-arm remains unimplemented. Stale locks require deliberate operator recovery.
+
+The controller owns one reusable reconciliation operation. Startup, the serialized
+one-second service loop and the Reconcile action call it. It checks authoritative
+simulator books, cancels verified orphan protection, detects divergence and cleans
+unsafe exposure. It never clears the circuit. `/api/health` and the dashboard expose
+book freshness, health and process-local stage metrics. The existing audit remains
+the durable event record. See [reliability audit](reliability-audit.md).
 
 ## Fleet exposure policy
 

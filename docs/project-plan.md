@@ -48,8 +48,7 @@ allocated as margin; `MARGIN_PERCENT` now supports this independently from drawd
 The private repository is `Mahdi451/vest-fleet-controller`; the initial implementation
 and detailed README are maintained on `main`.
 
-1. Continue M3 with persistent simulator snapshots, controlled restart/reconciliation,
-   and an operator re-arm workflow. Dashboard flatten already coordinates with active batches.
+1. Continue M3 with a reviewed operator re-arm workflow. Durable simulator snapshots, halted restart, periodic reconciliation and terminal partial fills are implemented; see [reliability audit](reliability-audit.md). Dashboard flatten coordinates with active batches.
 2. Obtain direct current Instant terms and staff/source permalinks for unresolved facts.
    Add evidence without promoting observations into permanent account rules.
 3. Extend dashboard recovery and synchronization using the proven shared core.

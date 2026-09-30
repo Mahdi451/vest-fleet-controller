@@ -4,6 +4,9 @@ Updated 2026-09-29. All application captures use the real local simulator with s
 accounts and prices. No generated trading UI, fabricated balances or live Vest session
 is represented as a screenshot.
 
+The current captures include the health indicator and Reconcile action added by the
+simulator beta reliability work.
+
 | Asset                                 | Purpose                                                         | Source                                  |
 | ------------------------------------- | --------------------------------------------------------------- | --------------------------------------- |
 | `images/dashboard-preview.png`        | Ten-account 10x / 25% margin preview                            | Running dashboard                       |
