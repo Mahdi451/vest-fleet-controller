@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
-    "dashboard": "node --import tsx apps/dashboard/server.ts"
+    "dashboard": "node --import tsx apps/dashboard/server.ts",
+    "setup:private": "node --import tsx apps/dashboard/setup-private.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",

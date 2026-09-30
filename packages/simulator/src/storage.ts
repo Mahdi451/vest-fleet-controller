@@ -47,11 +47,7 @@ export class SimulationStore {
       if (!existsSync(oldPath)) throw new Error('MISSING_SESSION_JOURNAL');
       const old = new Journal(oldPath);
       try {
-        if (
-          old
-            .commands()
-            .some((c) => c.status === 'PENDING' || c.status === 'UNKNOWN')
-        )
+        if (old.hasUnresolvedExecution())
           throw new Error('UNRESOLVED_COMMANDS_PRESERVED');
       } finally {
         old.close();

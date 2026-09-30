@@ -174,3 +174,77 @@ it('does not report success or retry after a completion persistence failure', as
   await execute(command);
   expect((await state()).health.metrics.entries).toBe(2);
 });
+it('adopts placeholder command ownership in place, preserves UNKNOWN and rejects legacy previews', async () => {
+  await stop();
+  const legacyDirectory = join(directory, 'legacy-runtime');
+  const { SimulationStore } =
+    await import('../packages/simulator/src/storage.ts');
+  const store = new SimulationStore(legacyDirectory);
+  const legacy = store.open();
+  const { envelope } = await import('../apps/dashboard/src/commands.ts');
+  const { FleetController } =
+    await import('../packages/execution/src/controller.ts');
+  const adapter = new MockVestAdapter(
+    config,
+    Date.now,
+    undefined,
+    '30400',
+    undefined,
+    (saved) => legacy.journal.saveSimulator(saved),
+  );
+  await adapter.connect();
+  const controller = new FleetController(adapter, config, legacy.journal);
+  const p = await controller.preview(intent, ['01']);
+  const command = envelope(
+    p,
+    legacy.sessionId,
+    { ownerId: 'local-owner', instanceId: 'local-instance' },
+    config.maxPreviewAgeMs,
+  );
+  legacy.journal.saveCommand({ ...command, status: 'PENDING' });
+  const oldPreview = { ...command, id: 'b'.repeat(64) };
+  legacy.journal.saveCommand(oldPreview);
+  await adapter.disconnect();
+  legacy.journal.close();
+  store.close();
+  app = await createDashboard(config, legacyDirectory);
+  await new Promise<void>((resolve) =>
+    app.server.listen(0, '127.0.0.1', resolve),
+  );
+  const address = app.server.address();
+  if (!address || typeof address === 'string') throw new Error('NO_ADDRESS');
+  base = `http://127.0.0.1:${address.port}`;
+  token = (await state()).token;
+  const recovered = (
+    await (await fetch(`${base}/api/commands/${command.id}`)).json()
+  ).command;
+  expect(recovered).toMatchObject({
+    id: command.id,
+    payloadHash: command.payloadHash,
+    ownerId: 'local-owner',
+    status: 'UNKNOWN',
+  });
+  expect((await state()).commands).toContainEqual(recovered);
+  expect((await state()).identity.legacyCommandsBound).toBe(true);
+  expect((await (await execute(oldPreview)).json()).error).toBe(
+    'LEGACY_COMMAND_REQUIRES_NEW_PREVIEW',
+  );
+  expect((await post('reset', { confirm: 'RESET_SIMULATION' })).status).toBe(
+    400,
+  );
+});
+it('preserves unfinished legacy controller claims across reset and startup reset flags', async () => {
+  const { command } = await preview();
+  await stop();
+  const journal = new Journal(join(directory, `${command.sessionId}.sqlite`));
+  journal.claim('unfinished-legacy-trade', 'legacy-preview');
+  journal.close();
+  await expect(createDashboard(config, directory, true)).rejects.toThrow(
+    'UNRESOLVED_COMMANDS_PRESERVED',
+  );
+  await start();
+  expect((await post('reset', { confirm: 'RESET_SIMULATION' })).status).toBe(
+    400,
+  );
+  expect((await state()).halted).toBe(true);
+});

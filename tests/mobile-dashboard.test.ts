@@ -49,6 +49,7 @@ async function fixture(
     );
     await run(page, context, base);
   } finally {
+    await page.unrouteAll({ behavior: 'wait' });
     await context.close();
     await new Promise<void>((resolve) => app.server.close(() => resolve()));
     await app.close();
@@ -266,19 +267,29 @@ describe('phone simulation dashboard acceptance (Chromium emulation)', () => {
     expect(writes).toBe(1);
   });
   test('unknown host outcome stays visibly unknown with unsafe entry blocked and cleanup reachable', async (page) => {
+    let executeFinished!: () => void, statusFinished!: () => void;
+    const executeHandled = new Promise<void>((resolve) => {
+      executeFinished = resolve;
+    });
+    const statusHandled = new Promise<void>((resolve) => {
+      statusFinished = resolve;
+    });
     await page.route('**/api/execute', async (route) => {
       const response = await route.fetch();
       const result = await response.json();
       result.command.status = 'UNKNOWN';
       await route.fulfill({ response, json: result });
+      executeFinished();
     });
     await page.route('**/api/commands/*', async (route) => {
       const response = await route.fetch();
       const result = await response.json();
       result.command.status = 'UNKNOWN';
       await route.fulfill({ response, json: result });
+      statusFinished();
     });
     await execute(page);
+    await Promise.all([executeHandled, statusHandled]);
     await page.waitForFunction(() =>
       document
         .getElementById('command-status')

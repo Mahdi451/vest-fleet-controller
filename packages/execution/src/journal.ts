@@ -40,11 +40,14 @@ export type AuditEvent = z.infer<typeof auditSchema>;
 export const commandSchema = z.object({
   id: z.string().regex(/^[a-f0-9]{64}$/),
   payloadHash: z.string().regex(/^[a-f0-9]{64}$/),
-  ownerId: z.string(),
-  instanceId: z.string(),
+  ownerId: z.union([z.string().uuid(), z.literal('local-owner')]),
+  instanceId: z.union([z.string().uuid(), z.literal('local-instance')]),
   sessionId: z.string().uuid(),
   previewId: z.string().length(64),
-  selected: z.array(z.string()),
+  selected: z
+    .array(z.string().regex(/^0[1-9]$|^10$/))
+    .min(1)
+    .max(10),
   createdAt: z.number(),
   expiresAt: z.number(),
   status: z.enum(['PREVIEWED', 'PENDING', 'COMPLETE', 'UNKNOWN']),
@@ -182,12 +185,33 @@ export class Journal {
       .prepare('UPDATE trades SET result=? WHERE id=?')
       .run(JSON.stringify(result), id);
   }
+  hasUnresolvedExecution(): boolean {
+    return (
+      !!this.db
+        .prepare('SELECT 1 FROM trades WHERE result IS NULL LIMIT 1')
+        .get() ||
+      !!this.db
+        .prepare(
+          "SELECT 1 FROM browser_actions WHERE state='SUBMITTING' LIMIT 1",
+        )
+        .get() ||
+      this.commands().some(
+        (c) => c.status === 'PENDING' || c.status === 'UNKNOWN',
+      ) ||
+      this.allChildren().some((c) => c.status === 'UNKNOWN')
+    );
+  }
   halted(): boolean {
     return (
       !!this.db.prepare("SELECT 1 FROM settings WHERE key='halted'").get() ||
       !!this.db
         .prepare(
           "SELECT 1 FROM browser_actions WHERE state='SUBMITTING' LIMIT 1",
+        )
+        .get() ||
+      !!this.db
+        .prepare(
+          "SELECT 1 FROM dashboard_commands WHERE json_extract(envelope,'$.status') IN ('PENDING','UNKNOWN') LIMIT 1",
         )
         .get() ||
       !!this.db
@@ -230,6 +254,19 @@ export class Journal {
   }
   saveCommand(command: CommandEnvelope) {
     commandSchema.parse(command);
+    const old = this.command(command.id);
+    if (old) {
+      const { status: oldStatus, results: oldResults, ...oldPayload } = old;
+      const { status, results, ...payload } = command;
+      if (JSON.stringify(oldPayload) !== JSON.stringify(payload))
+        throw new Error('IDEMPOTENCY_CONFLICT');
+      if (
+        ['COMPLETE', 'UNKNOWN'].includes(oldStatus) &&
+        (oldStatus !== status ||
+          JSON.stringify(oldResults) !== JSON.stringify(results))
+      )
+        throw new Error('COMMAND_RESULT_IMMUTABLE');
+    }
     this.db
       .prepare(
         'INSERT INTO dashboard_commands VALUES(?,?) ON CONFLICT(id) DO UPDATE SET envelope=excluded.envelope',
@@ -260,6 +297,22 @@ export class Journal {
     this.db
       .prepare('INSERT INTO command_aliases VALUES(?,?,?)')
       .run(id, fingerprint, commandId);
+  }
+  legacyIdentityBinding(): { ownerId: string; instanceId: string } | null {
+    const row = this.db
+      .prepare(
+        "SELECT value FROM settings WHERE key='legacy_identity_binding_v1'",
+      )
+      .get();
+    if (!row) return null;
+    return z
+      .object({
+        fromOwner: z.literal('local-owner'),
+        fromInstance: z.literal('local-instance'),
+        ownerId: z.string().uuid(),
+        instanceId: z.string().uuid(),
+      })
+      .parse(JSON.parse(String(row.value)));
   }
   recoverCommands() {
     for (const command of this.commands()) {

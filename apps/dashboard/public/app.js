@@ -7,6 +7,7 @@ let side = 'LONG',
   polling = false,
   connected = false,
   uncertain = false;
+let authVersion = 0;
 let uiVersion = 0,
   evidenceReceivedAt = 0;
 const selected = new Set([
@@ -42,15 +43,32 @@ function readCommand() {
   }
 }
 function saveCommand(c) {
-  // Persist identity before POST. This is a status reference, never a delivery queue.
-  localStorage.setItem(STORAGE, JSON.stringify(c));
+  // Persist only a status reference before POST, never cached account results or a delivery queue.
+  const reference = Object.fromEntries(
+    [
+      'id',
+      'payloadHash',
+      'ownerId',
+      'instanceId',
+      'sessionId',
+      'createdAt',
+      'expiresAt',
+      'status',
+    ]
+      .filter((key) => key in c)
+      .map((key) => [key, c[key]]),
+  );
+  localStorage.setItem(STORAGE, JSON.stringify(reference));
 }
 function belongs(c) {
   return (
     c &&
     state?.identity &&
-    c.ownerId === state.identity.ownerId &&
-    c.instanceId === state.identity.instanceId
+    ((c.ownerId === state.identity.ownerId &&
+      c.instanceId === state.identity.instanceId) ||
+      (state.identity.legacyCommandsBound &&
+        c.ownerId === 'local-owner' &&
+        c.instanceId === 'local-instance'))
   );
 }
 function evidenceFresh() {
@@ -61,7 +79,56 @@ function evidenceFresh() {
       state.freshness.maxAgeMs
   );
 }
+function clearPrivateView(checking = false) {
+  // Keep only the durable status reference on disk. Private data must leave the DOM.
+  authVersion++;
+  connected = false;
+  state = preview = token = sessionId = command = null;
+  uncertain = false;
+  const saved = readCommand();
+  if (saved) {
+    try {
+      saveCommand(saved);
+    } catch {
+      /* Never delete an unresolved reference on storage failure. */
+    }
+  }
+  $('simulation-workspace').hidden = true;
+  $('login-panel').hidden = checking;
+  $('access-status').hidden = false;
+  $('access-status').textContent = checking
+    ? 'Verifying access to your simulation host…'
+    : 'Authentication required. Sign in to recover command status.';
+  $('logout').hidden = true;
+  $('login-secret').value = '';
+  $('accounts').replaceChildren();
+  $('activity').replaceChildren();
+  for (const id of [
+    'quote',
+    'equity',
+    'drawdown',
+    'positions',
+    'loss',
+    'notional',
+    'margin',
+  ])
+    $(id).textContent = '—';
+  $('instance').textContent = 'Execution instance not verified';
+  $('selection').textContent = 'Account inventory not loaded';
+  $('circuit').textContent = 'Authentication required';
+  $('preview-status').textContent = 'AWAITING PREVIEW';
+  $('trade-preview').textContent = 'Risk preview not loaded';
+  $('price').value = '30400';
+  $('confirm-details').textContent = '';
+  if ($('confirm-entry').open) {
+    $('confirm-entry').returnValue = 'cancel';
+    $('confirm-entry').close();
+  }
+  message('Sign in to your private simulation host to recover command status.');
+  controls();
+}
 async function api(path, data) {
+  const version = authVersion;
   const controller = new AbortController();
   const deadline = setTimeout(
     () => controller.abort(),
@@ -88,11 +155,10 @@ async function api(path, data) {
   } finally {
     clearTimeout(deadline);
   }
+  if (version !== authVersion) throw new Error('AUTHORIZATION_CHANGED');
   if (!response.ok) {
     if (response.status === 401) {
-      connected = false;
-      $('login-panel').hidden = false;
-      $('logout').hidden = true;
+      clearPrivateView();
     }
     const error = new Error(result.error || 'REQUEST_FAILED');
     error.status = response.status;
@@ -152,6 +218,15 @@ function controls() {
   $('freshness').textContent = verified
     ? `Evidence ${evidenceFresh() ? 'FRESH' : 'STALE'} · verified ${Math.max(0, Math.floor((Date.now() - verified) / 1000))}s ago (${new Date(verified).toLocaleTimeString()})`
     : 'Evidence not verified';
+  if (
+    !connected &&
+    $('simulation-workspace').hidden &&
+    $('login-panel').hidden
+  ) {
+    $('access-status').hidden = false;
+    $('access-status').textContent =
+      'Controller unreachable; entries blocked. Restore communication to your simulation host.';
+  }
   $('command-status').textContent = command
     ? `Command ${uncertain ? 'UNKNOWN — querying existing identity' : command.status} · ${command.id}`
     : 'No pending command';
@@ -348,17 +423,26 @@ async function recoverCommand() {
   }
 }
 async function refresh() {
+  const version = authVersion;
   const previous = sessionId;
+  if ($('simulation-workspace').hidden && $('login-panel').hidden) {
+    $('access-status').hidden = false;
+    $('access-status').textContent = 'Connecting to simulation host…';
+  }
   const next = await api('state');
+  if (version !== authVersion) return;
   state = next;
   evidenceReceivedAt = performance.now();
   token = next.token;
   sessionId = next.sessionId;
   connected = true;
-  $('login-panel').hidden = true;
-  $('logout').hidden = !next.identity?.authenticated;
   if (previous && previous !== sessionId) preview = null;
   await recoverCommand();
+  if (version !== authVersion || !state) return;
+  $('access-status').hidden = true;
+  $('simulation-workspace').hidden = false;
+  $('login-panel').hidden = true;
+  $('logout').hidden = !next.identity?.authenticated;
   render();
 }
 async function action(fn) {
@@ -574,12 +658,7 @@ $('login-form').addEventListener('submit', (event) => {
 $('logout').onclick = () =>
   action(async () => {
     await api('logout', {});
-    connected = false;
-    preview = null;
-    state = null;
-    token = null;
-    $('login-panel').hidden = false;
-    $('logout').hidden = true;
+    clearPrivateView();
     message(
       'Signed out. Pending commands remain owned by the host; sign in to query their status.',
     );
@@ -612,6 +691,7 @@ window.addEventListener('storage', (event) => {
   }
 });
 window.addEventListener('pageshow', () => {
+  if (state?.identity?.authenticated) clearPrivateView(true);
   preview = null;
   connected = false;
   controls();
@@ -633,6 +713,7 @@ window.addEventListener('online', () => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
+    if (state?.identity?.authenticated) clearPrivateView(true);
     preview = null;
     connected = false;
     controls();
@@ -643,7 +724,7 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 setInterval(async () => {
-  if (busy || polling) return;
+  if (busy || polling || (!state && !$('login-panel').hidden)) return;
   polling = true;
   const version = uiVersion;
   try {

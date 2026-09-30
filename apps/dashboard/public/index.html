@@ -47,221 +47,236 @@
         </form>
         <p id="login-message" role="alert"></p>
       </section>
-      <section class="connection-panel" aria-live="polite">
-        <strong id="connection">Connecting to controller…</strong>
-        <span id="freshness">Evidence not verified</span>
-        <span id="command-status">No pending command</span>
-        <small id="instance">Execution instance not verified</small>
-      </section>
-      <nav class="phone-nav" aria-label="Simulation screens">
-        <button data-screen="trade" aria-current="page">Trade</button>
-        <button data-screen="accounts">Accounts</button>
-        <button data-screen="activity">Activity</button>
-      </nav>
-      <section class="heading">
-        <div>
-          <span class="eyebrow">FLEET / COMMAND CENTER</span>
-          <h1>One intent. Ten risk budgets.</h1>
-          <p>
-            Preview each account’s exposure. Execute across your selected fleet.
-          </p>
+      <p id="access-status" role="status" aria-live="polite">
+        Connecting to simulation host…
+      </p>
+      <div id="simulation-workspace" hidden>
+        <section class="connection-panel" aria-live="polite">
+          <strong id="connection">Connecting to controller…</strong>
+          <span id="freshness">Evidence not verified</span>
+          <span id="command-status">No pending command</span>
+          <small id="instance">Execution instance not verified</small>
+        </section>
+        <nav class="phone-nav" aria-label="Simulation screens">
+          <button data-screen="trade" aria-current="page">Trade</button>
+          <button data-screen="accounts">Accounts</button>
+          <button data-screen="activity">Activity</button>
+        </nav>
+        <section class="heading">
+          <div>
+            <span class="eyebrow">FLEET / COMMAND CENTER</span>
+            <h1>One intent. Ten risk budgets.</h1>
+            <p>
+              Preview each account’s exposure. Execute across your selected
+              fleet.
+            </p>
+          </div>
+          <button id="flatten" class="flatten">
+            ■ &nbsp; FLATTEN ALL<small
+              >Close every simulated position · halt entries</small
+            >
+          </button>
+        </section>
+        <div class="notice">
+          Synthetic accounts and prices. No Vest connection. All actions below
+          run in the simulator.
         </div>
-        <button id="flatten" class="flatten">
-          ■ &nbsp; FLATTEN ALL<small
-            >Close every simulated position · halt entries</small
-          >
-        </button>
-      </section>
-      <div class="notice">
-        Synthetic accounts and prices. No Vest connection. All actions below run
-        in the simulator.
-      </div>
-      <section class="metrics" data-view="trade">
-        <article>
-          <span>NQ / NDX · SYNTHETIC</span><strong id="quote">—</strong
-          ><small>Perpetual model · not CME futures</small>
-        </article>
-        <article>
-          <span>FLEET EQUITY</span><strong id="equity">—</strong
-          ><small>Across all ten accounts</small>
-        </article>
-        <article>
-          <span>REMAINING DRAWDOWN</span><strong id="drawdown">—</strong
-          ><small>Equity above configured floors</small>
-        </article>
-        <article>
-          <span>OPEN POSITIONS</span><strong id="positions">—</strong
-          ><small id="circuit">Checking entry controls</small>
-        </article>
-      </section>
-      <div class="workspace">
-        <aside class="panel trade" data-view="trade">
-          <div class="panel-title">
-            <h2>Master trade</h2>
-            <span>01</span>
-          </div>
-          <label>Direction</label>
-          <div class="segmented" id="direction">
-            <button data-side="LONG" class="active">↗ LONG</button
-            ><button data-side="SHORT">↘ SHORT</button>
-          </div>
-          <label for="leverage">Leverage <span>Buying power</span></label
-          ><select id="leverage">
-            <option value="10" selected>10x</option>
-            <option value="20">20x</option>
-            <option value="30">30x</option>
-            <option value="40">40x</option>
-            <option value="50">50x</option>
-          </select>
-          <label for="mode">Sizing mode</label
-          ><select id="mode">
-            <option value="MARGIN_PERCENT">% of equity as margin</option>
-            <option value="PERCENT_DRAWDOWN">% of remaining drawdown</option>
-            <option value="FIXED_DOLLAR">Fixed dollar loss budget</option>
-            <option value="FIXED_NOTIONAL">Fixed notional exposure</option>
-          </select>
-          <label for="risk"
-            >Allocation / risk
-            <span id="risk-unit">% equity as margin</span></label
-          >
-          <div class="risk-input">
-            <input
-              id="risk"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value="25"
-            /><span id="risk-suffix">%</span>
-          </div>
-          <div class="presets">
-            <button data-leverage="10" data-risk="75">10x / 75% margin</button
-            ><button data-leverage="50" data-risk="25">50x / 25% margin</button>
-          </div>
-          <div class="pair">
-            <div>
-              <label for="stop">Stop · points</label
-              ><input id="stop" type="number" min="1" value="80" />
-            </div>
-            <div>
-              <label for="target">Target · points</label
-              ><input id="target" type="number" min="1" value="80" />
-            </div>
-          </div>
-          <p class="hint">
-            Leverage × allocated margin sets trading power. Stop loss and costs
-            are checked separately. Each account must retain a $2 reserve.
-          </p>
-          <button id="preview" class="secondary full">
-            Refresh trade preview
-          </button>
-          <div class="actions">
-            <button id="long" class="long" disabled>↗ LONG SELECTED</button
-            ><button id="short" class="short" disabled>↘ SHORT SELECTED</button>
-          </div>
-          <div class="trade-preview" id="trade-preview">
-            Risk preview not loaded
-          </div>
-          <p class="hint" id="expiry">Choose your exposure, then preview.</p>
-        </aside>
-        <section class="panel fleet" data-view="accounts">
-          <div class="panel-title">
-            <div>
-              <h2>Account fleet</h2>
-              <p id="selection">10 accounts selected</p>
-            </div>
-            <span class="tag" id="preview-status">AWAITING PREVIEW</span>
-          </div>
-          <div class="summary">
-            <div>
-              <span>Planned loss · requested</span><strong id="loss">—</strong>
-            </div>
-            <div>
-              <span>Notional · requested</span><strong id="notional">—</strong>
-            </div>
-            <div>
-              <span>Margin · requested</span><strong id="margin">—</strong>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Use</th>
-                  <th>Account</th>
-                  <th>Equity / floor</th>
-                  <th>DD buffer</th>
-                  <th>Planned loss</th>
-                  <th>Notional</th>
-                  <th>After stop</th>
-                  <th>Position / check</th>
-                </tr>
-              </thead>
-              <tbody id="accounts"></tbody>
-            </table>
-          </div>
-          <div class="table-note">
-            <span>All-in loss budget ≠ margin allocation.</span
-            ><span>Quantity is sized independently for every account.</span>
-          </div>
+        <section class="metrics" data-view="trade">
+          <article>
+            <span>NQ / NDX · SYNTHETIC</span><strong id="quote">—</strong
+            ><small>Perpetual model · not CME futures</small>
+          </article>
+          <article>
+            <span>FLEET EQUITY</span><strong id="equity">—</strong
+            ><small>Across all ten accounts</small>
+          </article>
+          <article>
+            <span>REMAINING DRAWDOWN</span><strong id="drawdown">—</strong
+            ><small>Equity above configured floors</small>
+          </article>
+          <article>
+            <span>OPEN POSITIONS</span><strong id="positions">—</strong
+            ><small id="circuit">Checking entry controls</small>
+          </article>
         </section>
+        <div class="workspace">
+          <aside class="panel trade" data-view="trade">
+            <div class="panel-title">
+              <h2>Master trade</h2>
+              <span>01</span>
+            </div>
+            <label>Direction</label>
+            <div class="segmented" id="direction">
+              <button data-side="LONG" class="active">↗ LONG</button
+              ><button data-side="SHORT">↘ SHORT</button>
+            </div>
+            <label for="leverage">Leverage <span>Buying power</span></label
+            ><select id="leverage">
+              <option value="10" selected>10x</option>
+              <option value="20">20x</option>
+              <option value="30">30x</option>
+              <option value="40">40x</option>
+              <option value="50">50x</option>
+            </select>
+            <label for="mode">Sizing mode</label
+            ><select id="mode">
+              <option value="MARGIN_PERCENT">% of equity as margin</option>
+              <option value="PERCENT_DRAWDOWN">% of remaining drawdown</option>
+              <option value="FIXED_DOLLAR">Fixed dollar loss budget</option>
+              <option value="FIXED_NOTIONAL">Fixed notional exposure</option>
+            </select>
+            <label for="risk"
+              >Allocation / risk
+              <span id="risk-unit">% equity as margin</span></label
+            >
+            <div class="risk-input">
+              <input
+                id="risk"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value="25"
+              /><span id="risk-suffix">%</span>
+            </div>
+            <div class="presets">
+              <button data-leverage="10" data-risk="75">10x / 75% margin</button
+              ><button data-leverage="50" data-risk="25">
+                50x / 25% margin
+              </button>
+            </div>
+            <div class="pair">
+              <div>
+                <label for="stop">Stop · points</label
+                ><input id="stop" type="number" min="1" value="80" />
+              </div>
+              <div>
+                <label for="target">Target · points</label
+                ><input id="target" type="number" min="1" value="80" />
+              </div>
+            </div>
+            <p class="hint">
+              Leverage × allocated margin sets trading power. Stop loss and
+              costs are checked separately. Each account must retain a $2
+              reserve.
+            </p>
+            <button id="preview" class="secondary full">
+              Refresh trade preview
+            </button>
+            <div class="actions">
+              <button id="long" class="long" disabled>↗ LONG SELECTED</button
+              ><button id="short" class="short" disabled>
+                ↘ SHORT SELECTED
+              </button>
+            </div>
+            <div class="trade-preview" id="trade-preview">
+              Risk preview not loaded
+            </div>
+            <p class="hint" id="expiry">Choose your exposure, then preview.</p>
+          </aside>
+          <section class="panel fleet" data-view="accounts">
+            <div class="panel-title">
+              <div>
+                <h2>Account fleet</h2>
+                <p id="selection">10 accounts selected</p>
+              </div>
+              <span class="tag" id="preview-status">AWAITING PREVIEW</span>
+            </div>
+            <div class="summary">
+              <div>
+                <span>Planned loss · requested</span
+                ><strong id="loss">—</strong>
+              </div>
+              <div>
+                <span>Notional · requested</span
+                ><strong id="notional">—</strong>
+              </div>
+              <div>
+                <span>Margin · requested</span><strong id="margin">—</strong>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Use</th>
+                    <th>Account</th>
+                    <th>Equity / floor</th>
+                    <th>DD buffer</th>
+                    <th>Planned loss</th>
+                    <th>Notional</th>
+                    <th>After stop</th>
+                    <th>Position / check</th>
+                  </tr>
+                </thead>
+                <tbody id="accounts"></tbody>
+              </table>
+            </div>
+            <div class="table-note">
+              <span>All-in loss budget ≠ margin allocation.</span
+              ><span>Quantity is sized independently for every account.</span>
+            </div>
+          </section>
+        </div>
+        <div id="message" role="status" aria-live="polite">
+          Loading simulation…
+        </div>
+        <div class="bottom">
+          <section class="panel" data-view="activity">
+            <div class="panel-title">
+              <h2>Move the simulated market</h2>
+              <span>02</span>
+            </div>
+            <p>
+              Apply a new quote to test P&amp;L, stops, targets and drawdown.
+            </p>
+            <div class="market">
+              <button id="down">−80 pts</button
+              ><input
+                id="price"
+                type="number"
+                min="1"
+                value="30400"
+                aria-label="Synthetic market price"
+              /><button id="apply">Apply price</button
+              ><button id="up">+80 pts</button>
+            </div>
+            <p class="hint">
+              A price gap can exceed the planned stop loss. Funding settles only
+              in explicit simulator scenarios.
+            </p>
+          </section>
+          <section class="panel" data-view="activity">
+            <div class="panel-title">
+              <h2>Activity</h2>
+              <button id="reconcile" class="text-button">Reconcile</button>
+              <button id="reset" class="text-button">New simulation</button>
+            </div>
+            <div id="activity" class="activity">No activity yet.</div>
+            <p class="hint">
+              Reset starts a new fleet and retains prior journals. Restart
+              restores the saved fleet with entries halted for review.
+            </p>
+          </section>
+        </div>
+        <dialog id="confirm-entry">
+          <form method="dialog">
+            <h2>Confirm simulated entry</h2>
+            <p id="confirm-details"></p>
+            <p>
+              SIMULATION ONLY · No live orders. Review account risk on the
+              Accounts screen before confirming.
+            </p>
+            <button value="cancel">Cancel</button>
+            <button id="confirm-submit" value="execute">
+              Confirm simulated entry
+            </button>
+          </form>
+        </dialog>
+        <footer>
+          MOCK VEST ADAPTER
+          <span>Host simulator · no Vest login · no live orders</span>
+        </footer>
       </div>
-      <div id="message" role="status" aria-live="polite">
-        Loading simulation…
-      </div>
-      <div class="bottom">
-        <section class="panel" data-view="activity">
-          <div class="panel-title">
-            <h2>Move the simulated market</h2>
-            <span>02</span>
-          </div>
-          <p>Apply a new quote to test P&amp;L, stops, targets and drawdown.</p>
-          <div class="market">
-            <button id="down">−80 pts</button
-            ><input
-              id="price"
-              type="number"
-              min="1"
-              value="30400"
-              aria-label="Synthetic market price"
-            /><button id="apply">Apply price</button
-            ><button id="up">+80 pts</button>
-          </div>
-          <p class="hint">
-            A price gap can exceed the planned stop loss. Funding settles only
-            in explicit simulator scenarios.
-          </p>
-        </section>
-        <section class="panel" data-view="activity">
-          <div class="panel-title">
-            <h2>Activity</h2>
-            <button id="reconcile" class="text-button">Reconcile</button>
-            <button id="reset" class="text-button">New simulation</button>
-          </div>
-          <div id="activity" class="activity">No activity yet.</div>
-          <p class="hint">
-            Reset starts a new fleet and retains prior journals. Restart
-            restores the saved fleet with entries halted for review.
-          </p>
-        </section>
-      </div>
-      <dialog id="confirm-entry">
-        <form method="dialog">
-          <h2>Confirm simulated entry</h2>
-          <p id="confirm-details"></p>
-          <p>
-            SIMULATION ONLY · No live orders. Review account risk on the
-            Accounts screen before confirming.
-          </p>
-          <button value="cancel">Cancel</button>
-          <button id="confirm-submit" value="execute">
-            Confirm simulated entry
-          </button>
-        </form>
-      </dialog>
-      <footer>
-        MOCK VEST ADAPTER
-        <span>Local only · no credentials · no live orders</span>
-      </footer>
     </main>
   </body>
 </html>
