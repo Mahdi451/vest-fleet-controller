@@ -176,3 +176,11 @@ Fill timing measures submission-to-authoritative-confirmation; protection timing
 confirmation-to-verified-protection. These are local monotonic durations, not venue fill
 timestamps. Audit records timing/risk; process-local counters report reconciliation
 runs/failures, divergences, entries, partial fills and protection failures.
+
+## Browser fixture transport
+
+The [browser execution investigation](browser-execution.md) adds a fixture-only adapter
+and sequential coordinator around this unchanged lifecycle. Market fills, independent
+protection, risk checks and unknown handling are still owned by the controller. Browser
+attempts are durably claimed before possible clicks. A signed-out public FAQ inspection
+confirmed funded API unavailability; it did not authorize automated funded UI execution.

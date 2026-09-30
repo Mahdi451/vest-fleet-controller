@@ -90,6 +90,14 @@ undocumented endpoint, fake WebSocket layer or assumed API rate limit was added.
 - No automatic live quote catch-up occurs while offline. Persistent snapshots are not
   an exchange, a live execution ledger, or full deterministic market-event replay.
 
+## Direction update after this audit
+
+The later [browser investigation](browser-execution.md) supersedes API-oriented planning
+below for this funded fleet. The public FAQ now confirms that Evaluation/Live Funded/
+Instant API trading is unavailable. Required execution evidence must come from an
+explicitly permitted visible-UI workflow or compatible official copier. Fixture-only
+browser tests do not establish permission or real UI capability.
+
 ## Required before live deployment
 
 1. Obtain dated official funded-account permission and documentation covering auth,

@@ -10,7 +10,7 @@ Date: 2026-09-29. Scope: local simulation-only implementation, including post-fi
 | TypeScript strict checking | Passed                                                                             |
 | ESLint                     | Passed                                                                             |
 | Prettier check             | Passed                                                                             |
-| Vitest                     | **124 tests passed, 7 files passed**                                               |
+| Vitest                     | **155 tests passed, 8 files passed**                                               |
 | Preview CLI                | Passed; all ten independently sized accounts displayed                             |
 | JSON preview               | Passed                                                                             |
 | Partial-failure CLI        | Seven filled, account 08 rejected, 09–10 blocked                                   |
@@ -48,7 +48,7 @@ These are reproducible simulation results, not live quotes or trading recommenda
 ## Not validated / not delivered
 
 - No Vest credentials, live orders, authenticated API calls or private endpoint probes.
-- No verified Instant API/copy authorization, live market symbol or market specifications.
+- Funded API use is now explicitly unavailable in the official FAQ. Browser/copy permission, live market mapping and market specifications remain unverified.
 - No exchange paper environment, small real account or multi-account real validation.
 - No live adapter or remotely authenticated controller service.
 - No distributed coordination or operator re-arm workflow preserving balances. Durable local simulator restore, exclusive owner lock and operator/periodic reconciliation are now implemented. Dashboard flatten and explicit new-simulation reset remain available.
@@ -153,3 +153,42 @@ Health and authenticated reconciliation endpoints and periodic scans are also ex
 No WebSocket/429/signing tests are claimed: those transports do not exist. No live
 adapter, credentials, private endpoints or real orders were introduced. See the
 [17-item audit](reliability-audit.md) for the precise remaining boundaries.
+
+## Browser architecture change and fixture validation — 2026-09-29
+
+The complete suite passes **155 tests in eight files**, including **31 browser/journal
+cases** added to the 124-test baseline. Formatting, ESLint and strict TypeScript pass.
+Playwright 1.62.1 is pinned as a development dependency. Chromium interacted with original
+local fixtures only, with network requests blocked and no persistent profile or credentials.
+The production simulator dashboard still uses MockVestAdapter.
+
+Executed locally with the existing Chromium binary:
+
+```sh
+BROWSER_TEST_EXECUTABLE=/tmp/vest-visuals/chromium pnpm check
+```
+
+For a normal checkout, install Chromium using `pnpm exec playwright install chromium`,
+then run `pnpm check` without that environment variable.
+
+Coverage includes:
+
+- LONG/SHORT actual-fill-relative SL/TP and full ten-account sequential execution with
+  independent quantities; master retry replay without new clicks.
+- Wrong selection, changed context after form preparation, changed account snapshot,
+  form tampering, stale/missing/duplicate visible evidence and non-fixture rejection.
+- SL/TP rejection, missing protection evidence, terminal and pending partial fills,
+  lost submission response, drift before a later entry and drift detected after fill.
+- Protection and cancel deduplication, conflicting fingerprints, durable-before-click
+  write failure, manual close detection, concurrent-execute refusal and preserved hedge guard.
+- Closed page and stalled action after fill; uncertainty/cleanup failure remains explicit.
+- New browser context plus reopened disk journal after interruptions following entry
+  and SL creation. Recover saved simulator books, flatten unsafe exposure, preserve halt,
+  and verify no redispatched entry. These are browser-context recovery tests, not new
+  process-kill tests; the prior real SIGKILL tests remain in the full suite.
+- An unfinished durable browser action halts recovery even without a master trade row.
+
+Public FAQ and terms were inspected read-only in Work Browser. The browser was signed
+out; the actual funded account selector, cross-tab behavior and execution controls were
+not tested. Passing local fixtures is not evidence of Vest permission or live compatibility.
+No real or venue-hosted paper order was placed.

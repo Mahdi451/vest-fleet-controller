@@ -21,14 +21,13 @@ action. The capture script also checks header image loading and favicon delivery
 The capture script starts an isolated in-memory dashboard, uses browser controls to
 exercise its real behavior, captures the images, then closes the browser and server.
 It also renders the exact SVG diagram to PNG. Run from the repository root after the
-normal `pnpm install`. Playwright is a documentation-only dependency, deliberately
-outside the app's runtime dependencies:
+normal `pnpm install`. Playwright is a pinned development dependency used by both the
+fixture-browser tests and the documentation capture script; it is not an app runtime
+dependency. Install Chromium separately:
 
 ```sh
-npm install --prefix /tmp/vest-docs-tools playwright
-/tmp/vest-docs-tools/node_modules/.bin/playwright install chromium
-PLAYWRIGHT_MODULE_PATH=/tmp/vest-docs-tools/node_modules/playwright \
-  node --import tsx scripts/capture-visuals.mjs
+pnpm exec playwright install chromium
+node --import tsx scripts/capture-visuals.mjs
 ```
 
 If Chromium is already available, set `DOCS_CHROMIUM_PATH` to its executable. The

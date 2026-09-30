@@ -15,7 +15,8 @@ flowchart TD
   Fleet --> Journal[SQLite journal and audit]
   Fleet --> Port[ExecutionAdapter]
   Port --> Mock[MockVestAdapter]
-  Port -. future gated implementation .-> Official[Official API or native copier]
+  Port --> Browser[Browser adapter: local fixtures only]
+  Browser -. permission and evidence required .-> UIPath[Permitted visible UI or native copier]
   Mock --> Domain
 ```
 
@@ -49,7 +50,7 @@ an optional later UI implementation, not a dependency for running the current da
 4. All new entries require flat accounts. Same-direction additions and reversals are
    rejected; partial closes are supported by the mock. Opposite fleet positions are
    blocked across enabled accounts by the mandatory hedge guard; disabled accounts
-   are ignored under the user's specified scope. Vest's exact policy remains unverified.
+   are ignored under the user's specified scope. The current FAQ confirms the opposite-side restriction; disabled-account policy scope is unverified.
 5. Daily-loss floor may be supplied, and the stricter floor wins. Automatic daily
    reset logic is deferred because Instant applicability and baseline are unresolved.
 6. Sequential dispatch simplifies the initial safety model and allows revalidation
@@ -66,8 +67,10 @@ an optional later UI implementation, not a dependency for running the current da
 
 ## Future adapter contract
 
-Future implementations may be named `VestOfficialApiAdapter` and
-`VestNativeCopierAdapter`. Both must provide verified account scoping, market metadata,
+API trading is explicitly unavailable for this fleet’s Evaluation/Live Funded/Instant
+products. `VestOfficialApiAdapter` is removed from this roadmap. The implemented
+`BrowserExecutionAdapter` is fixture-only; a permitted visible UI implementation or
+`VestNativeCopierAdapter` remains gated. Either would need verified account scoping, market metadata,
 authoritative reconciliation, protection status, request identity and emergency close
 semantics. A native copier may not support independent follower sizing: if so it cannot
 claim compatibility with this controller's risk guarantees. Capability negotiation and
@@ -127,3 +130,10 @@ no correlated blocking policy is shipped. A future adapter must scope the fleet 
 accounts and provide authoritative, fresh positions plus unresolved-order reconciliation.
 A local rule cannot prevent a separate manual trader or service from changing positions
 between checks; no atomic cross-account venue guarantee is claimed.
+
+## Browser investigation update
+
+See [browser execution](browser-execution.md) for the immutable account bindings,
+serialized DOM ownership, additive browser-attempt journal, destination-price drift gate,
+fixture-only Playwright tests and unresolved policy/UI evidence. The risk engine and
+existing execution state machine are unchanged. No browser path is enabled in the dashboard.

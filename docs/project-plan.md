@@ -16,7 +16,7 @@ controls. Do not treat these perpetual products as CME NQ futures.
 
 | Milestone           | Initial status                                     | Completion requirement                                                                                    |
 | ------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| M0 Research         | Evidence register produced; major facts unresolved | Official Instant/funded API/copy rules confirmed before M5                                                |
+| M0 Research         | Evidence register produced; major facts unresolved | Browser automation/copy permission and account scope confirmed before M5                                  |
 | M1 Core             | Implemented and tested                             | Domain schemas, account model, formulas, costs, drawdown and independent sizing                           |
 | M2 Simulator        | Initial simulator implemented and tested           | Ten accounts and requested core scenarios; model limitations documented                                   |
 | M3 Fleet controller | Initial implementation                             | Selection, previews, mock fan-out, identity, journal, immediate reconciliation; recovery workflow remains |
@@ -57,3 +57,15 @@ and detailed README are maintained on `main`.
 
 No live trades, private endpoint reverse engineering, committed credentials, fabricated
 official rules, or automatic expansion to all ten funded accounts.
+
+## Direction change — 2026-09-29
+
+Funded API implementation is removed from this fleet's plan: the current official FAQ
+excludes Evaluation, Live Funded and Instant API trading. Do not wait for an undocumented
+API or probe Capital endpoints. The next candidate is permitted visible browser UI,
+sequentially, with an official native copier preferred if compatible and available.
+
+The [browser investigation](browser-execution.md) records public FAQ/terms evidence,
+the missing authenticated session, account-scope ambiguity and automation blockers.
+Fixture-only browser adapter/coordinator work is safe to develop now. Production UI
+selectors, concurrent contexts, session restoration and any funded trial remain gated.

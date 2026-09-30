@@ -7,10 +7,12 @@ For installation and daily use, see the [README](README.md).
 
 The application provides a working local dashboard and CLI backed by the same
 simulation controller. Live Vest execution is not implemented. The latest execution
-validation passed 124 tests in seven files; this is a dated result, not a guarantee about
+validation passed 155 tests in eight files; this is a dated result, not a guarantee about
 subsequent changes. See the [validation record](docs/validation.md).
 
 Recent completed work:
+
+- Fixture-only browser adapter/coordinator and visible-DOM safety tests; funded API execution removed from the plan. Browser permission and real UI evidence remain blockers.
 
 - Independent sizing and margin-allocation controls for the ten-account fleet.
 - Mandatory enabled-account same-market hedge guard, including unselected accounts.
@@ -19,7 +21,7 @@ Recent completed work:
 - Durable unprotected/protection-submitting states, protection-failure cleanup, circuit
   halt, sibling cancellation, idempotency and reconciliation tests.
 - Refreshed browser screenshots, an exact execution diagram and a logo presentation.
-  The logo is now the README header; dashboard icon/SVG refinement remains separate.
+  The full logo is in the README; SVG header, monochrome and favicon variants are implemented.
 
 ## Beta reliability update
 
@@ -34,6 +36,7 @@ An exclusive local owner lock prevents two dashboards using the same saved fleet
 | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
 | [Project specification and milestones](docs/project-plan.md) | Scope, original requirements and implementation sequence                    |
 | [Vest evidence register](docs/vest-facts.md)                 | Official facts, reported observations, contradictions and verification gaps |
+| [Browser execution](docs/browser-execution.md)               | Policy/UI investigation, synthetic browser implementation and trial gates   |
 | [Architecture](docs/architecture.md)                         | Component ownership, boundaries and adapter capabilities                    |
 | [Risk model](docs/risk-model.md)                             | Decimal sizing, costs, reserve, fill anchors and exposure rules             |
 | [Execution model](docs/execution-model.md)                   | States, request identity, protection, failures and emergency handling       |
@@ -47,7 +50,7 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-1. Review the [17-item reliability audit](docs/reliability-audit.md). Durable simulator recovery, periodic reconciliation, actual-fill risk and terminal partial fills are implemented.
+1. Review the [browser execution investigation](docs/browser-execution.md) and [17-item reliability audit](docs/reliability-audit.md). Durable simulator recovery, periodic reconciliation, actual-fill risk and terminal partial fills are implemented.
 2. Add an operator reconciliation/re-arm workflow that preserves balances and resolves
    pending or late requests without duplicate exposure.
 3. Strengthen restart/disconnect and cancellation-race scenarios before adding transport.
@@ -71,7 +74,7 @@ flowchart TD
     Controller --> Journal["SQLite execution journal"]
     Controller --> Adapter["ExecutionAdapter interface"]
     Adapter --> Mock["MockVestAdapter: implemented"]
-    Adapter -. "future; approval and verification required" .-> Live["Official API or native copier"]
+    Adapter -. "future; approval and verification required" .-> Live["Permitted visible UI or native copier"]
     Mock --> Core
 ```
 
@@ -108,7 +111,7 @@ There is no live-adapter implementation. Keep `main` simple; use `feature/*` whe
 
 ## Development checks
 
-The simulator beta hardening release passed **124 tests in seven files**, strict TypeScript checks,
+The browser fixture update passed **155 tests in eight files**, strict TypeScript checks,
 ESLint and formatting checks. See [validation results](docs/validation.md) for the tested
 runtime, CLI checks and limits. This is a dated validation result, not a live CI badge.
 
@@ -145,17 +148,19 @@ Useful invariants to preserve when extending the tool:
 | M5: Vest integration | Deliberately blocked                           | Officially documented or explicitly permitted execution path                      |
 | M6: validation       | Unit/integration/simulator stages only         | Paper environment if available, then separately authorized staged real validation |
 
-Possible future adapters are `VestOfficialApiAdapter` and `VestNativeCopierAdapter`.
+Funded API execution is excluded by the current official FAQ, including Instant.
+The current `BrowserExecutionAdapter` works only on local fixtures. A future permitted
+visible-UI implementation or `VestNativeCopierAdapter` must pass the browser investigation gates.
 A native copier must support the required independent follower sizing before it can
 claim the same risk guarantees. Unsupported capabilities must fail explicitly.
 
-Before implementing either adapter, verify funded-account limits, Instant inclusion,
+Before any production execution integration, resolve account/contract scope and verify
 automation/copy permissions, native copier status, authentication, symbol and market
 increments, drawdown/daily limits, costs, funding, payouts, leverage, hedging restrictions,
 termination rules, rate limits and server-side order protection/retry behavior.
 
 Do not use undocumented/private endpoints for live execution or assume the standard
-Vest exchange API supports Capital accounts. Account observations belong in the
+Vest exchange API can be used for Capital accounts. It cannot serve this funded fleet. Account observations belong in the
 [evidence register](docs/vest-facts.md), with their uncertainty preserved.
 
 Other current limits: one synthetic market, one net position per account, no order book,
@@ -180,7 +185,8 @@ A `TradeIntent` expresses the desired trade before per-account sizing:
 ```
 
 `NQ` is the familiar display label. **`NDX` is an internal simulation symbol**;
-`NDX-USD-PERP` has not been verified as the correct supported Capital API mapping.
+`NDX-USD-PERP` is not a verified destination mapping. The browser investigation must
+identify the visible funded market and its units; no Capital API mapping is being built.
 This model represents a linear perpetual derivative, not a CME futures contract.
 
 ### Examples
@@ -356,3 +362,13 @@ application screenshots must come from the running simulator, not generated mock
 - Regenerate screenshots with `scripts/capture-visuals.mjs` when visible behavior changes.
 - Keep credentials, runtime databases, logs and temporary tooling out of commits.
 - Use `main` and focused feature branches when useful; avoid unnecessary process.
+
+## Browser fixture development
+
+The new browser package is disconnected from production. It uses the existing risk and
+execution logic through a synthetic visible-DOM contract, not Vest selectors or cookies.
+See [browser architecture and blockers](docs/browser-execution.md). Install the pinned
+browser development dependency with `pnpm install --frozen-lockfile`, then install local
+test Chromium with `pnpm exec playwright install chromium` before `pnpm check`.
+Use `BROWSER_TEST_EXECUTABLE` only to select an already installed local test binary.
+No target URL, persistent profile or real-account login is accepted by the test harness.

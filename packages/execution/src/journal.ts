@@ -45,7 +45,8 @@ export class Journal {
       CREATE TABLE IF NOT EXISTS trades(id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, result TEXT);
       CREATE TABLE IF NOT EXISTS children(id TEXT PRIMARY KEY, master_id TEXT NOT NULL, result TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, event TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+      CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS browser_actions(id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, account_id TEXT NOT NULL, state TEXT NOT NULL);`);
   }
   claim(
     id: string,
@@ -127,6 +128,39 @@ export class Journal {
   hasTrades(): boolean {
     return !!this.db.prepare('SELECT 1 FROM trades LIMIT 1').get();
   }
+  /** Durable browser dispatch intent. An existing ID is never clicked a second time. */
+  claimBrowserAction(
+    id: string,
+    fingerprint: string,
+    accountId: string,
+  ): boolean {
+    const old = this.db
+      .prepare('SELECT fingerprint,account_id FROM browser_actions WHERE id=?')
+      .get(id);
+    if (old) {
+      if (old.fingerprint !== fingerprint || old.account_id !== accountId)
+        throw new Error('IDEMPOTENCY_CONFLICT');
+      return false;
+    }
+    this.db
+      .prepare("INSERT INTO browser_actions VALUES(?,?,?,'SUBMITTING')")
+      .run(id, fingerprint, accountId);
+    return true;
+  }
+  confirmBrowserAction(id: string) {
+    this.db
+      .prepare("UPDATE browser_actions SET state='CONFIRMED' WHERE id=?")
+      .run(id);
+  }
+  browserActionAccount(id: string): string | null {
+    const row = this.db
+      .prepare('SELECT account_id FROM browser_actions WHERE id=?')
+      .get(id);
+    return row ? String(row.account_id) : null;
+  }
+  hasBrowserActions(): boolean {
+    return !!this.db.prepare('SELECT 1 FROM browser_actions LIMIT 1').get();
+  }
   finish(id: string, result: ChildResult[]) {
     this.db
       .prepare('UPDATE trades SET result=? WHERE id=?')
@@ -135,6 +169,11 @@ export class Journal {
   halted(): boolean {
     return (
       !!this.db.prepare("SELECT 1 FROM settings WHERE key='halted'").get() ||
+      !!this.db
+        .prepare(
+          "SELECT 1 FROM browser_actions WHERE state='SUBMITTING' LIMIT 1",
+        )
+        .get() ||
       !!this.db
         .prepare('SELECT 1 FROM trades WHERE result IS NULL LIMIT 1')
         .get() ||
