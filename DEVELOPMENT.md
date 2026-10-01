@@ -68,26 +68,26 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-The 2026-10-01 priority is the core Vest copier's permitted connection and execution
-path. Pause further visual polish and installers. Preserve the existing simulator,
-host security and recovery; physical desktop/phone acceptance remains a release gate.
+The current decision is an independent browser-first copier. Work from the actual
+visible Vest UI and existing engine; stop routine Vest documentation/API research.
+Preserve dated policy evidence, fail-closed behavior and all safety records.
 
-1. Audit fixture assumptions and test partial/ambiguous visible evidence. See the
-   [execution gap audit](docs/vest-execution-gap-audit.md) and offline read-only contracts
-   in `packages/browser-execution/src/observations.ts` and `readonly.ts`.
-2. Use `pnpm observe:vest --runtime .runtime/dashboard --authorize-owner-read-only`
-   for the dedicated manual browser. Owner authorization is recorded separately from
-   venue approval; copying/commercial scope is still unresolved. Do not contact Vest
-   on the user's behalf. See [the runbook](docs/vest-read-only-observation.md).
-3. With an authenticated manual session, inspect normal manual login/MFA, exact
-   inventory/identity, serialized switching, existing fills/protection/closing and
-   semantic selectors. No orders or live driver enablement in this milestone.
-4. Measure read/switch/scan timing and verify the minimum evidence contract. Do not
-   infer venue freshness or exactly-once execution from local timestamps/journal IDs.
-5. Present an explicit go/no-go before separately approved one-account driver/trial
-   work. Keep controller/risk/journals and UNKNOWN/halt behavior intact; no private APIs.
-6. Complete remaining physical host/phone acceptance before invitations. Near final
-   release, package signed Windows/Mac installers with safe updates and preserved state.
+1. Diagnose the quarantined browser closure and deliberate recovery before relaunch.
+2. Inspect normal **Sign in with Google**; owner completes login/MFA directly. Implement
+   a reviewed, exact authentication handoff, then return to one verified Vest page.
+   Current popup/origin guards reject that handoff; Google login is not yet implemented.
+3. Verify owner identity, discover funded inventory, inspect serialized account switching
+   and existing fill/protection/close evidence without submitting orders.
+4. Implement the real read-only evidence port with inspected semantic selectors and
+   measured freshness/timing; missing values remain unknown, not simulator defaults.
+5. Review capabilities/recovery before a separately authorized one-account execution
+   trial. Reuse controller/risk/journals; halt ambiguous outcomes, never retry blindly.
+6. Complete physical Windows/macOS and phone acceptance before customer invitations;
+   signed installers remain near-final work. Manual leader-trade following is future work.
+
+See [the current implementation order](docs/product-implementation-plan.md#browser-first-connection-milestone--current-decision)
+and [the manual observation runbook](docs/vest-read-only-observation.md). No private
+APIs, cookie/token replay, automated credential entry or real orders are authorized.
 
 ## Architecture
 

@@ -6,6 +6,26 @@ It opens the official website for the owner to sign in directly. It has no autom
 credential entry, account selector, evidence parser or trading methods. The offline
 contracts remain synthetic and separate from the executable fixture adapter.
 
+## Next login path: Google (planned)
+
+Use the visible Vest Google sign-in option as the first authentication path to inspect.
+The owner selects their Google account and completes credentials/MFA directly with
+Google. The application does not collect credentials or implement a separate Google
+OAuth client to impersonate Vest login. A fresh dedicated profile may still require
+initial Google authentication; never import everyday browser session material.
+
+The current launcher quarantines additional pages and non-Vest main-frame origins.
+Therefore a Google popup/redirect is not currently supported. Inspect the exact normal
+handoff, implement a separate reviewed authentication phase, test its destinations and
+return, then require one verified Vest account page. A Google account selection alone
+does not prove funded-account identity or inventory. No guessed allowlist, automatic
+credential entry, token capture/replay or bypass is part of this plan.
+
+First diagnose the earlier unexpected browser closure; retain its observer locks and
+profile until deliberate recovery confirms no competing process owns the session.
+Actual visible UI inspection drives this work. Routine documentation/API research is
+paused; dated factual findings and separate execution/commercial scope remain recorded.
+
 ## Permission questions to send personally
 
 Do not send these on the user's behalf. These are questions for unresolved execution,

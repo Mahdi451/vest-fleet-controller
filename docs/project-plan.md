@@ -10,6 +10,12 @@ Initial copying starts from our application's master command, not manual leader-
 monitoring. Owner-authorized manual read-only inspection precedes review of applicable
 automated-execution terms/capabilities and a separately approved one-account trial. No connected execution or real orders are enabled here.
 
+Current implementation follows the [browser-first connection milestone](product-implementation-plan.md#browser-first-connection-milestone--current-decision):
+diagnose browser closure, inspect normal Google sign-in and implement its reviewed
+handoff, then verify funded inventory and visible execution evidence. Google sign-in
+is planned, not currently supported by the restricted launcher. Routine API/documentation
+research is paused; historical facts and safety boundaries remain intact.
+
 ## Goal
 
 Build a reliable local engineering project to manage ten $500 Vest Capital Instant

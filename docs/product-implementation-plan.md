@@ -163,38 +163,42 @@ Stages C–F are dependent gates. We can demonstrate mobile simulation promptly;
 assign a defensible connected-customer launch date before C. Do not combine effort
 bands into a calendar promise without measured session length and external resolution.
 
-## Immediate implementation order
+## Browser-first connection milestone — current decision
 
-Refocused 2026-10-01: the core product is an application-master-command copier for
-permitted Vest funded-account workflows. The simulator, dashboard and native host
-support this goal. Pause visual polish and installer work unless required for it.
-Manual leader-account trade monitoring remains separate future work.
+Treat this as an independent browser-based Vest copier, built around the actual
+visible interface and the existing controller. Stop routine Vest documentation/API
+research as the implementation path. Retain the dated source register and known
+restrictions; this decision does not enable private endpoints, token/cookie replay,
+authentication bypass or real orders. Missing UI evidence remains unknown.
 
-1. **Evidence-gap audit and offline contracts.** Preserve the existing controller and
-   risk engine. Reject incomplete/rounded fill data, ambiguous venue correlation,
-   continuing remainders, unverifiable accounts and unproven protection/flatness.
-2. **Exact authorization scope.** Owner authorized personal read-only inspection on
-   2026-10-01. Resolve same-owner automated copying, account/session restrictions and
-   commercial distribution separately; do not label owner consent as venue approval.
-   No contact on the user's behalf. No private Capital API or token/cookie replay.
-3. **Owner-authorized read-only connection inspection.** The dedicated manual launcher
-   opens official Vest in one visible Windows/macOS host browser/page. After normal
-   manual login/MFA, inspect actual semantic selectors and existing evidence; future
-   automated account switching must be serialized and identity-verified.
-4. **Measured capability go/no-go.** Record exact identity/inventory, quote freshness,
-   terminal fill quantity/average/fees, reduce-only/persistence/sibling semantics and
-   complete close/cancel proof. Measure switching/reads/full scans; executable latency
-   remains unmeasured until an approved trial. Never relax budgets merely for tests.
-5. **Separately authorized one-account integration/trial.** Only after the permission
-   and visible-capability review. Existing controller owns fill-anchored risk/protection,
-   journals, drift, halt and recovery; ambiguous submissions are never blindly retried.
+Immediate work, in order:
 
-See [the current gap audit](vest-execution-gap-audit.md) and
-[read-only observation runbook](vest-read-only-observation.md). Actual Vest inspection
-requires an authenticated manual session and inspected real selectors/evidence. No connected execution
-is enabled. Native identity/storage/setup are already implemented; remaining physical
-Windows/macOS and phone acceptance is retained as a release/invitation requirement,
-with historical automated evidence in [native validation](native-host-validation.md).
+1. Diagnose the unexpected headed-browser closure. Preserve the quarantined profile,
+   observer locks and execution records; confirm process ownership before deliberate
+   recovery. Do not automatically restart or take over an ambiguous session.
+2. Inspect the visible **Sign in with Google** option and make it the first login path
+   to test. The owner completes Google authentication/MFA directly. A new dedicated
+   profile may require Google sign-in; existing everyday Chrome authentication is not
+   copied into it. Email login remains an alternative if normally supported.
+3. Implement a reviewed authentication phase for the exact observed popup/redirect/
+   return flow. The current launcher rejects extra pages and other origins, so Google
+   sign-in is **planned, not implemented or verified**. Do not guess an OAuth allowlist
+   or capture authentication URLs, authorization codes, tokens or credentials. After
+   the handoff, close authentication pages and require one verified Vest account page.
+   Test denied/expired login, unexpected origins/pages, browser loss and failed return.
+4. Verify the returned Vest identity corresponds to the owner's intended funded fleet.
+   Discover complete visible inventory and inspect serialized switching, exact account
+   identity, current positions and existing fills/protection/closing without orders.
+5. Build the real read-only evidence port from inspected semantic selectors. Measure
+   switching/read/scan latency; assess exact quantities, fill linkage, freshness,
+   reduce-only protection, persistence and sibling cancellation. Preserve null/unknown
+   values; do not substitute fixture IDs, prices, fees or timestamps.
+6. Only after capability/recovery review and separate authorization, implement and test
+   the one-account execution path through the existing controller, then expand the fleet.
+
+Initial copying originates from our application master command. Monitoring trades
+manually placed on a leader account remains future work. Visual polish/installers stay
+paused; Windows/macOS are customer hosts and phone access is a supporting surface.
 
 ## Near-final customer release packaging
 

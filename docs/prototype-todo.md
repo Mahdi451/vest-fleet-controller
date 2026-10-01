@@ -1,6 +1,6 @@
 # Prototype completion checklist
 
-Status checked 2026-09-30. This is the development checklist; the [README](../README.md)
+Priority updated 2026-10-01; historical baseline checked 2026-09-30. This is the development checklist; the [README](../README.md)
 describes what a local user can do today. The [Vest fact register](vest-facts.md) and
 [browser investigation](browser-execution.md) carry sources and detailed evidence gates.
 The [customer implementation and acceptance plan](product-implementation-plan.md)
@@ -8,15 +8,21 @@ covers sign-in, account connection, local/VPS hosting, staged effort and failure
 
 ## NOW — permitted Vest connection and execution evidence
 
-Priority changed 2026-10-01. Pause visual polish and installer work; retain existing
-simulation/host safeguards and all physical acceptance requirements.
+Priority changed 2026-10-01: independent browser-first integration using the actual
+visible UI. Stop routine documentation/API research. Pause visual polish and installers;
+retain existing simulation/host safeguards and all physical acceptance requirements.
 
 - [x] Audit the fixture-to-real execution gaps and define minimum visible evidence.
 - [x] Validate the new offline evidence contracts and read-only inspection boundary
       with 71 tests and targeted review. Current full-suite results and scope are
       recorded in [the validation report](vest-execution-validation.md).
 - [x] Prepare owner/commercial permission questions and the read-only observation runbook.
-- [ ] Obtain written automation permission for this exact workflow and an authorized session.
+- [x] Record owner authorization for personal manual read-only inspection and implement
+      the protected visible browser launcher; no claim of venue/commercial approval.
+- [ ] Diagnose the unexpected browser closure and review deliberate observer recovery.
+- [ ] Inspect the visible Google sign-in option; implement and test its exact normal
+      popup/redirect/return handoff with owner-completed authentication/MFA.
+- [ ] Verify the returned Vest identity and establish a usable authenticated session.
 - [ ] Inspect actual discovery, exact identity, serialized switching and existing
       fills/protection/closing with semantic selectors, without submitting orders.
 - [ ] Measure UI reliability and record an explicit capability go/no-go before any
@@ -24,7 +30,8 @@ simulation/host safeguards and all physical acceptance requirements.
 
 See [execution gaps](vest-execution-gap-audit.md) and
 [the read-only runbook](vest-read-only-observation.md). No real driver is implemented,
-no connection is available today, and no connected execution is enabled.
+the manual launcher has not verified sign-in or account discovery, and connected
+execution remains disabled. Google authentication handoff is planned, not shipped.
 
 ## What works today: local simulation prototype
 
