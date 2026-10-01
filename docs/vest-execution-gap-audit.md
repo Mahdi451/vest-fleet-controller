@@ -9,7 +9,7 @@ installer work are paused. No authenticated Vest inspection or orders were perfo
 | Area                | Current code evidence                                                                                                                                                                                        | Gap before connected execution                                                                                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Controller and risk | `packages/execution/src/controller.ts`, `packages/risk-engine/src/index.ts`: independent Decimal sizing, hedge guard, durable claims, actual-fill checks, protection verification, conservative cleanup/halt | Keep this controller. Confirm that real visible evidence can satisfy its invariants without invented values.                                                                            |
-| Browser transport   | `packages/browser-execution/src/dom.ts` requires `LOCAL_FIXTURE`; `adapter.ts` rejects other environments. `ExecutionAdapter.mode` accepts only `SIMULATION`                                                 | No Vest transport, login, account connection or live execution exists.                                                                                                                  |
+| Browser transport   | `packages/browser-execution/src/dom.ts` requires `LOCAL_FIXTURE`; `adapter.ts` rejects other environments. `ExecutionAdapter.mode` accepts only `SIMULATION`                                                 | Manual headed launcher opens official Vest for owner login; no real observation port or executable Vest adapter exists.                                                                 |
 | Request correlation | `adapter.ts` finds entry/protection rows using our local `requestId`; `journal.ts` claims actions before dispatch                                                                                            | Fixtures echo local IDs. A journal does not establish venue-side exactly-once execution. Need unique visible venue correlation; ambiguity means halt, never click again.                |
 | Account identity    | `identitySchema` and `adapter.ts` check exact ID/label/context before action and again after form preparation                                                                                                | Real authoritative account ID/product, identity across views and server-side selection scope unobserved. Local page/context IDs are not account authority.                              |
 | Inventory           | `visibleBookSchema` requires a full array, with exact binding membership checked by the adapter                                                                                                              | Pagination, hidden accounts, discovery completeness, account lifecycle and cross-account manual changes unverified. The dashboard's `01`–`10` IDs are simulation IDs.                   |
@@ -61,12 +61,12 @@ tokens, storage state, raw authenticated DOM, request traces or login screenshot
 
 The new offline observation boundary is documented in
 [the read-only observation runbook](vest-read-only-observation.md). It is separate from
-`ExecutionAdapter` and has no trading methods. No real Vest driver is installed or
-enabled. Session expiry requires manual reauthentication and fresh identity/inventory
+`ExecutionAdapter` and has no trading methods. The owner-authorized `pnpm observe:vest` manual launcher is separate from both
+contracts and controller. No real evidence parser or executable Vest driver is enabled. Session expiry requires manual reauthentication and fresh identity/inventory
 verification. A changed selector, unexpected account, incomplete view or timed-out read
 invalidates the observation session. There is no automatic browser restart/failover.
 
-After written permission and an authorized session, inspect semantic selectors and
+With owner read-only authorization and an authenticated manual session, inspect semantic selectors and
 explicit states for discovery, switching and existing history/orders. Record selector
 uniqueness/version and any server-side account-context changes. Do not click submit,
 cancel, close or flatten, even to investigate. Ordinary tabs/contexts do not establish
@@ -95,8 +95,9 @@ do not extend expiry simply to make tests pass.
 
 ## Before a separately authorized one-account trial
 
-- Written owner-account browser permission, applicable product/session restrictions,
-  and a distinct decision on commercial distribution permission.
+- Review applicable automated-execution/product/session restrictions and authorize the
+  exact trial separately; commercial distribution remains a distinct decision. Personal
+  manual read-only inspection is owner-authorized, not claimed as Vest approval.
 - Authorized manual session plus inspected semantic selectors and exact account identity.
 - Complete risk/market rules and every required visible evidence capability above.
 - Reviewed real driver using the existing controller/journal; unique outcome reconciliation,
@@ -106,7 +107,8 @@ do not extend expiry simply to make tests pass.
 - Failure/restart/manual-intervention contract tests, measured budgets, explicit go/no-go,
   recovery instructions and separate approval for a minimal supervised trial.
 
-Permission and an authorized funded session are currently missing. The exact blocked
+The owner authorized personal read-only connection on 2026-10-01; an authenticated
+funded session and actual UI evidence are still missing. The exact blocked
 observation is authenticated account discovery/switching and existing fill, protection
 and closing evidence. Connected execution stays disabled regardless of offline tests.
 

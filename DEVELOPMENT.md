@@ -27,7 +27,7 @@ subsequent changes. See the [validation record](docs/validation.md).
 
 Recent completed work:
 
-- Fixture-only browser adapter/coordinator and visible-DOM safety tests; funded API execution removed from the plan. Browser permission and real UI evidence remain blockers.
+- Fixture-only browser adapter/coordinator and visible-DOM safety tests; funded API execution removed from the plan. Personal read-only inspection is owner-authorized; real UI evidence and automated execution review remain blockers.
 
 - Independent sizing and margin-allocation controls for the ten-account fleet.
 - Mandatory enabled-account same-market hedge guard, including unselected accounts.
@@ -75,10 +75,11 @@ host security and recovery; physical desktop/phone acceptance remains a release 
 1. Audit fixture assumptions and test partial/ambiguous visible evidence. See the
    [execution gap audit](docs/vest-execution-gap-audit.md) and offline read-only contracts
    in `packages/browser-execution/src/observations.ts` and `readonly.ts`.
-2. Obtain written permission for owner-account read-only automation and, separately,
-   master-command copying and commercial distribution. Do not contact Vest on the
-   user's behalf. Use the [permission questions/runbook](docs/vest-read-only-observation.md).
-3. With permission and an authorized session, inspect normal manual login/MFA, exact
+2. Use `pnpm observe:vest --runtime .runtime/dashboard --authorize-owner-read-only`
+   for the dedicated manual browser. Owner authorization is recorded separately from
+   venue approval; copying/commercial scope is still unresolved. Do not contact Vest
+   on the user's behalf. See [the runbook](docs/vest-read-only-observation.md).
+3. With an authenticated manual session, inspect normal manual login/MFA, exact
    inventory/identity, serialized switching, existing fills/protection/closing and
    semantic selectors. No orders or live driver enablement in this milestone.
 4. Measure read/switch/scan timing and verify the minimum evidence contract. Do not

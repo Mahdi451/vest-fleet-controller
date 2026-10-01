@@ -21,15 +21,17 @@ executing independently sized LONG and SHORT trades with stop-loss and take-prof
 protection. Use the browser dashboard for interactive control or the CLI for repeatable
 scenarios.
 
-> **Simulation only.** Accounts and prices are synthetic. This application does not
-> connect to Vest, automate its website, or send live trades. No Vest login or API key
-> is required. It is an independent project, not an official Vest product.
+> **Simulation only.** Accounts and prices are synthetic. The dashboard does not
+> execute on Vest or send live trades. No Vest login or API key is required for simulation.
+> A separate owner-authorized manual browser launcher supports read-only inspection. It is an independent project, not an official Vest product.
 
 ![Dashboard with independent exposure previews for ten accounts](docs/images/dashboard-preview.png)
 
 Current development priority: [prove the permitted Vest connection and execution evidence path](docs/vest-execution-gap-audit.md).
-Visual polish and installer work are paused. Real Vest connection remains unimplemented;
-permission, authorized read-only inspection and a separate execution trial are required.
+Visual polish and installer work are paused. A separate [manual Vest browser launcher](docs/vest-read-only-observation.md) opens
+the official website for normal owner login. Automated account discovery, evidence
+reading and connected execution remain unimplemented. Read-only inspection is now
+owner-authorized; real orders and commercial rollout remain separate gates.
 
 ## Quick start
 

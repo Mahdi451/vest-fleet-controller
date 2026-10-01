@@ -1,13 +1,17 @@
-# Permission-gated Vest observation runbook
+# Owner-authorized Vest observation runbook
 
 This is preparation for read-only inspection, not a connected trading feature.
-No actual Vest browser source is implemented. Offline contracts use synthetic observations
-and cannot launch a browser, log in or submit an order.
+A dedicated manual browser launcher is implemented in `apps/vest-observer/`.
+It opens the official website for the owner to sign in directly. It has no automatic
+credential entry, account selector, evidence parser or trading methods. The offline
+contracts remain synthetic and separate from the executable fixture adapter.
 
 ## Permission questions to send personally
 
-Do not send these on the user's behalf. Obtain dated written answers covering the exact
-products and workflow, rather than inferring permission from general strategy rules.
+Do not send these on the user's behalf. These are questions for unresolved execution,
+account-scope and commercial decisions. A written letter is not a blanket prerequisite
+for the owner-authorized manual read-only step under the public terms reviewed on
+2026-10-01. See [the scoped source review](vest-facts.md).
 
 1. May the owner use a dedicated visible Playwright browser, normal manual login/MFA,
    one session/page and serialized switching to read their Evaluation/Live Funded/Instant
@@ -32,26 +36,66 @@ products and workflow, rather than inferring permission from general strategy ru
 API trading remains excluded from the plan. No hidden endpoints or session-material
 extraction are proposed as a fallback.
 
-## Required handover before any actual inspection
+## Manual browser setup and handover
 
-Record a protected local permission reference, owner and execution-instance binding,
-exact account product/workflow scope, approval and expiry/revocation conditions, and
-the authorized user's availability for manual login. Do not put identifying account
-details or approval correspondence with personal data into public source control.
+Prerequisites: Node 24.x, pnpm 11.25.0, installed dependencies and Playwright Chromium
+(`pnpm exec playwright install chromium`). Use the existing initialized native host
+runtime; `pnpm host:doctor --runtime .runtime/dashboard` must verify its active owner,
+instance and protected storage. The launcher does not initialize a host, open the
+execution engine or change safety records. Windows/macOS are the intended customer
+hosts; Linux is a development reference. Native interactive sign-in remains untested.
 
-Permission is an operator-reviewed prerequisite, not a dashboard checkbox or browser
-claim. The offline boundary tests permission/owner/instance/expiry failures but is not
-an authorization service and cannot create a real connection. Adding a real source
-requires a new reviewed implementation after this handover.
+Run from a local visible desktop terminal:
 
-Reuse the existing host ownership boundary. One host owns the protected dedicated
-profile and one page. Never delete runtime locks/journals to obtain access. Never
-automatically take over a profile from another worker. Expiry/crash/context uncertainty
-requires manual reauthentication or reconciliation; no automatic connected re-arm.
+```sh
+pnpm observe:vest --runtime .runtime/dashboard --authorize-owner-read-only
+```
+
+The explicit flag records **owner authorization**, not Vest approval. The local record
+contains owner/instance binding, authorization basis, public-terms review reference,
+read-only scope and one-hour expiry. Removing the flag rejects launch before profile
+creation. Signing into our dashboard does not sign into Vest.
+
+The protected persistent profile defaults to:
+
+- Windows: `%LOCALAPPDATA%/VestFleetController/manual-observer`
+- macOS: `~/Library/Application Support/VestFleetController/manual-observer`
+- Linux development: `~/.local/share/vest-fleet-controller/manual-observer`
+
+An optional `--profile` must be outside every Git checkout and owner-private. The
+browser retains its normal local authentication in this profile; the application
+never reads, exports, injects or replays cookies/tokens/storage state. Keep it out of
+cloud sync, ordinary backups and diagnostic exports; use host disk encryption.
+Profiles are bound to the owner, instance, machine and canonical paths. Existing
+unbound or copied profiles are rejected rather than silently adopted.
+
+One runtime observer lock plus one profile lock permit one browser/page. The launcher
+opens only `https://next.vestmarkets.com/`; a new page or different origin quarantines
+and closes it. No speculative OAuth allowlist is installed. If supported login needs
+a popup/other origin, that exact handoff must be inspected and reviewed before extension.
+Browser lifecycle guards cannot prevent an owner manually placing an order; **do not
+place orders during this inspection**. No automated read/write controls are present.
+
+Complete normal login/MFA directly in the browser. Type `ready` only to acknowledge
+manual inspection, never to claim authenticated identity, SAFE/READY or protection.
+Type `quit` for confirmed browser closure and release of owned observer locks. EOF,
+SIGINT/SIGTERM and authorization expiry also attempt closure. Unexpected browser crash,
+ambiguous launch or unconfirmed closure retains locks and prohibits automatic takeover.
+
+Recovery: preserve profile and runtime records. Establish whether the recorded browser
+and child processes still exist before an explicit operator recovery. Never delete
+`controller.lock`, journals, halts or unresolved commands to obtain access. There is
+no automatic stale observer-lock cleanup/restart. A later reviewed recovery tool is
+required for safe usability after an ambiguous browser failure; do not blindly relaunch.
+
+The authenticated owner must be available for the next observation. Do not send
+credentials, MFA codes or account PII in chat/source control. A real evidence port
+still needs inspected selectors and a reviewed implementation; the launcher does not
+provide discoverable account objects or connect to the controller.
 
 ## Read-only observation steps
 
-1. Verify the host owner/instance and permission scope; open only the approved official
+1. Verify the host owner/instance and owner read-only authorization scope; open only the approved official
    UI in a visible browser. The user completes normal authentication/MFA. No automated
    credential entry, anti-bot bypass or storage-state export.
 2. Inspect exact semantic navigation/account selectors and reject zero/multiple matches.
@@ -79,19 +123,19 @@ requires manual reauthentication or reconciliation; no automatic connected re-ar
 
 ## Observation record template
 
-| Field                   | Record                                                                                        |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| Permission              | Dated protected reference, scope, owner/instance binding, expiry/revocation review            |
-| Host/browser            | OS/version, browser version, one session/page, protected local profile location               |
-| UI revision             | Date, inspected semantic selector names, uniqueness and navigation destinations               |
-| Account identity        | Exact source and before/after agreement; redact private values in shared report               |
-| Inventory               | Completeness/pagination/end evidence, before/after membership, scan ages                      |
-| Quote/account freshness | Venue timestamp or proven refresh mechanism; capture time separately                          |
-| Entry/fills             | Visible order linkage, exact quantity/average/fees, terminal remainder; unavailable fields    |
-| Protection              | Accepted SL/TP linkage, quantity/trigger/basis, reduce-only, persistence, OCO evidence source |
-| Closing                 | Exit/cancel terminal records, complete flat/order book, orphan behavior                       |
-| Timing                  | Switch/read/full-scan measured durations; submission/protection/fleet marked unmeasured       |
-| Conclusion              | Verified observations, unknown capabilities, exact no-go blockers, next authorized step       |
+| Field                   | Record                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| Authorization           | Basis (owner consent versus venue approval), protected reference, owner/instance, scope and expiry |
+| Host/browser            | OS/version, browser version, one session/page, protected local profile location                    |
+| UI revision             | Date, inspected semantic selector names, uniqueness and navigation destinations                    |
+| Account identity        | Exact source and before/after agreement; redact private values in shared report                    |
+| Inventory               | Completeness/pagination/end evidence, before/after membership, scan ages                           |
+| Quote/account freshness | Venue timestamp or proven refresh mechanism; capture time separately                               |
+| Entry/fills             | Visible order linkage, exact quantity/average/fees, terminal remainder; unavailable fields         |
+| Protection              | Accepted SL/TP linkage, quantity/trigger/basis, reduce-only, persistence, OCO evidence source      |
+| Closing                 | Exit/cancel terminal records, complete flat/order book, orphan behavior                            |
+| Timing                  | Switch/read/full-scan measured durations; submission/protection/fleet marked unmeasured            |
+| Conclusion              | Verified observations, unknown capabilities, exact no-go blockers, next authorized step            |
 
 No real orders are permitted in this observation workflow. A later driver and one-account
 trial require separate approval; passing offline tests does not satisfy either gate.

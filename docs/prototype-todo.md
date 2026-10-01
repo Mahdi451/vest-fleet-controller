@@ -125,8 +125,9 @@ recovery acceptance. Permitted connection and visible execution evidence are the
 
 ## Gate 1 — permitted integration path
 
-- [ ] Obtain written Vest confirmation for visible-UI automation of the user's Instant
-      accounts, same-owner same-direction copying, and the applicable account/session terms.
+- [x] Record owner authorization for personal manual read-only inspection separately
+      from venue approval; implement the protected visible-browser launcher.
+- [ ] Review automated same-owner copying and applicable account/session/commercial terms.
       Resolve the single-Account clause versus the FAQ's ten funded accounts.
 - [ ] Confirm whether a supported native copier exists and whether it supplies
       independent sizing, per-account fill/protection evidence, reconciliation and flatten.
@@ -134,8 +135,8 @@ recovery acceptance. Permitted connection and visible execution evidence are the
       contract/size units, tick/size precision, leverage, fees and funding. Replace
       simulation defaults only with product-specific evidence.
 
-**Stop condition:** Without explicit permission for the chosen path, keep the project
-simulation-only. The official FAQ excludes funded and Instant API trading; private
+**Stop condition:** Personal read-only inspection is owner-authorized. Connected
+execution stays disabled until capability review and a separately authorized trial. The official FAQ excludes funded and Instant API trading; private
 endpoints and browser session material are not an alternative API.
 
 ## Gate 2 — read-only funded UI investigation

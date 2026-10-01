@@ -7,23 +7,39 @@ browser was signed out. This replaces the earlier retrieval limitations where no
 This is an evidence register, not a statement that older evaluation rules govern Instant accounts.
 Publication dates are unknown unless stated below; all sources were checked on the research date.
 
-## Public-source recheck — 2026-10-01
+## Owner-authorized read-only review — 2026-10-01
 
-The official [funded FAQ](https://next.vestmarkets.com/faq) and
-[prop terms](https://next.vestmarkets.com/prop-terms-of-service) were requested again,
-but current web extraction returned a page title with no readable body. Their wording
-could **not** be re-verified today. Retain the dated 2026-09-29 browser observations
-below; do not represent them as a current authenticated inspection or permission.
-The [exchange API documentation](https://docs.vestmarkets.com/vest-api) now redirects
-to [Vest Markets OLD](https://vest-labs.gitbook.io/vest-markets-old/vest-api).
-That archived exchange reference is not a funded-account capability or permission contract.
+The web text extractor returned no readable body. A fresh signed-out Playwright
+browser then rendered the official [prop terms](https://next.vestmarkets.com/prop-terms-of-service),
+[Site terms](https://next.vestmarkets.com/terms-of-service) and
+[funded FAQ](https://next.vestmarkets.com/faq). Exact public FAQ buttons were expanded;
+no login, private requests, session extraction or orders occurred.
 
-No verified policy change was established. Funded API trading remains excluded from
-this project's plan under the dated FAQ evidence and the user's explicit boundary.
-Browser automation and commercial distribution permission remain unresolved; no private
-endpoints were called. The exact next blocked observations and prepared permission
-questions are in [the gap audit](vest-execution-gap-audit.md) and
-[read-only runbook](vest-read-only-observation.md).
+The reviewed terms prohibit manipulation and exploitative coordination, including use
+of bots for those activities. **No blanket prohibition on all browser automation or
+requirement for a permission letter for this owner's manual read-only inspection was
+found in the public text reviewed.** This is a scoped reading, not affirmative Vest
+approval or a certification of every account agreement. Section 2's single-Account
+wording and section 4's intellectual-property/commercial restrictions remain relevant;
+login accounts versus funded subaccounts and commercial distribution need separate review.
+
+The owner explicitly authorized proceeding with personal read-only connection on
+2026-10-01. The former mandatory written-letter gate came from the owner's earlier
+project instructions and is superseded for this scope. Local records distinguish
+`USER_OWNER_AUTHORIZATION` from `VENUE_WRITTEN_APPROVAL`; neither authorizes orders.
+Normal manual login/MFA uses a protected host-bound browser profile outside Git.
+Actual authenticated account identity, switching and evidence remain unobserved.
+
+The FAQ's funded API exclusion (Evaluation, Live Funded and Instant) and restrictions
+on manipulative coordination/opposite-side same-market funded exposure were reverified.
+The ten-account answer below remains dated 2026-09-29; today's capture did not establish
+that answer again. No private Capital API, token replay or API execution is planned.
+The exchange API reference redirects to
+[Vest Markets OLD](https://vest-labs.gitbook.io/vest-markets-old/vest-api), which is not
+a funded-account capability contract.
+
+See the [manual observation runbook](vest-read-only-observation.md) for the concrete
+launcher, remaining session handover and separately gated execution/commercial scope.
 
 ## CONFIRMED
 
@@ -76,7 +92,7 @@ Confirm which agreement applies rather than substituting the exchange for Capita
 | Question                                                                              | Current evidence / required resolution                                                                                                                                            |
 | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Native copier status and availability                                                 | Prior report only; no authoritative release or supported integration contract found.                                                                                              |
-| Browser automation and same-direction cross-account copy permissions                  | Obtain explicit permissions covering this exact account product and owner fleet. Public exchange API documentation alone is insufficient.                                         |
+| Browser automation and same-direction cross-account copy permissions                  | Owner authorized personal read-only inspection on 2026-10-01. Automated copying and commercial terms remain unverified; public API docs do not establish them.                    |
 | NQ UI to NDX-USD-PERP mapping, tick size, size step, minimum size, multiplier, margin | Naming convention is documented, exact mapping is not. `NDX` will be a simulation-only domain symbol.                                                                             |
 | Instant drawdown, fixed vs trailing, equity basis and equality boundary               | $490 is a user-observed fixture. Confirm fees, funding, unrealized P&L and withdrawals in the failure calculation.                                                                |
 | Instant daily loss rule, reset clock and daylight saving behavior                     | Do not import evaluation daily-loss rules into Instant automatically.                                                                                                             |
@@ -116,7 +132,7 @@ and `max_funded`. These were not called and are not implementation contracts.
 
 ## Browser execution UNVERIFIED blockers
 
-- Browser automation permission for the user’s Instant fleet.
+- Applicable terms for automated copying on the user’s Instant fleet; personal read-only inspection is owner-authorized.
 - Native copier availability and a supported integration contract.
 - Concurrent funded browser sessions and any session-count restriction.
 - Per-tab account-context isolation and cross-tab account-selection effects.
@@ -131,10 +147,10 @@ inspection matrix, original fixture implementation and supervised-testing gates.
 Earlier research could not retrieve the prop terms. The current public FAQ, prop terms
 and Site terms were subsequently rendered and read in Work Browser on 2026-09-29;
 that earlier access limitation no longer applies to those pages. Web-search retrieval
-still failed, and no authenticated account session was available. Missing automation
-permission remains a blocker, not implied approval. Obtain dated written permission,
-resolve account/contract scope and complete read-only funded UI inspection before
-considering an execution implementation. No Capital endpoint is an implementation source.
+still failed; the 2026-10-01 signed-out browser recheck above recovered public text.
+An authenticated account session is still unavailable. Complete owner-authorized
+read-only inspection, resolve account/contract scope and review automated execution
+separately before considering a real writer. No Capital endpoint is an implementation source.
 
 ## Hedge-policy requirement update — 2026-09-29
 

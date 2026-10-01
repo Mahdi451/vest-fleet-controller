@@ -149,7 +149,7 @@ validation cannot be compressed into a coding estimate. Re-estimate after stage 
 | ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A. Mobile simulation            | 1–3 sessions                                           | Focused Trade/Accounts/Activity UI, Home Screen assets, stale/disconnected state, touch-safe preview and flatten                         | Phone browser tests pass; synthetic mode unmistakable; existing checks remain green.                                                                                  |
 | B. Native private desktop host  | Re-estimate after portability review                   | Native Windows/macOS host identity/storage, HTTPS/auth, instance ownership, expiring commands, status recovery and setup instructions    | Native platform checks pass; unauthorized/replayed/cross-owner commands rejected; disconnect/restart cannot duplicate an accepted job.                                |
-| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                               | Written permissions and all required capabilities proven. Stop or narrow the product if absent.                                                                       |
+| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                               | Applicable execution terms reviewed, exact trial authorized and all required capabilities proven. Stop or narrow the product if absent.                               |
 | D. Permitted one-account driver | 2–4 sessions after C                                   | Visible UI transport, real account binding, entry/fill/protection/exit reconciliation; initially non-trading/read-only                   | Contract and fault tests pass; no invented evidence, private endpoints or automatic write retries. Required pre-integration review complete before any funded action. |
 | E. Operational acceptance       | 2–4 sessions, reusing existing safeguards              | Session loss/restart/manual intervention/orphan handling, explicit recovery UI, diagnostics, worker monitoring and version gate          | Tests below pass; unknown exposure blocks entries; old/new worker ownership cannot overlap.                                                                           |
 | F. Supervised invitation pilot  | Several real permitted test/trading sessions; measured | Approved paper/test if available, then minimal one-account trial, two accounts, small fleet, up to ten                                   | Separate trade authorization, correct fills and exits, complete protection/cleanup, agreed latency/drift limits and documented recovery.                              |
@@ -173,12 +173,14 @@ Manual leader-account trade monitoring remains separate future work.
 1. **Evidence-gap audit and offline contracts.** Preserve the existing controller and
    risk engine. Reject incomplete/rounded fill data, ambiguous venue correlation,
    continuing remainders, unverifiable accounts and unproven protection/flatness.
-2. **Exact permission scope.** Resolve owner read-only automation, same-owner master
-   copying, account/session restrictions and commercial distribution separately.
+2. **Exact authorization scope.** Owner authorized personal read-only inspection on
+   2026-10-01. Resolve same-owner automated copying, account/session restrictions and
+   commercial distribution separately; do not label owner consent as venue approval.
    No contact on the user's behalf. No private Capital API or token/cookie replay.
-3. **Gated read-only connection inspection.** After written permission and an authorized
-   session, one visible Windows/macOS host browser/page with manual official login/MFA;
-   serialized account switching; inspect actual semantic selectors and existing evidence.
+3. **Owner-authorized read-only connection inspection.** The dedicated manual launcher
+   opens official Vest in one visible Windows/macOS host browser/page. After normal
+   manual login/MFA, inspect actual semantic selectors and existing evidence; future
+   automated account switching must be serialized and identity-verified.
 4. **Measured capability go/no-go.** Record exact identity/inventory, quote freshness,
    terminal fill quantity/average/fees, reduce-only/persistence/sibling semantics and
    complete close/cancel proof. Measure switching/reads/full scans; executable latency
@@ -189,7 +191,7 @@ Manual leader-account trade monitoring remains separate future work.
 
 See [the current gap audit](vest-execution-gap-audit.md) and
 [read-only observation runbook](vest-read-only-observation.md). Actual Vest inspection
-is blocked by missing permission and an authorized session. No connected execution
+requires an authenticated manual session and inspected real selectors/evidence. No connected execution
 is enabled. Native identity/storage/setup are already implemented; remaining physical
 Windows/macOS and phone acceptance is retained as a release/invitation requirement,
 with historical automated evidence in [native validation](native-host-validation.md).

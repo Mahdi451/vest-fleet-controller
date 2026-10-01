@@ -7,8 +7,8 @@ Implementation was authorized only after Section 14.
 Current priority (2026-10-01): [audit and prove the permitted browser connection and
 execution evidence path](vest-execution-gap-audit.md). Pause visual polish/installers.
 Initial copying starts from our application's master command, not manual leader-trade
-monitoring. Written permission and authorized read-only inspection precede a separately
-approved one-account trial. No connected execution or real orders are enabled here.
+monitoring. Owner-authorized manual read-only inspection precedes review of applicable
+automated-execution terms/capabilities and a separately approved one-account trial. No connected execution or real orders are enabled here.
 
 ## Goal
 

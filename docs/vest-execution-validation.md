@@ -1,7 +1,8 @@
-# Offline Vest connection contract validation
+# Vest evidence contracts and manual observer validation
 
 Date: 2026-10-01. Node 24.18.0, pnpm 11.25.0, Linux development environment.
-This validates offline preparation, not a working Vest connection/copier.
+This validates offline contracts and a manual browser launcher, not a working Vest copier.
+The first sections record the original offline slice; the follow-up below records current scope.
 
 ## Implemented and reviewed
 
@@ -74,13 +75,13 @@ physical-device or funded-account readiness.
 
 Current browser/controller/freshness defaults and test-only differences are in
 [the gap audit](vest-execution-gap-audit.md). No budget was changed. Actual account
-switching/read/full-scan timings require permission and an authorized session;
+switching/read/full-scan timings require an owner-authorized authenticated session;
 submission, fill-to-protection and fleet execution require a separately approved trial.
 
 ## Remaining gates and tracker handover
 
-Written owner read-only automation permission, separate execution/copy permission,
-commercial distribution scope and an authorized funded session are unavailable.
+The owner now authorized personal manual read-only inspection; applicable automated
+execution/commercial scope and an authenticated funded session remain unresolved.
 Actual discovery/identity/switching and existing fill/protection/closing evidence are
 therefore unobserved. Prepare a reviewed real read-only port only after these gates;
 see [the observation runbook](vest-read-only-observation.md). Protection persistence,
@@ -97,11 +98,74 @@ application checks passed. Only the 15 intended code/test/documentation files ar
 this change; the prior CLI fix and `docs/images/ui-preview/` remain separate local work.
 
 Issue #1 makes connection/evidence verification the immediate priority and pauses
-polish/installers while retaining physical release gates. Only the audit, tested offline
-contracts and runbook items are complete. Permission, authenticated inspection,
+polish/installers while retaining physical release gates. The original publication completed the audit, tested offline
+contracts and runbook. The follow-up additionally records owner read-only authorization
+and the tested manual launcher. Authenticated inspection,
 measured real UI capability, connected execution and trial items stay unchecked.
 
 Commit message: `feat(browser): define fail-closed read-only Vest evidence contracts`.
 
 Vest-connected execution remains blocked until the permission and visible-capability
 review defined in Issue #1 is completed, followed by separate trial authorization.
+
+## Owner-authorized manual launcher — 2026-10-01 follow-up
+
+The owner revised the earlier mandatory written-letter project gate for personal
+manual read-only inspection. A fresh signed-out browser rendered public prop/Site
+terms and expanded the funded API/strategy FAQ answers; [the source register](vest-facts.md)
+records the scoped finding. No blanket automation prohibition was found in reviewed
+public text. Owner consent is recorded as `USER_OWNER_AUTHORIZATION`, never converted
+to `VENUE_WRITTEN_APPROVAL`. Execution/commercial scope remains separate.
+
+`apps/vest-observer/` launches a headed dedicated browser on the exact official start
+URL. It reuses native protected host storage without opening the execution engine.
+The persistent profile stays outside Git and binds to owner/instance/machine/paths;
+independent runtime/profile locks reject competing or stale observers. Only launch,
+navigation and lifecycle guards are automated. No credentials, DOM/account evidence,
+cookies/tokens/storage state or authenticated traces are read/exported. No automated
+account switching or trading controls are present. Operator acknowledgement is not
+verified authentication or readiness. Unexpected pages/origins and expiry quarantine;
+ambiguous launch/crash/unconfirmed close retains locks rather than silently taking over.
+
+Validation commands:
+
+```sh
+pnpm exec vitest run tests/vest-manual-observer.test.ts tests/browser-readonly.test.ts
+CI=1 pnpm check
+pnpm exec vitest run tests/browser-execution.test.ts tests/mobile-dashboard.test.ts tests/private-mobile.test.ts
+```
+
+- Targeted contracts and manual lifecycle mocks after review fixes: **101 passed**
+  (71 existing contracts plus 30 launcher/authorization tests).
+- Full check: typecheck, lint, formatting PASS; **339 passed, four platform skips,
+  343 total in 18 files** on this Linux host. Static checks and 101 targeted tests
+  were rerun after the lifecycle review fixes.
+- No production timeout/freshness budgets changed; launch/navigation has its own
+  30-second manual-browser budget, not an execution budget.
+
+The preceding sections describe the earlier offline-contract commit. This follow-up
+adds the separate real browser launcher, not a real observation port or copier. Actual
+funded discovery, fills/protection/closing and execution timing remain unverified;
+real orders stay disabled. Windows/macOS interactive login and physical phone
+validation are still open. The existing CLI reporting edit and saved UI images remain
+separate local work, outside this change.
+
+- Separate Chromium browser regression: **46 passed in three files** (local fixture
+  adapter, mobile dashboard and authenticated HTTPS simulation). This is not a Vest
+  or physical-phone test.
+- Independent review identified unexpected-close lock-release and early-close-event
+  races. Fixes latch ambiguity, replay early closure and cancel the expiry timer;
+  tests verify expiry/later close cannot release locks after a crash.
+- Real headed launcher attempt: official navigation reached the open-for-manual-login
+  state, followed by an unexpected context-close event. It quarantined before sign-in
+  was verified and retained both observer locks. The underlying cause is unconfirmed;
+  it is not evidence of a terms restriction or successful account connection. The
+  lingering CLI was stopped explicitly; locks/profile were preserved, with no automatic
+  relaunch or record deletion.
+- Host preflight initially rejected the existing runtime directory's broad POSIX mode.
+  Explicit owner-only directory hardening restored preflight; all immediate runtime
+  file-content hashes were unchanged. No identity rebind, halt reset or journal deletion.
+
+Actual authenticated inspection remains blocked on a usable manually signed-in session
+and explicit review of the quarantined browser lifecycle. No real switching, fills,
+protection/close evidence or executable latency was measured.

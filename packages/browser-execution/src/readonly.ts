@@ -1,5 +1,9 @@
-import { z } from 'zod';
 import { isFresh } from '../../core/src/index.ts';
+import {
+  assertObservationAuthorization,
+  observationAuthorizationSchema,
+  type ObservationAuthorization,
+} from './authorization.ts';
 import {
   assertStableIdentity,
   visibleIdentitySchema,
@@ -8,20 +12,7 @@ import {
   type VisibleAccountRef,
 } from './observations.ts';
 
-const permissionSchema = z
-  .object({
-    ownerId: z.string().min(1),
-    instanceId: z.string().min(1),
-    reference: z.string().min(1),
-    scope: z.literal('READ_ONLY_OWNER_ACCOUNTS'),
-    approvedAt: z.number().int().nonnegative(),
-    expiresAt: z.number().int().nonnegative(),
-    revoked: z.boolean(),
-  })
-  .strict();
-export type ObservationPermission = z.infer<typeof permissionSchema>;
-
-/** No real port is implemented. Adding one is a separate permission/review gate.
+/** No real port is implemented. Adding one requires inspected UI evidence and review.
  * These local IDs identify the inspection transport, not the venue account. */
 export interface ReadonlyInspectionPort {
   readonly environment: 'OFFLINE_FIXTURE';
@@ -53,7 +44,7 @@ export class SerializedInspectionSession {
     timeoutMs: number;
     maxCaptureAgeMs: number;
   }>;
-  private readonly permission: Readonly<ObservationPermission> | null;
+  private readonly authorization: Readonly<ObservationAuthorization> | null;
   private readonly binding: Readonly<{
     ownerId: string;
     instanceId: string;
@@ -62,7 +53,7 @@ export class SerializedInspectionSession {
   }>;
   constructor(
     private readonly port: ReadonlyInspectionPort,
-    permission: ObservationPermission | null,
+    authorization: ObservationAuthorization | null,
     options: { timeoutMs: number; maxCaptureAgeMs: number },
     private readonly clock: () => number = Date.now,
   ) {
@@ -81,10 +72,10 @@ export class SerializedInspectionSession {
       contextId: port.contextId,
       pageId: port.pageId,
     });
-    this.permission =
-      permission === null
+    this.authorization =
+      authorization === null
         ? null
-        : Object.freeze(permissionSchema.parse(permission));
+        : Object.freeze(observationAuthorizationSchema.parse(authorization));
   }
   status() {
     return this.state;
@@ -92,7 +83,6 @@ export class SerializedInspectionSession {
   private usable() {
     if (this.state === 'QUARANTINED' || this.state === 'CLOSED')
       throw new Error('INSPECTION_SESSION_UNUSABLE');
-    const p = this.permission;
     if (
       this.port.environment !== 'OFFLINE_FIXTURE' ||
       Object.entries(this.binding).some(
@@ -100,18 +90,11 @@ export class SerializedInspectionSession {
       )
     )
       throw new Error('INSPECTION_TRANSPORT_CHANGED');
-    if (
-      !p ||
-      p.revoked ||
-      p.approvedAt > this.clock() ||
-      p.expiresAt <= this.clock()
-    )
-      throw new Error('OBSERVATION_PERMISSION_REQUIRED');
-    if (
-      p.ownerId !== this.port.ownerId ||
-      p.instanceId !== this.port.instanceId
-    )
-      throw new Error('OBSERVATION_OWNER_MISMATCH');
+    assertObservationAuthorization(
+      this.authorization,
+      this.binding,
+      this.clock(),
+    );
   }
   inspect(account: VisibleAccountRef) {
     // Snapshot caller input before queuing; it cannot retarget an in-flight scan.

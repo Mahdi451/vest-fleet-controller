@@ -12,9 +12,10 @@ import {
 } from '../packages/browser-execution/src/observations.ts';
 import {
   SerializedInspectionSession,
-  type ObservationPermission,
   type ReadonlyInspectionPort,
 } from '../packages/browser-execution/src/readonly.ts';
+
+import type { ObservationAuthorization } from '../packages/browser-execution/src/authorization.ts';
 
 const NOW = 1_800_000_000_000;
 const policy = { now: NOW, maxAgeMs: 5000 };
@@ -481,10 +482,12 @@ describe('visible evidence contracts: unknown is never executable state', () => 
   });
 });
 
-const permit: ObservationPermission = {
+const permit: ObservationAuthorization = {
   ownerId: 'local-owner',
   instanceId: 'local-instance',
-  reference: 'SYNTHETIC_PERMISSION_ONLY',
+  reference: 'SYNTHETIC_OWNER_AUTHORIZATION_ONLY',
+  basis: 'USER_OWNER_AUTHORIZATION',
+  termsReviewReference: 'SYNTHETIC_TERMS_REVIEW',
   scope: 'READ_ONLY_OWNER_ACCOUNTS',
   approvedAt: NOW - 1,
   expiresAt: NOW + 10000,
@@ -555,7 +558,7 @@ function fixture() {
 const budget = { timeoutMs: 100, maxCaptureAgeMs: 5000 };
 const session = (
   f: ReturnType<typeof fixture>,
-  p: ObservationPermission | null = permit,
+  p: ObservationAuthorization | null = permit,
   clock = () => NOW,
 ) => new SerializedInspectionSession(f.port, p, budget, clock);
 
@@ -753,7 +756,7 @@ describe('permission-gated serialized offline inspection boundary', () => {
     expect(restarted.status()).toBe('UNVERIFIED');
     now = permit.expiresAt;
     await expect(restarted.inspect(ref)).rejects.toThrow(
-      'OBSERVATION_PERMISSION_REQUIRED',
+      'OBSERVATION_AUTHORIZATION_REQUIRED',
     );
   });
 });

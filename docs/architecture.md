@@ -7,8 +7,10 @@ path. [The execution-gap audit](vest-execution-gap-audit.md) records fixture ass
 and required real evidence. The offline `observations.ts` / `readonly.ts` boundary
 parses partial visible records and serializes read-only inspection; it is separate
 from `ExecutionAdapter`, has no trading methods and cannot authorize execution.
-One future permitted visible host browser/page uses manual official login/MFA and
-serialized switching. No real port is implemented. Existing controller, risk, journal
+A separate owner-authorized manual launcher now opens one protected visible host
+browser/page for official login/MFA. It has no account selection or evidence-reading
+methods; the future real port requires inspected selectors and reviewed serialized
+switching. Execution remains simulation-only. Existing controller, risk, journal
 and recovery remain the only owners of execution decisions.
 
 The domain and risk engine contain no Vest transport knowledge. A `TradeIntent`

@@ -20,7 +20,8 @@
     "dashboard": "node --import tsx apps/dashboard/server.ts",
     "setup:private": "node --import tsx apps/dashboard/setup-private.ts",
     "host:doctor": "node --import tsx apps/dashboard/host.ts doctor",
-    "host:protect": "node --import tsx apps/dashboard/host.ts protect"
+    "host:protect": "node --import tsx apps/dashboard/host.ts protect",
+    "observe:vest": "node --import tsx apps/vest-observer/cli.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",

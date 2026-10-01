@@ -1,7 +1,7 @@
 # Browser execution investigation and fixture architecture
 
 Immediate priority (2026-10-01): [audit fixture-to-real execution gaps](vest-execution-gap-audit.md),
-validate the offline partial-evidence contracts, then resolve permission and inspect
+validate the offline partial-evidence contracts, then inspect
 an authorized session using [the read-only runbook](vest-read-only-observation.md).
 Visual polish/installers are paused. `observations.ts` and `readonly.ts` are offline-only,
 have no trading methods and are not connected to the execution controller or Vest.
@@ -17,16 +17,17 @@ question, explicitly excludes Evaluation, Live Funded and Instant accounts. This
 was read in Work Browser, not inferred from the standard exchange API.
 
 A browser workflow is an investigation, **not an authorized substitute for the API**.
-Automation permission is unresolved. The current build has no production browser
-transport, account credentials, real Vest selectors, configurable target URL, remote
+Automated execution and commercial scope remain unresolved. The separate manual
+launcher opens official Vest with owner read-only authorization; the fixture adapter
+has no production execution transport, account credentials, real selectors or remote
 browser attachment, or live mode. The new adapter operates only against original local
 DOM fixtures. The ordinary dashboard continues to use `MockVestAdapter`.
 
 ## Policy and access blockers
 
-- Browser automation, same-owner copying, and concurrent session permission need
-  written confirmation for Instant accounts. Permission for high-frequency strategies
-  does not establish permission for a browser bot.
+- Automated same-owner copying and concurrent-session terms remain unverified.
+  No blanket automation ban was found in the public terms reviewed on 2026-10-01;
+  owner-authorized manual read-only inspection now uses [the launcher](vest-read-only-observation.md).
 - The public prop terms, updated September 28, 2026, contain a single-Account provision
   in section 2. The FAQ permits ten funded accounts including Instant. A login versus
   funded-subaccount distinction might explain this, but that is an inference requiring
@@ -35,8 +36,9 @@ DOM fixtures. The ordinary dashboard continues to use `MockVestAdapter`.
   lists. Confirm the applicable agreement for the funded UI; do not route to the
   standard exchange as a workaround.
 - Work Browser initially had only a blank tab. Public pages showed Log In/Sign Up;
-  no authenticated fleet was available. No login was attempted while permission
-  remains unresolved. No account selections or cross-tab tests were performed.
+  no authenticated fleet was available. The owner subsequently authorized personal
+  manual read-only inspection on 2026-10-01. Actual account selection and cross-tab
+  behavior remain unobserved.
 - No private endpoints, tokens, cookies, request interception, internal application
   stores, bundled source analysis or Capital API reverse engineering were used.
 
@@ -53,7 +55,7 @@ that retrieval failure as a site outage or bot block.
 | Account selection mechanism                     | Unverified: dropdown/page/wallet/URL scoping cannot be determined from a signed-out page.                                                                                                                   |
 | Cross-tab selection effects                     | Untested. Ordinary tabs are not treated as isolated.                                                                                                                                                        |
 | Multiple accounts simultaneously open           | Unverified technical behavior and permission.                                                                                                                                                               |
-| Multiple browser sessions                       | No explicit permission found. Written confirmation required.                                                                                                                                                |
+| Multiple browser sessions                       | Unverified; manual inspection uses one session and page.                                                                                                                                                    |
 | MARKET side, size, leverage and submit controls | Actual funded selectors unobserved. No selectors guessed.                                                                                                                                                   |
 | Filled quantity/price, status and errors        | Actual visible evidence and precision unobserved. Toasts alone are insufficient.                                                                                                                            |
 | Post-fill protection                            | FAQ describes Adjust SL/TP on an open position in Portfolio or the market page; smaller screens may need horizontal scrolling. Market/limit choices are described. Funded behavior still needs observation. |
@@ -62,7 +64,7 @@ that retrieval failure as a site outage or bot block.
 | Reduce-only and sibling/OCO behavior            | Unverified. The existence of Adjust SL/TP does not prove either guarantee.                                                                                                                                  |
 | Close/flatten and final cancellation proof      | Unobserved. Require exact account identity, a completed exit, flat position, and no remaining active protection or unresolved entry.                                                                        |
 
-Before any authenticated inspection, resolve permission, then use an authorized session
+For owner-authorized personal read-only inspection, use the dedicated manual browser and session
 for read-only observations. Record redacted conceptual screenshots and accessible control
 names, scoped to account and market. Do not save authentication screens, account tokens,
 cookies, complete account pages or unredacted personal data in git. Real selectors must
@@ -222,7 +224,9 @@ An existing local test binary may be supplied via `BROWSER_TEST_EXECUTABLE`.
 
 ## Before a supervised one-account trial
 
-1. Obtain written automation/copy/session permission and resolve agreement/account scope.
+1. Review applicable automated-copy/session terms, resolve agreement/account scope and
+   authorize the exact execution trial separately. Owner read-only consent is already
+   recorded; it is not a claim of venue or commercial approval.
 2. Read-only inspect an authorized funded session; verify account selection and cross-tab
    behavior, exact market/size/leverage units, quotes, order history and error surfaces.
 3. Prove fill correlation, terminal partial handling, reduce-only exits, trigger basis,
