@@ -7,6 +7,24 @@ browser was signed out. This replaces the earlier retrieval limitations where no
 This is an evidence register, not a statement that older evaluation rules govern Instant accounts.
 Publication dates are unknown unless stated below; all sources were checked on the research date.
 
+## Public-source recheck — 2026-10-01
+
+The official [funded FAQ](https://next.vestmarkets.com/faq) and
+[prop terms](https://next.vestmarkets.com/prop-terms-of-service) were requested again,
+but current web extraction returned a page title with no readable body. Their wording
+could **not** be re-verified today. Retain the dated 2026-09-29 browser observations
+below; do not represent them as a current authenticated inspection or permission.
+The [exchange API documentation](https://docs.vestmarkets.com/vest-api) now redirects
+to [Vest Markets OLD](https://vest-labs.gitbook.io/vest-markets-old/vest-api).
+That archived exchange reference is not a funded-account capability or permission contract.
+
+No verified policy change was established. Funded API trading remains excluded from
+this project's plan under the dated FAQ evidence and the user's explicit boundary.
+Browser automation and commercial distribution permission remain unresolved; no private
+endpoints were called. The exact next blocked observations and prepared permission
+questions are in [the gap audit](vest-execution-gap-audit.md) and
+[read-only runbook](vest-read-only-observation.md).
+
 ## CONFIRMED
 
 ### Current funded UI documentation — browser-verified 2026-09-29

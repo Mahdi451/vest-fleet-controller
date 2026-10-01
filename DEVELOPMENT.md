@@ -11,7 +11,8 @@ Windows and Mac packages remain scheduled near final release, after acceptance.
 
 Customer deployment targets are Windows and macOS. Native identity, protected storage,
 startup configuration and diagnostics are implemented; [desktop host acceptance](docs/desktop-host-support.md)
-is the next gate. Record native CI and physical device results separately from Linux evidence.
+remains a release gate. Immediate work is permitted Vest connection/evidence verification.
+Record native CI and physical device results separately from Linux evidence.
 
 Mobile simulation and private HTTPS application work are now delivered around the
 existing engine. See [the current validation report](docs/mobile-private-validation.md),
@@ -67,22 +68,25 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-1. Complete native host validation for Windows and macOS, preserving owner identity,
-   protected storage, durable commands and exclusive execution ownership.
-2. Follow the [native setup guide](docs/native-host-setup.md) and record physical
-   desktop/phone acceptance with the [sanity checklist](docs/desktop-phone-sanity-check.md).
-   Native CI is supporting evidence; Windows Server is not physical Windows 11 proof.
-3. Keep recovery conservative: preserve journals and UNKNOWN outcomes, reconcile first,
-   and never automatically re-arm or fail over. An operator re-arm workflow that
-   preserves balances remains separate future work.
-4. Verify funded-account execution permissions, authentication, market metadata and
-   protection capabilities. Review the [browser investigation](docs/browser-execution.md)
-   and [reliability audit](docs/reliability-audit.md), then update dated primary evidence.
-5. Present the required pre-integration review before any live adapter work. No live
-   trades or private endpoint probing are authorized by this development guide.
-6. Near final release, package signed Windows and Mac installations with the runtime
-   bundled and safe update/recovery behavior. Development setup currently uses Git,
-   Node and pnpm; it is not the intended final customer installation experience.
+The 2026-10-01 priority is the core Vest copier's permitted connection and execution
+path. Pause further visual polish and installers. Preserve the existing simulator,
+host security and recovery; physical desktop/phone acceptance remains a release gate.
+
+1. Audit fixture assumptions and test partial/ambiguous visible evidence. See the
+   [execution gap audit](docs/vest-execution-gap-audit.md) and offline read-only contracts
+   in `packages/browser-execution/src/observations.ts` and `readonly.ts`.
+2. Obtain written permission for owner-account read-only automation and, separately,
+   master-command copying and commercial distribution. Do not contact Vest on the
+   user's behalf. Use the [permission questions/runbook](docs/vest-read-only-observation.md).
+3. With permission and an authorized session, inspect normal manual login/MFA, exact
+   inventory/identity, serialized switching, existing fills/protection/closing and
+   semantic selectors. No orders or live driver enablement in this milestone.
+4. Measure read/switch/scan timing and verify the minimum evidence contract. Do not
+   infer venue freshness or exactly-once execution from local timestamps/journal IDs.
+5. Present an explicit go/no-go before separately approved one-account driver/trial
+   work. Keep controller/risk/journals and UNKNOWN/halt behavior intact; no private APIs.
+6. Complete remaining physical host/phone acceptance before invitations. Near final
+   release, package signed Windows/Mac installers with safe updates and preserved state.
 
 ## Architecture
 

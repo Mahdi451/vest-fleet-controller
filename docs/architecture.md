@@ -2,6 +2,15 @@
 
 Status: initial implementation, simulation-only. Decision date: 2026-09-29.
 
+Priority update 2026-10-01: prove the permitted Vest connection and execution evidence
+path. [The execution-gap audit](vest-execution-gap-audit.md) records fixture assumptions
+and required real evidence. The offline `observations.ts` / `readonly.ts` boundary
+parses partial visible records and serializes read-only inspection; it is separate
+from `ExecutionAdapter`, has no trading methods and cannot authorize execution.
+One future permitted visible host browser/page uses manual official login/MFA and
+serialized switching. No real port is implemented. Existing controller, risk, journal
+and recovery remain the only owners of execution decisions.
+
 The domain and risk engine contain no Vest transport knowledge. A `TradeIntent`
 describes direction, market entry, stop/target distances, risk allocation and leverage.
 The controller retrieves per-account state, calculates a preview, and independently

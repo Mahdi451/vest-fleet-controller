@@ -4,6 +4,12 @@ Source: user's opening handoff protocol and Sections 1–14 supplied 2026-09-29.
 No separate Section 0 was supplied; the opening protocol served as the handoff.
 Implementation was authorized only after Section 14.
 
+Current priority (2026-10-01): [audit and prove the permitted browser connection and
+execution evidence path](vest-execution-gap-audit.md). Pause visual polish/installers.
+Initial copying starts from our application's master command, not manual leader-trade
+monitoring. Written permission and authorized read-only inspection precede a separately
+approved one-account trial. No connected execution or real orders are enabled here.
+
 ## Goal
 
 Build a reliable local engineering project to manage ten $500 Vest Capital Instant

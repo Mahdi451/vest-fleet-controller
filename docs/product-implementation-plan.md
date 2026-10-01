@@ -22,8 +22,8 @@ hedge, journaling, duplicate prevention and uncertainty rules.
 Customers initially run one isolated execution instance on their own **Windows or
 macOS computer**; their phone controls it through private authenticated HTTPS. These
 are the customer deployment targets. Linux is a development/reference environment,
-not a required customer installation. Native desktop host support is the next gate;
-the current Linux machine identity and permission checks must be ported and tested
+not a required customer installation. Native desktop host support is implemented;
+physical host/phone acceptance is still required
 without weakening ownership or secret protection. Release only the platforms with
 recorded native acceptance. See [desktop host support](desktop-host-support.md).
 
@@ -165,29 +165,34 @@ bands into a calendar promise without measured session length and external resol
 
 ## Immediate implementation order
 
-The native identity/storage boundary and native startup/setup instructions are now
-implemented. Native runner results and remaining limitations are recorded in the
-[validation report](native-host-validation.md). Physical desktop/phone acceptance
-is the next operational gate; the order below records the work required for it.
+Refocused 2026-10-01: the core product is an application-master-command copier for
+permitted Vest funded-account workflows. The simulator, dashboard and native host
+support this goal. Pause visual polish and installer work unless required for it.
+Manual leader-account trade monitoring remains separate future work.
 
-1. **Portable host identity and protected storage.** Review a small OS boundary, then
-   implement native Windows/macOS identity, ownership/secret checks, durable file
-   publication, canonical paths and exclusive runtime locks. Preserve existing
-   Linux/runtime bindings and all command/journal safety state.
-2. **Native startup and first-host setup.** Configure and verify owner/instance,
-   localhost operation, private HTTPS/certificates, sign-in/revocation and actionable
-   diagnostics on Windows/macOS. Provide native setup/start/stop/recovery instructions.
-3. **Native automated validation.** Run the existing simulator/controller suites and
-   platform-specific security, lock, command and restart cases on Windows/macOS
-   runners. Mocks on Linux are not native-platform acceptance.
-4. **Desktop/phone operational acceptance.** Exercise authenticated HTTPS, one
-   protected simulated entry, screen lock/offline/reconnect without a duplicate,
-   flatten/reconcile/logout and actual desktop sleep/reboot/crash recovery. Record
-   native OS/architecture and physical device evidence.
+1. **Evidence-gap audit and offline contracts.** Preserve the existing controller and
+   risk engine. Reject incomplete/rounded fill data, ambiguous venue correlation,
+   continuing remainders, unverifiable accounts and unproven protection/flatness.
+2. **Exact permission scope.** Resolve owner read-only automation, same-owner master
+   copying, account/session restrictions and commercial distribution separately.
+   No contact on the user's behalf. No private Capital API or token/cookie replay.
+3. **Gated read-only connection inspection.** After written permission and an authorized
+   session, one visible Windows/macOS host browser/page with manual official login/MFA;
+   serialized account switching; inspect actual semantic selectors and existing evidence.
+4. **Measured capability go/no-go.** Record exact identity/inventory, quote freshness,
+   terminal fill quantity/average/fees, reduce-only/persistence/sibling semantics and
+   complete close/cancel proof. Measure switching/reads/full scans; executable latency
+   remains unmeasured until an approved trial. Never relax budgets merely for tests.
+5. **Separately authorized one-account integration/trial.** Only after the permission
+   and visible-capability review. Existing controller owns fill-anchored risk/protection,
+   journals, drift, halt and recovery; ambiguous submissions are never blindly retried.
 
-Vest feasibility remains a later permission/access gate. Existing permission questions
-may be resolved while desktop simulation work progresses, but no live driver or funded
-execution is authorized by the portability work.
+See [the current gap audit](vest-execution-gap-audit.md) and
+[read-only observation runbook](vest-read-only-observation.md). Actual Vest inspection
+is blocked by missing permission and an authorized session. No connected execution
+is enabled. Native identity/storage/setup are already implemented; remaining physical
+Windows/macOS and phone acceptance is retained as a release/invitation requirement,
+with historical automated evidence in [native validation](native-host-validation.md).
 
 ## Near-final customer release packaging
 

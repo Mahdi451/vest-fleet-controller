@@ -4,10 +4,10 @@ One provisioned owner controls one execution instance and its ten synthetic acco
 The phone signs directly into that host. There is no shared cloud control plane,
 public signup, funded account connection or Vest login.
 
-Customer execution hosts target Windows and macOS. The current implementation uses
-Linux-specific host identity and Unix permission checks, so it does not yet support
-native Windows/macOS dashboard startup. The required portability and native
-acceptance work is tracked in [desktop host support](desktop-host-support.md).
+Customer execution hosts target Windows and macOS. Native host identity, protected
+storage, startup and diagnostics are implemented; see [native validation](native-host-validation.md).
+Physical onboarding/sleep/reboot and trusted-phone acceptance remain release gates.
+The immediate product priority is [permitted Vest connection/evidence verification](vest-execution-gap-audit.md).
 
 ## Boundaries
 

@@ -6,6 +6,26 @@ describes what a local user can do today. The [Vest fact register](vest-facts.md
 The [customer implementation and acceptance plan](product-implementation-plan.md)
 covers sign-in, account connection, local/VPS hosting, staged effort and failure tests.
 
+## NOW — permitted Vest connection and execution evidence
+
+Priority changed 2026-10-01. Pause visual polish and installer work; retain existing
+simulation/host safeguards and all physical acceptance requirements.
+
+- [x] Audit the fixture-to-real execution gaps and define minimum visible evidence.
+- [x] Validate the new offline evidence contracts and read-only inspection boundary
+      with 71 tests and targeted review. Current full-suite results and scope are
+      recorded in [the validation report](vest-execution-validation.md).
+- [x] Prepare owner/commercial permission questions and the read-only observation runbook.
+- [ ] Obtain written automation permission for this exact workflow and an authorized session.
+- [ ] Inspect actual discovery, exact identity, serialized switching and existing
+      fills/protection/closing with semantic selectors, without submitting orders.
+- [ ] Measure UI reliability and record an explicit capability go/no-go before any
+      separately authorized one-account execution trial.
+
+See [execution gaps](vest-execution-gap-audit.md) and
+[the read-only runbook](vest-read-only-observation.md). No real driver is implemented,
+no connection is available today, and no connected execution is enabled.
+
 ## What works today: local simulation prototype
 
 - [x] Run a ten-account synthetic fleet in a local dashboard and CLI.
@@ -53,7 +73,7 @@ and permission scope. Do not assume this is authorized by same-owner copying rul
       for a small invited group. The shipped build must clearly identify simulation.
 
 Customer hosts target Windows and macOS. Native host identity, protected storage
-and onboarding instructions are implemented. Physical acceptance is the next gate;
+and onboarding instructions are implemented. Physical acceptance remains a release gate;
 Linux is a reference implementation,
 not a customer requirement. See [desktop host support](desktop-host-support.md).
 
@@ -95,7 +115,7 @@ for any release that can affect customer funded accounts.
 ### Near-final customer release packaging
 
 Scheduled near completion of the intended release scope, after feature/security and
-recovery acceptance. Native host support/setup remains the immediate priority.
+recovery acceptance. Permitted connection and visible execution evidence are the immediate priority.
 
 - [ ] Build a signed Windows `.exe` installer bundling runtime and application assets.
 - [ ] Build the equivalent signed/notarized macOS `.app`/`.dmg` release.

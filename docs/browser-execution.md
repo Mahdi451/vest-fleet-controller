@@ -1,5 +1,11 @@
 # Browser execution investigation and fixture architecture
 
+Immediate priority (2026-10-01): [audit fixture-to-real execution gaps](vest-execution-gap-audit.md),
+validate the offline partial-evidence contracts, then resolve permission and inspect
+an authorized session using [the read-only runbook](vest-read-only-observation.md).
+Visual polish/installers are paused. `observations.ts` and `readonly.ts` are offline-only,
+have no trading methods and are not connected to the execution controller or Vest.
+
 Decision/evidence date: 2026-09-29 (America/Los_Angeles).
 Reviewed baseline: `0b81f263fff2758103023a1f854f63a8df869af4`.
 

@@ -27,6 +27,10 @@ scenarios.
 
 ![Dashboard with independent exposure previews for ten accounts](docs/images/dashboard-preview.png)
 
+Current development priority: [prove the permitted Vest connection and execution evidence path](docs/vest-execution-gap-audit.md).
+Visual polish and installer work are paused. Real Vest connection remains unimplemented;
+permission, authorized read-only inspection and a separate execution trial are required.
+
 ## Quick start
 
 Native Windows and macOS host identity and private storage are implemented around
@@ -99,7 +103,7 @@ keep their records for investigation. Restart and reconnect recover status witho
 
 Customer execution hosts target **Windows and macOS**. Native host identity,
 private storage and diagnostics are implemented; physical acceptance is pending.
-[Desktop host compatibility](docs/desktop-host-support.md) is the next acceptance gate;
+[Desktop host compatibility](docs/desktop-host-support.md) remains a release acceptance gate;
 Linux is a reference environment, not a customer requirement.
 
 The phone layout supports Trade, Accounts and Activity, readable account risk cards,
