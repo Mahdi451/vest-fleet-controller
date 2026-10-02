@@ -563,5 +563,7 @@ it.each(['requested', 'unexpected'] as const)(
       await context?.close();
     }
   },
-  30000,
+  // Match the native helper startup allowance used by the Windows suite.
+  // This is the test deadline, not the observer's authorization or close policy.
+  process.platform === 'win32' ? 60000 : 30000,
 );

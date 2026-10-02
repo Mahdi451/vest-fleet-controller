@@ -192,14 +192,17 @@ this is not native Windows/macOS or execution readiness evidence.
   later accounts HALTED, no later dispatch, protected earlier positions and stable
   durable replay. The first new test used the inclusive 5000 ms boundary and failed;
   it was corrected to 5001 ms without changing production freshness semantics.
-- Final local `pnpm check` passed typecheck, ESLint and formatting, with **350 passed,
+- At observer revision `824de71`, local `pnpm check` passed typecheck, ESLint and formatting, with **350 passed,
   4 platform skips, 354 total in 18 files**. The **40-test observer suite** includes
   two real Chromium lifecycle cases. Narrow execution/private
   phone checks passed **20 tests**; the separate Chromium browser/private-phone suite passed **46 tests**. Source/diff checks and independent Sol High review
   passed for both the execution diagnostic and observer lifecycle changes.
 - Native diagnostics run:
   [37049870681](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37049870681),
-  in progress at this checkpoint. Native failure diagnosis is still open.
+  passed all four runners. Windows ran both phone cases in both suites: all ten
+  accounts were protected in each. The historical rejection has no detailed reason
+  and remains unexplained; expiry under runner load is consistent with the evidence,
+  not proven.
 
 Observer timelines record first-cause-wins quit/EOF/signal/expiry/guard/unexpected
 close events with relative timing and safe version metadata. Tests cover concurrent
@@ -219,3 +222,56 @@ additional page in this sample. Authentication URL parameters were not recorded.
 The complete return route, owner identity, ten-account inventory and real
 read-only selectors/capabilities remain unverified. No credentials, authentication
 screenshots, session export or trading actions were used.
+
+### Native timing evidence and controlled simulation clock
+
+At `3452687`, the four Windows CI phone commands had maximum preview ages
+2009–2620 ms, maximum queue delays 1897–2489 ms, aggregate measured journal-call
+cost 2197–2729 ms and maximum individual storage-call cost 152–213 ms. Measurements
+include the existing nested journal wrappers and are diagnostic call totals, not a
+separate wall-clock fan-out budget. All ten accounts were protected in each command.
+Production evidence and preview limits remain 5000 ms.
+
+A separate tracked-source archive at `824de71` ran under native Windows 11
+10.0.26100.0 on this laptop, using a temporary portable Node 24.18.0 installation,
+pinned pnpm and native Chromium. No bound runtime, profile, credentials or Git
+configuration was copied. The first phone attempt failed during fixture setup
+because per-user Git's OpenSSL was absent from PATH. Adding its bundled OpenSSL to
+that test process's PATH resolved setup: **2 phone tests passed**, all ten positions
+protected in both cases, with maximum preview ages 470/286 ms and maximum queue
+delays 271/184 ms. This is emulated phone validation, not physical-phone acceptance.
+No global PATH or PowerShell policy change was made.
+
+Those passing samples show materially variable native timing, but cannot recover
+the old missing rejection reason. The full-fleet phone/persistence fixture now uses
+one injected simulation clock across adapter, controller, evidence and command
+checks, matched by browser `Date` only. Production defaults to wall time; private
+access/session expiry, real timers, I/O and monotonic diagnostics remain independent.
+The fixture's diagnostic summary labels its controlled synthetic time explicitly.
+Separate API/controller cases advance time by 5001 ms and prove rejection before
+entry or during account-eight revalidation, retained earlier protections, a latched
+halt, accurate partial-command completion and replay without redispatch.
+
+Current controlled-clock `pnpm check` passed typecheck, lint and formatting, with
+**352 passed, four platform skips, 356 total in 18 files**. The initial clock capture
+broke two existing dynamic wall-clock expiry tests; the default was corrected to
+read `Date.now()` on each use, and both focused expiry suites (24 tests) then passed.
+Independent Sol High clock review found a test-only reconciliation race. The delay
+now requires seven observed entries, preventing a background scan from advancing time
+before execution. Focused dashboard/execution checks then passed **27 tests**; the
+separate browser/private-phone suite passed **46 tests**. No production safety or
+security-clock findings remain. Final relevant revision native CI is pending.
+
+The native laptop observer suite at `824de71` took about 940 seconds: **39 passed,
+one failed**, in the real Chromium requested-close case. The isolated case also
+failed with timeout-shaped runner errors and a cleanup permission error under its
+explicit 30-second test limit. Matching the existing Windows suite's 60-second test
+allowance made both real Chromium close cases pass (**2 passed, 38 filtered out**),
+with reported durations about 37 and 33 seconds. Only this test deadline changed;
+observer authorization and closure/ownership policy did not. The targeted native
+copy was `824de71` plus that one test-deadline diff. No new complete native laptop
+observer suite is claimed.
+
+[Observer revision run 37050725933](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37050725933)
+passed all four native runners, including the full suite and separate browser suite
+on Windows, before the controlled-clock/test-deadline changes.

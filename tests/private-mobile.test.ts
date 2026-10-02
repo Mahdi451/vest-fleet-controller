@@ -81,6 +81,7 @@ function reportExecution(label: string) {
       JSON.stringify({
         label,
         platform: process.platform,
+        clock: 'CONTROLLED_SYNTHETIC_TIME',
         storage,
         children: audit
           .filter((event) => event.revalidation)
@@ -192,8 +193,17 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
     const port = await availablePort();
     const origin = `https://localhost:${port}`;
     const accessConfig = { ...host.config, origin, port };
+    // Durable I/O and browser timers remain real; only synthetic evidence time is fixed.
+    const domainNow = Date.now();
+    const domainClock = { now: () => domainNow };
     const access = new PrivateAccess(accessConfig, host.tls);
-    const app = await createDashboard(config, host.directory, false, access);
+    const app = await createDashboard(
+      config,
+      host.directory,
+      false,
+      access,
+      domainClock,
+    );
     await new Promise<void>((resolve) =>
       app.server.listen(port, '127.0.0.1', resolve),
     );
@@ -204,6 +214,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
       hasTouch: true,
     });
     const page = await context.newPage();
+    await page.clock.setFixedTime(domainNow);
     try {
       const unauthenticated = await context.request.get(`${origin}/api/state`);
       expect(unauthenticated.status()).toBe(401);
@@ -346,6 +357,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
       });
       try {
         const second = await secondPhone.newPage();
+        await second.clock.setFixedTime(domainNow);
         await second.goto(origin);
         await signIn(second, host.secret);
         expect(
@@ -404,12 +416,21 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
     const port = await availablePort();
     const origin = `https://localhost:${port}`;
     const accessConfig = { ...host.config, origin, port };
+    // Durable I/O and browser timers remain real; only synthetic evidence time is fixed.
+    const domainNow = Date.now();
+    const domainClock = { now: () => domainNow };
     let elapsed = 0;
     const access = new PrivateAccess(accessConfig, host.tls, {
       now: () => Date.now() + elapsed,
       sessionDurationMs: 60000,
     });
-    let app = await createDashboard(config, host.directory, false, access);
+    let app = await createDashboard(
+      config,
+      host.directory,
+      false,
+      access,
+      domainClock,
+    );
     await new Promise<void>((resolve) =>
       app.server.listen(port, '127.0.0.1', resolve),
     );
@@ -420,6 +441,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
       hasTouch: true,
     });
     const page = await context.newPage();
+    await page.clock.setFixedTime(domainNow);
     let releaseForeground: (() => void) | undefined;
     try {
       await page.goto(origin);
@@ -505,6 +527,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
         host.directory,
         false,
         new PrivateAccess(accessConfig, host.tls),
+        domainClock,
       );
       await new Promise<void>((resolve) =>
         app.server.listen(port, '127.0.0.1', resolve),

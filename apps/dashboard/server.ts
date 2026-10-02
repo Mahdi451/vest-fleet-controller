@@ -67,7 +67,10 @@ export async function createDashboard(
   journalDirectory?: string,
   startNew = false,
   access?: PrivateAccess,
+  options: { now?: () => number } = {},
 ) {
+  // Simulation evidence and commands share one domain clock; access expiry is separate.
+  const now = options.now ?? (() => Date.now());
   const token = randomUUID();
   if (
     access &&
@@ -106,7 +109,7 @@ export async function createDashboard(
     journal.recoverCommands();
     adapter = new MockVestAdapter(
       config,
-      Date.now,
+      now,
       undefined,
       '30400',
       (event) => journal.log(event),
@@ -126,7 +129,7 @@ export async function createDashboard(
       session.saved ?? undefined,
     );
     await adapter.connect();
-    controller = new FleetController(adapter, config, journal);
+    controller = new FleetController(adapter, config, journal, now);
     emergencyRequested = session.restored;
     lastResults = null;
     if (session.restored) controller.requestHalt();
@@ -170,10 +173,10 @@ export async function createDashboard(
       ...accounts.map((a) => a.lastSyncTimestamp),
       verifiedAt ?? 0,
     ];
-    const ageMs = Math.max(...timestamps.map((t) => Date.now() - t));
+    const ageMs = Math.max(...timestamps.map((t) => now() - t));
     return {
       fresh: timestamps.every(
-        (t) => Date.now() >= t && Date.now() - t < config.maxDataAgeMs,
+        (t) => now() >= t && now() - t < config.maxDataAgeMs,
       ),
       verifiedAt,
       ageMs,
@@ -431,7 +434,7 @@ export async function createDashboard(
           reply(409, { error: 'OPERATION_IN_PROGRESS' });
           return;
         }
-        if (Date.now() < command.createdAt || Date.now() >= command.expiresAt)
+        if (now() < command.createdAt || now() >= command.expiresAt)
           throw new Error('COMMAND_EXPIRED');
         if (emergencyRequested || journal.halted())
           throw new Error('ENTRIES_HALTED');
@@ -457,7 +460,7 @@ export async function createDashboard(
         }
         if (emergencyRequested || journal.halted())
           throw new Error('ENTRIES_HALTED');
-        if (Date.now() < command.createdAt || Date.now() >= command.expiresAt)
+        if (now() < command.createdAt || now() >= command.expiresAt)
           throw new Error('COMMAND_EXPIRED');
         // Commit acceptance before any controller side effect. Every retry above is read-only.
         busy = true;

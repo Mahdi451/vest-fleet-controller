@@ -125,10 +125,14 @@ summary. Production freshness and preview limits remain 5000 ms. A deterministic
 5001 ms delay during account eight revalidation verifies seven protected outcomes,
 rejected eighth entry, halted ninth/tenth and no redispatch on replay.
 
-The older Windows failure is not yet explained by a native diagnostic observation.
 [Diagnostic run 37049870681](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37049870681)
-is the next source of evidence. Timing/storage cost remains a hypothesis, not a
-confirmed root cause. A newer baseline run passed Windows but failed macOS Intel at
+passed all four runners. Its four Windows phone commands protected the full fleet,
+with preview ages up to 2620 ms and measured storage-call totals up to 2729 ms.
+Native laptop phone cases at `824de71` also passed after fixing local OpenSSL PATH.
+These observations do not establish the older failure's exact cause; expiry under
+runner load remains an inference. The full-fleet fixture now uses controlled
+simulation time, alongside deterministic expiry/partial-fleet rejection coverage.
+Production limits remain unchanged; final relevant revision native CI is pending. A newer baseline run passed Windows but failed macOS Intel at
 an immediate logout-visibility assertion; the fixture now waits for the authenticated
 view after reachability. That race is distinct from the earlier fleet rejection.
 
