@@ -1,11 +1,106 @@
 import { createServer } from 'node:net';
 import { mkdir } from 'node:fs/promises';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { chromium, type Browser, type Page } from 'playwright';
 import { createDashboard } from '../apps/dashboard/server.ts';
 import { PrivateAccess } from '../apps/dashboard/src/private-access.ts';
 import { config } from './helpers.ts';
+import { Journal, type AuditEvent } from '../packages/execution/src/journal.ts';
 import { privateHost } from './fixtures/private-host.ts';
+
+// Native diagnosis: measure existing durable calls without adding hot-path writes.
+let audit: AuditEvent[];
+let storage: Record<string, { count: number; totalMs: number; maxMs: number }>;
+function measure<T>(name: string, action: () => T): T {
+  const start = performance.now();
+  try {
+    return action();
+  } finally {
+    const duration = performance.now() - start;
+    const stat = (storage[name] ??= { count: 0, totalMs: 0, maxMs: 0 });
+    stat.count++;
+    stat.totalMs += duration;
+    stat.maxMs = Math.max(stat.maxMs, duration);
+  }
+}
+beforeEach(() => {
+  audit = [];
+  storage = {};
+  const log = Journal.prototype.log;
+  vi.spyOn(Journal.prototype, 'log').mockImplementation(function (
+    this: Journal,
+    event,
+  ) {
+    audit.push(event);
+    return measure('log', () => log.call(this, event));
+  });
+  const saveSimulator = Journal.prototype.saveSimulator;
+  vi.spyOn(Journal.prototype, 'saveSimulator').mockImplementation(function (
+    this: Journal,
+    snapshot,
+  ) {
+    return measure('saveSimulator', () => saveSimulator.call(this, snapshot));
+  });
+  const child = Journal.prototype.child;
+  vi.spyOn(Journal.prototype, 'child').mockImplementation(function (
+    this: Journal,
+    master,
+    result,
+  ) {
+    return measure('child', () => child.call(this, master, result));
+  });
+  const saveCommand = Journal.prototype.saveCommand;
+  vi.spyOn(Journal.prototype, 'saveCommand').mockImplementation(function (
+    this: Journal,
+    command,
+  ) {
+    return measure('saveCommand', () => saveCommand.call(this, command));
+  });
+  const finish = Journal.prototype.finish;
+  vi.spyOn(Journal.prototype, 'finish').mockImplementation(function (
+    this: Journal,
+    id,
+    result,
+  ) {
+    return measure('finish', () => finish.call(this, id, result));
+  });
+});
+afterEach(() => vi.restoreAllMocks());
+function reportExecution(label: string) {
+  process.stdout.write(
+    'PRIVATE_MOBILE_EXECUTION_DIAGNOSTICS ' +
+      JSON.stringify({
+        label,
+        platform: process.platform,
+        storage,
+        children: audit
+          .filter((event) => event.revalidation)
+          .map((event) => ({
+            accountId: event.accountId,
+            status: event.status,
+            error: event.error,
+            latencyMs: event.latency,
+            revalidation: event.revalidation,
+          })),
+        protection: audit
+          .filter((event) => event.status === 'PROTECTION_VERIFIED')
+          .map((event) => ({
+            accountId: event.accountId,
+            protectionLatencyMs: event.protectionLatencyMs,
+          })),
+      }) +
+      '\n',
+  );
+}
 
 let browser: Browser;
 beforeAll(async () => {
@@ -67,6 +162,9 @@ async function signIn(page: Page, secret: string) {
   await page.waitForFunction(() =>
     document.getElementById('connection')?.textContent?.includes('reachable'),
   );
+  // Reachability can render while refresh is still recovering command status.
+  // Wait for the authenticated view, rather than assert during that transition.
+  await page.waitForSelector('#logout:not([hidden])');
 }
 async function enter(page: Page) {
   await page.locator('#preview').click();
@@ -149,6 +247,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
       });
       await enter(page);
       await complete(page);
+      reportExecution('lost-response');
       await page.reload();
       await complete(page);
       await context.setOffline(true);
@@ -327,6 +426,7 @@ describe('private HTTPS phone workflow (Chromium emulation, isolated test certif
       await signIn(page, host.secret);
       await enter(page);
       await complete(page);
+      reportExecution('restart');
       let started!: () => void, release!: () => void;
       let routeFailure: unknown;
       const requestStarted = new Promise<void>((resolve) => {

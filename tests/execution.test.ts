@@ -96,6 +96,71 @@ describe('execution reliability', () => {
       s.journal.close();
     }
   });
+  it('stops a delayed fleet at revalidation expiry and preserves earlier protected results', async () => {
+    const s = await setup();
+    try {
+      const original = s.adapter.getAccountState.bind(s.adapter);
+      vi.spyOn(s.adapter, 'getAccountState').mockImplementation(async (id) => {
+        // The loop-start check passes. Reading the eighth account consumes the remaining budget.
+        if (id === '08') s.advance(config.maxDataAgeMs + 1);
+        return original(id);
+      });
+      const place = vi.spyOn(s.adapter, 'placeOrder');
+      const p = await s.controller.preview(intent);
+      const results = await s.controller.execute('delayed-fleet', p.previewId);
+      expect(results.slice(0, 7).every((r) => r.state === 'PROTECTED')).toBe(
+        true,
+      );
+      expect(results[7]).toMatchObject({
+        state: 'REJECTED',
+        error: 'PRETRADE_REVALIDATION_FAILED',
+      });
+      expect(results.slice(8).map((r) => [r.state, r.error])).toEqual([
+        ['HALTED', 'CIRCUIT_OPEN'],
+        ['HALTED', 'CIRCUIT_OPEN'],
+      ]);
+      expect(place.mock.calls.map(([order]) => order.accountId)).toEqual([
+        '01',
+        '02',
+        '03',
+        '04',
+        '05',
+        '06',
+        '07',
+      ]);
+      const event = s.journal
+        .events()
+        .find((e) => e.accountId === '08' && e.revalidation);
+      expect(event?.revalidation).toMatchObject({
+        gateReasons: [
+          'RISK_PREVIEW_REJECTED',
+          'PREVIEW_EXPIRED_DURING_REVALIDATION',
+        ],
+        riskReasons: ['STALE_ACCOUNT', 'STALE_QUOTE'],
+        previewAgeMs: 5001,
+        quoteAgeMs: 5001,
+        accountAgeMs: 5001,
+      });
+      expect(s.journal.halted()).toBe(true);
+      expect(s.journal.replay('delayed-fleet', p.previewId)).toEqual(results);
+      expect(await s.controller.execute('delayed-fleet', p.previewId)).toEqual(
+        results,
+      );
+      expect(place).toHaveBeenCalledTimes(7);
+      const accounts = await s.adapter.listAccounts();
+      expect(
+        accounts
+          .slice(0, 7)
+          .every((a) => a.positions[0]?.protectionStatus === 'ACTIVE'),
+      ).toBe(true);
+      expect(accounts.slice(7).every((a) => a.positions.length === 0)).toBe(
+        true,
+      );
+    } finally {
+      s.journal.close();
+    }
+  });
+
   it('reconciles an ambiguous acknowledgement by exact order and protected position', async () => {
     const s = await setup();
     try {

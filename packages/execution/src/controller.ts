@@ -27,7 +27,7 @@ import {
   type ExposureViolation,
 } from '../../risk-engine/src/exposure.ts';
 import type { ExecutionAdapter, ChildResult } from './adapter.ts';
-import { Journal } from './journal.ts';
+import { Journal, type RevalidationDiagnostic } from './journal.ts';
 import { validateResult } from './adapter.ts';
 
 const hash = (value: unknown) =>
@@ -514,10 +514,13 @@ export class FleetController {
     if (!claim.fresh) return this.journal.replay(masterTradeId, previewId);
     this.busy = true;
     const results: ChildResult[] = [];
+    const executionStarted = performance.now();
     let stopped = this.circuitOpen;
     try {
       for (const [index, planned] of preview.orders.entries()) {
         const start = this.clock();
+        const childStarted = performance.now();
+        let revalidation: RevalidationDiagnostic | undefined;
         const requestId = hash([masterTradeId, planned.accountId]);
         const result: ChildResult = {
           requestId,
@@ -552,18 +555,20 @@ export class FleetController {
           let entryStarted = 0;
           let protectionStarted = 0;
           try {
+            const validationStarted = performance.now();
             const state = await this.deadline(
               this.adapter.getAccountState(planned.accountId),
             );
             const quote = await this.deadline(this.adapter.getQuote());
             const fleet = await this.deadline(this.adapter.listAccounts());
             const before = preview.accounts[index];
+            const validationNow = this.clock();
             actual = sizeTrade(
               state,
               preview.intent,
               quote,
               this.config,
-              this.clock(),
+              validationNow,
             );
             const mismatch =
               !before ||
@@ -575,21 +580,56 @@ export class FleetController {
               preview.intent,
               fleet,
             );
+            const gateReasons: RevalidationDiagnostic['gateReasons'] = [];
+            if (this.circuitOpen) gateReasons.push('CIRCUIT_OPEN');
+            if (!before) gateReasons.push('ACCOUNT_SNAPSHOT_MISSING');
+            if (before && state.revision !== before.revision)
+              gateReasons.push('ACCOUNT_REVISION_CHANGED');
+            if (before && state.balance !== before.balance)
+              gateReasons.push('ACCOUNT_BALANCE_CHANGED');
+            if (before && state.equity !== before.equity)
+              gateReasons.push('ACCOUNT_EQUITY_CHANGED');
+            if (before && state.drawdown.floor !== before.drawdown.floor)
+              gateReasons.push('DRAWDOWN_FLOOR_CHANGED');
+            if (exposureViolations.length > 0)
+              gateReasons.push('FLEET_EXPOSURE');
+            if (!actual.approved) gateReasons.push('RISK_PREVIEW_REJECTED');
+            // Preserve the final preview check after sizing, including time spent validating.
+            const checkedAt = this.clock();
+            const previewFresh = isFresh(
+              preview.createdAt,
+              checkedAt,
+              this.config.maxPreviewAgeMs,
+            );
+            if (!previewFresh)
+              gateReasons.push('PREVIEW_EXPIRED_DURING_REVALIDATION');
+            const priceMoved = new D(quote.price)
+              .minus(preview.quote.price)
+              .abs()
+              .gt(this.config.maxPriceMovePoints);
+            if (priceMoved) gateReasons.push('PRICE_MOVE_LIMIT');
+            const quantityIncreased = new D(actual.quantity).gt(
+              planned.quantity,
+            );
+            if (quantityIncreased) gateReasons.push('QUANTITY_INCREASE');
+            revalidation = {
+              gateReasons,
+              riskReasons:
+                actual.reasons as RevalidationDiagnostic['riskReasons'],
+              previewAgeMs: checkedAt - preview.createdAt,
+              quoteAgeMs: validationNow - quote.timestamp,
+              accountAgeMs: validationNow - state.lastSyncTimestamp,
+              queueDelayMs: childStarted - executionStarted,
+              validationDurationMs: performance.now() - validationStarted,
+            };
             if (
               this.circuitOpen ||
               mismatch ||
               exposureViolations.length > 0 ||
               !actual.approved ||
-              !isFresh(
-                preview.createdAt,
-                this.clock(),
-                this.config.maxPreviewAgeMs,
-              ) ||
-              new D(quote.price)
-                .minus(preview.quote.price)
-                .abs()
-                .gt(this.config.maxPriceMovePoints) ||
-              new D(actual.quantity).gt(planned.quantity)
+              !previewFresh ||
+              priceMoved ||
+              quantityIncreased
             ) {
               result.error =
                 exposureViolations[0]?.code ?? 'PRETRADE_REVALIDATION_FAILED';
@@ -880,6 +920,7 @@ export class FleetController {
           error: result.error,
           adapter: this.adapter.name,
           latency: this.clock() - start,
+          ...(revalidation ? { revalidation } : {}),
         });
         results.push(result);
         // Disabled/pre-rejected accounts are intentionally skipped. Execution failures halt remaining dispatch.

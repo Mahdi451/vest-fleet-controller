@@ -2,6 +2,49 @@ import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { childResultSchema, type ChildResult } from './adapter.ts';
 
+export const revalidationDiagnosticSchema = z.object({
+  gateReasons: z.array(
+    z.enum([
+      'CIRCUIT_OPEN',
+      'ACCOUNT_SNAPSHOT_MISSING',
+      'ACCOUNT_REVISION_CHANGED',
+      'ACCOUNT_BALANCE_CHANGED',
+      'ACCOUNT_EQUITY_CHANGED',
+      'DRAWDOWN_FLOOR_CHANGED',
+      'FLEET_EXPOSURE',
+      'RISK_PREVIEW_REJECTED',
+      'PREVIEW_EXPIRED_DURING_REVALIDATION',
+      'PRICE_MOVE_LIMIT',
+      'QUANTITY_INCREASE',
+    ]),
+  ),
+  riskReasons: z.array(
+    z.enum([
+      'ACCOUNT_DISABLED',
+      'ACCOUNT_BREACHED',
+      'UNRESOLVED_EXECUTION',
+      'EXISTING_POSITION',
+      'STALE_ACCOUNT',
+      'STALE_QUOTE',
+      'LEVERAGE_LIMIT',
+      'INCONSISTENT_ACCOUNT',
+      'INVALID_PROTECTION_PRICE',
+      'SIZE_BELOW_MINIMUM',
+      'DRAWDOWN_RESERVE',
+      'INSUFFICIENT_MARGIN',
+      'RISK_BUDGET_EXCEEDED',
+    ]),
+  ),
+  previewAgeMs: z.number().finite(),
+  quoteAgeMs: z.number().finite(),
+  accountAgeMs: z.number().finite(),
+  queueDelayMs: z.number().nonnegative(),
+  validationDurationMs: z.number().nonnegative(),
+});
+export type RevalidationDiagnostic = z.infer<
+  typeof revalidationDiagnosticSchema
+>;
+
 const auditSchema = z.object({
   balance: z.string().optional(),
   equity: z.string().optional(),
@@ -30,6 +73,7 @@ const auditSchema = z.object({
   error: z.string().nullable().optional(),
   adapter: z.string(),
   latency: z.number().optional(),
+  revalidation: revalidationDiagnosticSchema.optional(),
   fillLatencyMs: z.number().nonnegative().optional(),
   protectionLatencyMs: z.number().nonnegative().optional(),
   reconciliationLatencyMs: z.number().nonnegative().optional(),
