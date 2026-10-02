@@ -260,7 +260,7 @@ Independent Sol High clock review found a test-only reconciliation race. The del
 now requires seven observed entries, preventing a background scan from advancing time
 before execution. Focused dashboard/execution checks then passed **27 tests**; the
 separate browser/private-phone suite passed **46 tests**. No production safety or
-security-clock findings remain. Final relevant revision native CI is pending.
+security-clock findings remain. Final relevant revision native CI passed as recorded below.
 
 The native laptop observer suite at `824de71` took about 940 seconds: **39 passed,
 one failed**, in the real Chromium requested-close case. The isolated case also
@@ -275,3 +275,43 @@ observer suite is claimed.
 [Observer revision run 37050725933](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37050725933)
 passed all four native runners, including the full suite and separate browser suite
 on Windows, before the controlled-clock/test-deadline changes.
+
+### Final code revision `1173dc3` checkpoint
+
+A fresh tracked-source archive of `1173dc3` passed **29 targeted tests** natively on
+this Windows 11 laptop: dashboard API, execution and both private-phone workflows.
+The runs used the same temporary portable Node and process-local OpenSSL PATH;
+no bound runtime, browser profile or credentials were copied. Both phone commands
+protected all ten synthetic accounts. Their controlled synthetic preview ages were
+zero, while measured real maximum queue delays were approximately 319/273 ms.
+The API/controller cases separately exercised deliberate expiry and retained partial
+fleet outcomes. These observations do not prove physical-phone or funded compatibility.
+
+[Final relevant code matrix 37054143411](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37054143411)
+passed on all four platforms at `1173dc3`: Windows Server 2025 x64, Ubuntu 24.04
+x64 and macOS 15 Intel/Apple silicon. Windows completed the full typecheck, lint,
+format and test suite with **352 passed, four skipped, 356 total in 18 files**,
+including **40 observer tests**; its separate browser/private-phone suite passed
+**46 tests**. The four Windows phone diagnostic commands each reported ten PROTECTED
+accounts and no rejection, with their controlled synthetic time clearly labeled.
+This establishes final-code native fixture acceptance, not the historical failure's
+missing reason or real funded/browser readiness.
+
+The original failed Windows job `110625296195` was rechecked against `f01a210`:
+the first phone assertion required one ACTIVE protected position on every account
+(line 190), and the restart assertion required the same after recovery (line 435).
+The recorded full-run command had accounts 01–08 PROTECTED, 09 rejected and 10
+HALTED; the separate run had 01–07 PROTECTED, 08 rejected and 09–10 HALTED.
+The available diagnostic objects contain only halt state, health metrics and results,
+without validation reason details or quote/account/preview ages. They cannot identify
+the precise old revalidation predicate. The restart failure lacks a detailed book
+dump, so it cannot independently establish why a protected position was absent.
+
+The retained runtime/profile observer locks were rechecked after final validation:
+they still exist and have matching payloads, the recorded parent is absent, and
+both lock modification times remain later than current guest boot. This is not
+exclusive child-ownership or full-host shutdown proof. They remain unchanged.
+The owner recovery-path question remains unanswered; recovery, complete Google
+handoff/return, verified owner/fleet identity and actual read-only observations are
+still required. No real observer was relaunched and no authenticated funded port
+was implemented. PR #2 remains open and unmerged.

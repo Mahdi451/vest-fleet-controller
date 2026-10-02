@@ -92,25 +92,25 @@ Stop at the authorization boundary even if time remains. If C cannot finish, D s
 
 ### A. Diagnose and fix the Windows regression
 
-- [ ] Inspect both failed assertions and the full per-account results from the linked run.
-- [ ] Trace `PRETRADE_REVALIDATION_FAILED` through `packages/execution/src/controller.ts` to its specific validation reasons.
-- [ ] Capture allowlisted reason codes and durations: preview age, quote/account evidence age, queue delay, entry/protection time and storage-write time. Avoid raw account/session dumps.
+- [x] Inspect both failed assertions and the full per-account results from the linked run.
+- [x] Trace `PRETRADE_REVALIDATION_FAILED` through `packages/execution/src/controller.ts` to its specific validation reasons.
+- [x] Capture allowlisted reason codes and durations: preview age, quote/account evidence age, queue delay, entry/protection time and storage-write time. Avoid raw account/session dumps.
 - [ ] Reproduce the failing private-mobile cases on native Windows or the same CI runner. A Mac/Linux pass does not close this task.
 - [ ] Determine whether the fixture expects ten successful accounts inside a budget that the host cannot meet, or whether the application is mishandling valid evidence.
 - [ ] Fix the smallest evidenced cause. Do not lengthen production freshness, remove all-account checks, skip tests or add automatic retries just to obtain green CI.
-- [ ] If test structure changes, retain separate coverage for complete-fleet success and delayed fan-out rejection. A halted partial fleet must remain an explicit result.
-- [ ] Rerun the affected workflow and the full native matrix on the final relevant code revision. Record earlier failures as well as resolution.
+- [x] If test structure changes, retain separate coverage for complete-fleet success and delayed fan-out rejection. A halted partial fleet must remain an explicit result.
+- [x] Rerun the affected workflow and the full native matrix on the final relevant code revision. Record earlier failures as well as resolution.
 
 Acceptance: the reason is known; Windows tests pass without weakening production safeguards; a deterministic delayed-account case proves later entries stop while earlier protected outcomes remain accurately reported. Reject timing-budget changes unless supported by measured evidence and a documented product decision.
 
 ### B. Resolve observer closure and recovery
 
-- [ ] Inspect `apps/vest-observer/` lifecycle code and `tests/vest-manual-observer.test.ts` against the recorded unexpected context-close event.
+- [x] Inspect `apps/vest-observer/` lifecycle code and `tests/vest-manual-observer.test.ts` against the recorded unexpected context-close event.
 - [ ] Distinguish actual Chromium exit, parent-terminal/EOF shutdown, authorization expiry, origin/popup quarantine and lifecycle callback races. Do not assume the closure was a Google policy block or a Vest restriction.
-- [ ] Add minimal redacted lifecycle reasons and relative event times. Record process/browser version and exit information without URLs containing authentication parameters, raw stderr, traces or profile contents.
+- [x] Add minimal redacted lifecycle reasons and relative event times. Record process/browser version and exit information without URLs containing authentication parameters, raw stderr, traces or profile contents.
 - [ ] Establish whether the bound observer and child processes still own the runtime/profile. PID absence alone is insufficient takeover evidence.
 - [ ] Implement or document reviewed explicit observer-only recovery that preserves evidence and checks ownership. Never delete controller locks, journals, unresolved commands or circuit halts to restart a browser.
-- [ ] Test unexpected/early close, clean quit, expiry, terminal loss and concurrent launch. Confirm old queued tasks cannot act after quarantine or rearm a closed session.
+- [x] Test unexpected/early close, clean quit, expiry, terminal loss and concurrent launch. Confirm old queued tasks cannot act after quarantine or rearm a closed session.
 
 Acceptance: either the cause is reproduced and fixed, or a clearly bounded remaining blocker prevents relaunch. An explicit recovery leaves controller state unchanged and proves there is only one observer owner. No silent auto-restart loop.
 
@@ -164,11 +164,11 @@ Where no existing sample exists, mark it **unobserved**. Triggering stops, persi
 
 ### E. End-of-session publication
 
-- [ ] Update the observation runbook, gap audit and validation report with actual findings, date, SHA, host and evidence provenance.
-- [ ] Record the exact reason for any remaining login, selector, data or permission blocker.
-- [ ] Run checks appropriate to changes; do not rerun the entire suite for documentation-only edits.
-- [ ] Commit focused fixes on the active feature branch, push and link CI. Do not merge PR #2 while the Windows failure or material review findings remain unresolved.
-- [ ] Update Issue #1 without checking off unobserved capabilities. End with the next file/command and the owner action required, if any.
+- [x] Update the observation runbook, gap audit and validation report with actual findings, date, SHA, host and evidence provenance.
+- [x] Record the exact reason for any remaining login, selector, data or permission blocker.
+- [x] Run checks appropriate to changes; do not rerun the entire suite for documentation-only edits.
+- [x] Commit focused fixes on the active feature branch, push and link CI. Do not merge PR #2 while the Windows failure or material review findings remain unresolved.
+- [x] Update Issue #1 without checking off unobserved capabilities. End with the next file/command and the owner action required, if any.
 
 ## 4. Remaining path from connection to a usable copier
 
@@ -280,16 +280,16 @@ Replace `<changed-files>` with explicit intended files. Review the diff and stag
 
 Append a short record after each completed block. Keep private account mappings and browser material out of Git.
 
-| Field                                     | Fill in during work                             |
-| ----------------------------------------- | ----------------------------------------------- |
-| Date / host / browser / source SHA        | Pending                                         |
-| Block completed                           | Pending                                         |
-| Root cause or observed capability         | Pending; distinguish observation from inference |
-| Changed files / commit / PR               | Pending                                         |
-| Tests / counts / CI link / platform       | Pending                                         |
-| Real inspection versus synthetic evidence | Pending                                         |
-| Remaining blocker / owner action          | Pending                                         |
-| Next exact file or command                | Pending                                         |
+| Field                                     | Verified checkpoint                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Date / host / browser / source SHA        | October 2, 2026; WSL2/Linux x64 development host; isolated native Windows 11 / Chromium test runs; relevant code `1173dc3`                                                                                                                                                                            |
+| Block completed                           | A partially resolved; B diagnostics/tests and bounded recovery dependency; C signed-out first hop only; D awaits C; E checkpoint published                                                                                                                                                            |
+| Root cause or observed capability         | Synthetic success fixture depended on host I/O time; now controlled. Original Windows rejection and October 1 browser-close causes remain unproven                                                                                                                                                    |
+| Changed files / commit / PR               | Execution diagnostics `3452687`, observer lifecycle `824de71`, native fixtures/shared simulation clock `1173dc3`; PR #2 open and unmerged                                                                                                                                                             |
+| Tests / counts / CI link / platform       | Local full check: 352 passed, four skipped; post-review focused check: 27 passed; separate browser suite: 46 passed; final native Windows laptop targeted check: 29 passed; [final code matrix](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37054143411) passed all four platforms |
+| Real inspection versus synthetic evidence | Synthetic simulation/Chromium fixtures plus isolated signed-out public login inspection; no authenticated funded evidence                                                                                                                                                                             |
+| Remaining blocker / owner action          | Choose the recovery path, establish exclusive observer ownership, then complete official login/MFA on the visible intended host                                                                                                                                                                       |
+| Next exact file or command                | Choose the recovery path and follow the [recovery boundary](vest-read-only-observation.md#october-2-lifecycle-diagnosis-and-recovery-boundary) before any observer launch                                                                                                                             |
 
 ### October 2 WSL investigation checkpoint
 
@@ -302,7 +302,10 @@ Append a short record after each completed block. Keep private account mappings 
   passed all four platforms; native laptop phone cases at `824de71` passed too.
   Native preview ages varied up to 2620 ms in the passing CI cases. The fixture
   now uses controlled simulation time with separate expiry/partial-fleet tests.
-  Original Windows root cause remains unproven; final relevant native CI is pending.
+  Final code `1173dc3` passed 29 native Windows laptop targeted tests.
+  [Final relevant code matrix 37054143411](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37054143411)
+  passed all four platforms, including the full and separate browser suites.
+  The original Windows root cause remains unproven.
   Separate Intel macOS authenticated-view assertion race corrected in the fixture.
 - B: distinct first close causes, private lifecycle timeline, confirmed-close lock
   release and late-callback tests implemented/reviewed. Original context-close cause
@@ -316,8 +319,10 @@ Append a short record after each completed block. Keep private account mappings 
   unobserved. No real port implemented from guesses.
 - Validation/publication and next commands are recorded in the
   [validation report](vest-execution-validation.md#october-2-execution-diagnostics-and-lifecycle-investigation).
-  Next independent action: verify final relevant native CI outcomes; next owner
-  dependency: choose the intended host and establish the full-host recovery boundary.
+  Next owner dependency: choose the intended host and recovery path, establish
+  exclusive observer ownership, then complete official manual login/MFA.
+  Further independent code changes cannot establish the unobserved return route or
+  funded account evidence.
 
 Today's minimum useful finish: a precise Windows diagnosis, an observer/login outcome, preserved recovery evidence and a published next step. Today's stretch finish: a stable signed-in session plus a verified ten-account read-only inventory. Neither finish authorizes real trades or establishes a completed customer product.
 

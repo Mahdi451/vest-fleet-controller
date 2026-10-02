@@ -132,7 +132,12 @@ Native laptop phone cases at `824de71` also passed after fixing local OpenSSL PA
 These observations do not establish the older failure's exact cause; expiry under
 runner load remains an inference. The full-fleet fixture now uses controlled
 simulation time, alongside deterministic expiry/partial-fleet rejection coverage.
-Production limits remain unchanged; final relevant revision native CI is pending. A newer baseline run passed Windows but failed macOS Intel at
+Production limits remain unchanged.
+[Final relevant code matrix 37054143411](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37054143411)
+passed all four platforms at `1173dc3`; Windows passed the full 352-test suite
+(four skips), including 40 observer cases, and the separate 46-test browser suite.
+
+A separate earlier baseline run passed Windows but failed macOS Intel at
 an immediate logout-visibility assertion; the fixture now waits for the authenticated
 view after reachability. That race is distinct from the earlier fleet rejection.
 
