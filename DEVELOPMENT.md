@@ -3,6 +3,11 @@
 Engineering handoff, implementation reference and planning for `vest-fleet-controller`.
 For installation and daily use, see the [README](README.md).
 
+**Next laptop session:** follow the [October 2 execution plan](docs/2026-10-02-execution-plan.md)
+for the Windows CI failure, observer recovery, Google login and real funded-account
+inspection. It includes acceptance gates, commands and a Codex handoff. PR #2 remains
+unmerged; connected execution remains disabled.
+
 Native host implementation, test evidence and remaining physical-device checks are
 recorded in the [native validation report](docs/native-host-validation.md). Signed
 Windows and Mac packages remain scheduled near final release, after acceptance.
