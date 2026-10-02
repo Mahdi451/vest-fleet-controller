@@ -114,3 +114,28 @@ and closing evidence. Connected execution stays disabled regardless of offline t
 
 Offline contract checks, independent review, full-suite restrictions and publication
 status are recorded in [the current validation report](vest-execution-validation.md).
+
+## October 2 investigation checkpoint
+
+Execution diagnostics now retain fixed revalidation gate/risk reasons and signed
+preview/quote/account ages in the existing final child audit row, without additional
+execution-path writes or a change to child outcome codes. The native phone fixture
+measures existing journal mutation durations and emits only a synthetic allowlisted
+summary. Production freshness and preview limits remain 5000 ms. A deterministic
+5001 ms delay during account eight revalidation verifies seven protected outcomes,
+rejected eighth entry, halted ninth/tenth and no redispatch on replay.
+
+The older Windows failure is not yet explained by a native diagnostic observation.
+[Diagnostic run 37049870681](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37049870681)
+is the next source of evidence. Timing/storage cost remains a hypothesis, not a
+confirmed root cause. A newer baseline run passed Windows but failed macOS Intel at
+an immediate logout-visibility assertion; the fixture now waits for the authenticated
+view after reachability. That race is distinct from the earlier fleet rejection.
+
+Observer close/recovery diagnostics and tests are improved, but the legacy locks
+remain retained without reliable reboot-boundary proof. Original closure cause and
+safe relaunch remain unresolved. Public signed-out inspection confirmed the Google
+button and same-page navigation to Google Accounts; a complete normal handoff, returned owner/account identity, actual funded
+inventory and existing fill/protection/close sources remain unobserved. The
+[runbook](vest-read-only-observation.md#october-2-lifecycle-diagnosis-and-recovery-boundary)
+records the exact recovery boundary. No real read-only port or writer was added.

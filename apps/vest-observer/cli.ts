@@ -1,9 +1,56 @@
 import { createInterface } from 'node:readline';
+import type { Readable } from 'node:stream';
+import type { EventEmitter } from 'node:events';
+import type { InspectionCloseCause } from './lifecycle.ts';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defaultObserverProfile } from './profile.ts';
 import { ManualInspectionSession } from './session.ts';
+
+export function attachObserverControls(
+  session: ManualInspectionSession,
+  source: Readable = process.stdin,
+  signals: Pick<EventEmitter, 'once' | 'removeListener'> = process,
+) {
+  const input = createInterface({ input: source });
+  const stop = (cause: InspectionCloseCause) => {
+    void session.close(cause).catch(() => {
+      console.error(
+        'OBSERVER_CLOSE_UNCONFIRMED: preserve locks and review the browser process.',
+      );
+    });
+  };
+  const eof = () => stop('STDIN_EOF');
+  const interrupt = () => stop('SIGINT');
+  const terminate = () => stop('SIGTERM');
+  signals.once('SIGINT', interrupt);
+  signals.once('SIGTERM', terminate);
+  input.once('close', eof);
+  input.on('line', (line) => {
+    if (line === 'quit') stop('CLI_QUIT');
+    else if (line === 'ready') {
+      try {
+        session.acknowledgeManualInspection();
+        console.log(
+          'MANUAL_INSPECTION_ACKNOWLEDGED: account identity, session freshness and evidence still require inspection.',
+        );
+      } catch {
+        console.error('MANUAL_ACKNOWLEDGEMENT_REJECTED');
+      }
+    } else
+      console.log(
+        'Use ready or quit. Credentials are entered only in the browser.',
+      );
+  });
+  return () => {
+    input.removeListener('close', eof);
+    input.removeAllListeners('line');
+    input.close();
+    signals.removeListener('SIGINT', interrupt);
+    signals.removeListener('SIGTERM', terminate);
+  };
+}
 
 export async function runManualObserver(args: string[]) {
   const { values } = parseArgs({
@@ -25,33 +72,7 @@ export async function runManualObserver(args: string[]) {
   console.log(
     'Type ready after manual sign-in (acknowledgement only), or quit to close. Account discovery and execution remain unverified and disabled.',
   );
-  const input = createInterface({ input: process.stdin });
-  const stop = () => {
-    void session.close().catch(() => {
-      console.error(
-        'OBSERVER_CLOSE_UNCONFIRMED: preserve locks and review the browser process.',
-      );
-    });
-  };
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
-  input.once('close', stop);
-  input.on('line', (line) => {
-    if (line === 'quit') stop();
-    else if (line === 'ready') {
-      try {
-        session.acknowledgeManualInspection();
-        console.log(
-          'MANUAL_INSPECTION_ACKNOWLEDGED: account identity, session freshness and evidence still require inspection.',
-        );
-      } catch {
-        console.error('MANUAL_ACKNOWLEDGEMENT_REJECTED');
-      }
-    } else
-      console.log(
-        'Use ready or quit. Credentials are entered only in the browser.',
-      );
-  });
+  const detach = attachObserverControls(session);
   try {
     await session.whenClosed();
     if (session.status() === 'QUARANTINED') {
@@ -61,10 +82,9 @@ export async function runManualObserver(args: string[]) {
       process.exitCode = 1;
     }
   } finally {
-    input.removeListener('close', stop);
-    input.close();
-    process.removeListener('SIGINT', stop);
-    process.removeListener('SIGTERM', stop);
+    detach();
+    if (!session.diagnosticsAvailable())
+      console.error('OBSERVER_LIFECYCLE_RECORD_UNAVAILABLE');
   }
 }
 if (

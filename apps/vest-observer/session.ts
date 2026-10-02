@@ -7,6 +7,11 @@ import {
 import { publishPrivateFileSync } from '../../packages/host/src/storage.ts';
 import { join } from 'node:path';
 import { acquireObserverProfile } from './profile.ts';
+import {
+  ObserverLifecycle,
+  type InspectionCloseCause,
+  type LifecycleEvent,
+} from './lifecycle.ts';
 
 export const VEST_OFFICIAL_START = 'https://next.vestmarkets.com/';
 const allowedOrigin = new URL(VEST_OFFICIAL_START).origin;
@@ -17,6 +22,7 @@ export interface ManualBrowser {
   onPage(callback: (page: ManualPage) => void): void;
   onClosed(callback: () => void): void;
   close(): Promise<void>;
+  version?(): string | null;
 }
 export interface ManualPage {
   url(): string;
@@ -80,6 +86,7 @@ export function wrapManualBrowser(context: BrowserContext): ManualBrowser {
       if (closed) callback();
     },
     close: () => context.close(),
+    version: () => context.browser()?.version() ?? null,
   };
 }
 export type ManualInspectionState =
@@ -102,6 +109,10 @@ export class ManualInspectionSession {
   private browser: ManualBrowser | null = null;
   private closing: Promise<void> | null = null;
   private closureAmbiguous = false;
+  private closeObserved = false;
+  private closeCause: InspectionCloseCause | null = null;
+  private closeResult: LifecycleEvent['closeResult'] = 'UNAVAILABLE';
+  private readonly lifecycle: ObserverLifecycle;
   private expiration: ReturnType<typeof setTimeout> | undefined;
   private readonly completed: Promise<void>;
   private complete!: () => void;
@@ -110,6 +121,7 @@ export class ManualInspectionSession {
     private readonly authorization: ObservationAuthorization,
     private readonly clock: () => number,
   ) {
+    this.lifecycle = new ObserverLifecycle(lease.directory);
     this.completed = new Promise((resolve) => {
       this.complete = resolve;
     });
@@ -142,17 +154,22 @@ export class ManualInspectionSession {
     });
     const session = new ManualInspectionSession(lease, authorization, clock);
     try {
+      session.record('LOCK_ACQUIRED');
+      if (!session.diagnosticsAvailable())
+        throw new Error('OBSERVER_DIAGNOSTICS_UNAVAILABLE');
       publishPrivateFileSync(
         join(lease.directory, 'owner-authorization.json'),
         JSON.stringify(authorization),
         true,
       );
+      session.record('LAUNCH_STARTED');
       session.browser = await (options.factory ?? headedBrowser)(
         lease.chromiumDirectory,
       );
       await session.initialize();
       return session;
     } catch {
+      session.record('START_FAILED');
       if (session.browser)
         await session.quarantine('START_UNVERIFIED').catch(() => {});
       // A failed launch without an authoritative context handle is ambiguous.
@@ -169,22 +186,52 @@ export class ManualInspectionSession {
   whenClosed() {
     return this.completed;
   }
+  closingCause() {
+    return this.closeCause;
+  }
+  diagnosticsAvailable() {
+    return this.lifecycle.isAvailable();
+  }
+  private record(event: LifecycleEvent['event']) {
+    return this.lifecycle.record({
+      event,
+      state: this.state,
+      cause: this.closeCause,
+      browserVersion: this.browser?.version?.() ?? null,
+      closeObserved: this.closeObserved,
+      closeResult: this.closeResult,
+    });
+  }
+  private active() {
+    return (
+      !this.closing &&
+      !this.closureAmbiguous &&
+      (this.state === 'STARTING' ||
+        this.state === 'OPEN_FOR_MANUAL_SIGN_IN' ||
+        this.state === 'MANUAL_INSPECTION_ACKNOWLEDGED')
+    );
+  }
   private async initialize() {
     const browser = this.browser!;
     browser.onClosed(() => {
+      if (this.closeObserved) return;
+      this.closeObserved = true;
       // Unexpected closure/crash is not proof every browser child has stopped.
       if (!this.closing) {
         this.closureAmbiguous = true;
         this.state = 'QUARANTINED';
         this.reason = 'UNEXPECTED_BROWSER_CLOSE';
+        this.closeCause ??= 'UNEXPECTED_BROWSER_CLOSE';
         if (this.expiration) clearTimeout(this.expiration);
+        this.record('CONTEXT_CLOSE_OBSERVED');
         this.complete();
-      }
+      } else this.record('CONTEXT_CLOSE_OBSERVED');
     });
     if (this.closureAmbiguous) throw new Error('OBSERVER_ALREADY_CLOSED');
+    this.record('CONTEXT_OPENED');
     let primary: ManualPage | null = null;
     browser.onPage((page) => {
-      if (primary !== null && page !== primary)
+      if (this.active() && primary !== null && page !== primary)
         void this.quarantine('EXTRA_PAGE').catch(() => {});
     });
     if (browser.pages().length > 1)
@@ -192,6 +239,7 @@ export class ManualInspectionSession {
     primary = browser.pages()[0] ?? (await browser.newPage());
     const page = primary;
     const verifyNavigation = () => {
+      if (!this.active()) return;
       try {
         if (new URL(page.url()).origin !== allowedOrigin)
           void this.quarantine('UNREVIEWED_NAVIGATION').catch(() => {});
@@ -213,9 +261,11 @@ export class ManualInspectionSession {
       this.clock(),
     );
     this.expiration = setTimeout(() => {
-      void this.quarantine('AUTHORIZATION_EXPIRED').catch(() => {});
+      if (this.active())
+        void this.quarantine('AUTHORIZATION_EXPIRED').catch(() => {});
     }, this.authorization.expiresAt - this.clock());
     this.state = 'OPEN_FOR_MANUAL_SIGN_IN';
+    this.record('OFFICIAL_START_CONFIRMED');
   }
   acknowledgeManualInspection() {
     assertObservationAuthorization(
@@ -228,28 +278,42 @@ export class ManualInspectionSession {
     // Operator acknowledgement is never authentication/account/evidence verification.
     this.state = 'MANUAL_INSPECTION_ACKNOWLEDGED';
   }
-  private quarantine(reason: InspectionStopReason) {
+  private quarantine(
+    reason: Exclude<InspectionStopReason, 'CLOSE_UNCONFIRMED'>,
+  ) {
+    if (!this.active()) return this.closing ?? Promise.resolve();
     this.reason ??= reason;
     this.state = 'QUARANTINED';
-    return this.close(true);
+    return this.close(reason, true);
   }
-  close(quarantined = false): Promise<void> {
+  close(
+    cause: InspectionCloseCause = 'CLI_QUIT',
+    quarantined = false,
+  ): Promise<void> {
     if (this.closureAmbiguous)
       return Promise.reject(
         new Error('OBSERVER_CLOSE_UNCONFIRMED_LOCKS_RETAINED'),
       );
     if (this.closing) return this.closing;
     if (this.expiration) clearTimeout(this.expiration);
+    this.closeCause ??= cause;
+    this.closeResult = 'PENDING';
+    this.record('CLOSE_REQUESTED');
     this.closing = Promise.resolve()
       .then(async () => {
         await this.browser!.close(); // Failure preserves locks and prevents takeover.
+        this.closeResult = 'RESOLVED';
+        if (!this.closeObserved) throw new Error('CONTEXT_CLOSE_NOT_OBSERVED');
         this.lease.release();
         this.state = quarantined ? 'QUARANTINED' : 'CLOSED';
+        this.record('CLOSE_CONFIRMED');
         this.complete();
       })
       .catch(() => {
         this.state = 'QUARANTINED';
-        this.reason = 'CLOSE_UNCONFIRMED';
+        this.reason ??= 'CLOSE_UNCONFIRMED';
+        if (this.closeResult === 'PENDING') this.closeResult = 'REJECTED';
+        this.record('CLOSE_UNCONFIRMED_LOCKS_RETAINED');
         this.complete();
         throw new Error('OBSERVER_CLOSE_UNCONFIRMED_LOCKS_RETAINED');
       });

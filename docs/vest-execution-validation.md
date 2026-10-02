@@ -169,3 +169,53 @@ separate local work, outside this change.
 Actual authenticated inspection remains blocked on a usable manually signed-in session
 and explicit review of the quarantined browser lifecycle. No real switching, fills,
 protection/close evidence or executable latency was measured.
+
+## October 2 execution diagnostics and lifecycle investigation
+
+Source baseline: `0e00d62`; execution diagnostic revision: `3452687`. Host:
+WSL2/Linux x64, Node 24.18.0, pnpm 11.25.0. Locked dependencies and Chromium were
+verified/installed. Existing `.runtime/dashboard` host preflight passed read-only;
+this is not native Windows/macOS or execution readiness evidence.
+
+- Current baseline [run 37046519706](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37046519706)
+  passed all four runners. [Run 37046545285](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37046545285)
+  passed Windows, Ubuntu and Apple silicon; Intel macOS failed its separate browser
+  suite at the immediate logout-visibility assertion. `refresh()` marks connectivity
+  before awaiting command recovery and exposing the authenticated view. The fixture
+  now waits for that view. Neither run explains the older Windows fleet rejection.
+- Revalidation instrumentation preserves all prior safety predicates and child error
+  codes. Fixed enum reasons, signed evidence ages and monotonic phase durations use
+  the existing final audit write. Test-only wrappers time existing journal calls;
+  no snapshot, session material or raw state enters those summaries.
+- Deterministic delayed-fleet regression passes: seven PROTECTED results, account
+  eight rejection with stale account/quote and preview-expiry diagnostics at 5001 ms,
+  later accounts HALTED, no later dispatch, protected earlier positions and stable
+  durable replay. The first new test used the inclusive 5000 ms boundary and failed;
+  it was corrected to 5001 ms without changing production freshness semantics.
+- Final local `pnpm check` passed typecheck, ESLint and formatting, with **350 passed,
+  4 platform skips, 354 total in 18 files**. The **40-test observer suite** includes
+  two real Chromium lifecycle cases. Narrow execution/private
+  phone checks passed **20 tests**; the separate Chromium browser/private-phone suite passed **46 tests**. Source/diff checks and independent Sol High review
+  passed for both the execution diagnostic and observer lifecycle changes.
+- Native diagnostics run:
+  [37049870681](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37049870681),
+  in progress at this checkpoint. Native failure diagnosis is still open.
+
+Observer timelines record first-cause-wins quit/EOF/signal/expiry/guard/unexpected
+close events with relative timing and safe version metadata. Tests cover concurrent
+close, late callbacks, early/external close, unobserved or failed close, retained locks
+and original controller-record preservation. Two real Chromium tests render an
+isolated synthetic signed-out page and verify requested versus external context
+closure. They do not reproduce the October 1 failure or verify real login.
+
+The retained observer locks were read but left unchanged: their payloads agree, the
+parent is absent, no matching guest process was found, and both postdate guest boot.
+Those facts do not establish exclusive child ownership or safe recovery. The original
+closure lacks diagnostic provenance. Full host reboot and reviewed observer-only
+recovery are the remaining relaunch dependency; no permissive stale-lock tool shipped.
+Public signed-out inspection confirmed the Vest Log In dialog and its unique Google
+button, followed by same-page navigation to the `accounts.google.com` origin with no
+additional page in this sample. Authentication URL parameters were not recorded.
+The complete return route, owner identity, ten-account inventory and real
+read-only selectors/capabilities remain unverified. No credentials, authentication
+screenshots, session export or trading actions were used.

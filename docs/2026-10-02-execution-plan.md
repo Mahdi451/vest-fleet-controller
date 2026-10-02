@@ -291,6 +291,30 @@ Append a short record after each completed block. Keep private account mappings 
 | Remaining blocker / owner action          | Pending                                         |
 | Next exact file or command                | Pending                                         |
 
+### October 2 WSL investigation checkpoint
+
+- Baseline `0e00d62`, WSL2/Linux x64, Node 24.18.0, pnpm 11.25.0; clean initial
+  worktree and existing runtime host preflight passed. This is a development host.
+- A: execution diagnostic commit `3452687` published; fixed gate/risk reasons and
+  storage/phase timing summaries ready for native diagnosis. Controlled delayed
+  fanout rejection passes. Production budgets unchanged. Windows root cause remains
+  open pending [native run 37049870681](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/37049870681).
+  Separate Intel macOS authenticated-view assertion race corrected in the fixture.
+- B: distinct first close causes, private lifecycle timeline, confirmed-close lock
+  release and late-callback tests implemented/reviewed. Original context-close cause
+  remains unknown; retained locks preserved without reboot-boundary ownership proof.
+  See [recovery boundary](vest-read-only-observation.md#october-2-lifecycle-diagnosis-and-recovery-boundary).
+- C: isolated signed-out public inspection confirms Log In → unique Google button
+  → same-page Google Accounts origin.
+  Full authentication handoff/return still requires visible owner-assisted inspection
+  on the chosen host after recovery. No allowlist guessed and no credentials entered.
+- D: actual funded identities, inventory, switching, evidence and timings remain
+  unobserved. No real port implemented from guesses.
+- Validation/publication and next commands are recorded in the
+  [validation report](vest-execution-validation.md#october-2-execution-diagnostics-and-lifecycle-investigation).
+  Next independent action: inspect native diagnostic job outcomes/logs; next owner
+  dependency: choose the intended host and establish the full-host recovery boundary.
+
 Today's minimum useful finish: a precise Windows diagnosis, an observer/login outcome, preserved recovery evidence and a published next step. Today's stretch finish: a stable signed-in session plus a verified ten-account read-only inventory. Neither finish authorizes real trades or establishes a completed customer product.
 
 ## 8. Paste this into Codex on the laptop

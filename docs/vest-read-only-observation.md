@@ -26,6 +26,51 @@ profile until deliberate recovery confirms no competing process owns the session
 Actual visible UI inspection drives this work. Routine documentation/API research is
 paused; dated factual findings and separate execution/commercial scope remain recorded.
 
+## October 2 lifecycle diagnosis and recovery boundary
+
+The observer now records a private `lifecycle-<run-id>.json` timeline in its bound
+profile directory. It contains fixed lifecycle events, relative times, parent PID,
+platform/Node/browser versions where available, the first close cause, close-event
+observation and close-call result. It excludes URLs, authentication parameters, raw
+exceptions/stderr, owner/account identity and browser/profile contents. Persistent
+Playwright contexts do not expose authoritative child exit information through this
+wrapper; that field is explicitly `UNAVAILABLE`. This timeline does not establish
+that a sign-in succeeded.
+
+Quit, terminal EOF, SIGINT, SIGTERM, authorization expiry, page/origin guards and an
+unexpected context close have distinct causes. The first cause wins. Requested
+closure releases the two owned observer locks only after the close call resolves
+and the context-close event is observed. Rejected/unobserved closure retains locks;
+late navigation, pages and expiry callbacks cannot change a terminal session.
+
+The retained October 1 locks were inspected read-only on October 2 in WSL/Linux.
+The runtime and profile lock bodies agree; the recorded parent PID is absent and
+no matching observer/profile browser was found in the guest process scan. Neither
+lock predates the current WSL guest boot. This does **not** prove safe takeover or
+explain the original unexpected context close. The old run has no lifecycle timeline
+that distinguishes a process exit from other context closure. Both locks and the
+profile remain intact; no browser was relaunched against them.
+
+Recovery therefore remains blocked on a reliable full native-host shutdown/reboot
+boundary and reviewed observer-only recovery. Do not use PID absence or a process
+scan as permission to remove a lock. After a confirmed reboot, revalidate host and
+profile binding, protected matching lock files and ownership before preserving the
+old observer locks in a private evidence archive. A partial/mismatched recovery must
+block launch. There is no shipped recovery command yet. Never move/delete controller
+locks, SQLite/WAL/SHM, identities, journals, unresolved commands or circuit state.
+Do not weaken the profile or origin guards to get around this blocker.
+
+A fresh signed-out public browser observation on October 2 confirmed a `Log In`
+button and a login dialog containing exactly one `Google` button. Activating that
+button performed a same-page main-frame navigation to `https://accounts.google.com`;
+no additional page was observed in this signed-out sample. Authentication URL
+parameters were neither logged nor saved. The return route after owner login remains
+unobserved. This observation is separate from the locked observer and does not prove funded identity, the complete
+handoff/return route, profile reuse or authenticated account discovery. The pinned
+chrome-devtools-axi wrapper failed with a missing-page-ID protocol error; public UI
+inspection used an isolated Playwright browser instead, with no credentials or
+session import. No speculative authentication allowlist was installed.
+
 ## Permission questions to send personally
 
 Do not send these on the user's behalf. These are questions for unresolved execution,

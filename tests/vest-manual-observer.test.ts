@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { PassThrough } from 'node:stream';
+import { EventEmitter } from 'node:events';
+import { attachObserverControls } from '../apps/vest-observer/cli.ts';
 import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -10,7 +13,7 @@ import {
   type ManualBrowser,
   type ManualPage,
 } from '../apps/vest-observer/session.ts';
-import type { BrowserContext } from 'playwright';
+import { chromium, type BrowserContext } from 'playwright';
 import {
   observationAuthorizationSchema,
   assertObservationAuthorization,
@@ -405,3 +408,160 @@ it('closes the browser when the one-hour local inspection authorization expires'
   expect(session.status()).toBe('QUARANTINED');
   expect(browser.closeCount).toBe(1);
 });
+
+function timeline() {
+  const name = readdirSync(profile).find((name) =>
+    /^lifecycle-.*\.json$/.test(name),
+  );
+  expect(name).toBeDefined();
+  return JSON.parse(readFileSync(join(profile, name!), 'utf8')) as {
+    event: string;
+    cause: string | null;
+    elapsedMs: number;
+    closeObserved: boolean;
+    closeResult: string;
+    childExitInformation: string;
+  }[];
+}
+it.each(['CLI_QUIT', 'STDIN_EOF', 'SIGINT', 'SIGTERM'] as const)(
+  'records %s and releases only observer locks after confirmed closure',
+  async (cause) => {
+    const { session, browser } = await open();
+    const input = new PassThrough();
+    const signals = new EventEmitter();
+    const detach = attachObserverControls(session, input, signals);
+    try {
+      if (cause === 'CLI_QUIT') input.write('quit\n');
+      else if (cause === 'STDIN_EOF') input.end();
+      else signals.emit(cause);
+      await session.whenClosed();
+      expect(session.closingCause()).toBe(cause);
+      expect(session.status()).toBe('CLOSED');
+      expect(browser.closeCount).toBe(1);
+      expect(lockPresent()).toBe(false);
+      const events = timeline();
+      expect(events.map((e) => e.event)).toEqual([
+        'LOCK_ACQUIRED',
+        'LAUNCH_STARTED',
+        'CONTEXT_OPENED',
+        'OFFICIAL_START_CONFIRMED',
+        'CLOSE_REQUESTED',
+        'CONTEXT_CLOSE_OBSERVED',
+        'CLOSE_CONFIRMED',
+      ]);
+      expect(events.slice(4).every((e) => e.cause === cause)).toBe(true);
+      expect(events.at(-1)).toMatchObject({
+        closeObserved: true,
+        closeResult: 'RESOLVED',
+        childExitInformation: 'UNAVAILABLE',
+      });
+      expect(
+        events.every(
+          (e, i) => i === 0 || e.elapsedMs >= events[i - 1]!.elapsedMs,
+        ),
+      ).toBe(true);
+    } finally {
+      detach();
+      input.destroy();
+    }
+  },
+);
+it('retains locks when close resolves without an observed context close', async () => {
+  const { session, browser } = await open();
+  vi.spyOn(browser, 'close').mockResolvedValue(undefined);
+  await expect(session.close()).rejects.toThrow(
+    'OBSERVER_CLOSE_UNCONFIRMED_LOCKS_RETAINED',
+  );
+  expect(lockPresent()).toBe(true);
+  expect(existsSync(join(profile, 'observer.lock'))).toBe(true);
+  expect(timeline().at(-1)).toMatchObject({
+    event: 'CLOSE_UNCONFIRMED_LOCKS_RETAINED',
+    closeObserved: false,
+    closeResult: 'RESOLVED',
+  });
+});
+it('keeps the first close cause across competing signals and ignores late navigation', async () => {
+  const { session, browser } = await open();
+  const first = session.close('SIGINT');
+  expect(session.close('SIGTERM')).toBe(first);
+  browser.page.navigate('https://secret.example/?token=NEVER_LOG');
+  browser.add(new Page());
+  await first;
+  expect(session.closingCause()).toBe('SIGINT');
+  expect(session.status()).toBe('CLOSED');
+  browser.page.navigate('https://late.example/?token=NEVER_LOG');
+  browser.add(new Page());
+  expect(session.status()).toBe('CLOSED');
+  expect(session.stopReason()).toBeNull();
+  expect(browser.closeCount).toBe(1);
+  expect(JSON.stringify(timeline())).not.toContain('NEVER_LOG');
+});
+it('preserves expiry as the first cause when quit and late guards race it', async () => {
+  vi.useFakeTimers();
+  const { session, browser } = await open();
+  await vi.advanceTimersByTimeAsync(3600000);
+  await session.close('CLI_QUIT');
+  browser.page.navigate('https://late.example/');
+  expect(session.closingCause()).toBe('AUTHORIZATION_EXPIRED');
+  expect(session.stopReason()).toBe('AUTHORIZATION_EXPIRED');
+  expect(session.status()).toBe('QUARANTINED');
+  expect(browser.closeCount).toBe(1);
+});
+it('does not let late navigation replace an unexpected-close cause or release locks', async () => {
+  const { session, browser } = await open();
+  browser.crash();
+  browser.page.navigate('https://secret.example/?token=NEVER_LOG');
+  browser.add(new Page());
+  expect(session.closingCause()).toBe('UNEXPECTED_BROWSER_CLOSE');
+  expect(session.stopReason()).toBe('UNEXPECTED_BROWSER_CLOSE');
+  expect(lockPresent()).toBe(true);
+  const json = JSON.stringify(timeline());
+  expect(json).not.toContain('NEVER_LOG');
+  expect(json).not.toContain(owner.ownerId);
+  expect(json).not.toContain(profile);
+  expect(timeline().at(-1)?.event).toBe('CONTEXT_CLOSE_OBSERVED');
+});
+
+it.each(['requested', 'unexpected'] as const)(
+  'observes real Chromium context closure for a %s close on a synthetic signed-out page',
+  async (kind) => {
+    let context: BrowserContext | undefined;
+    const session = await ManualInspectionSession.open({
+      runtimeDirectory: runtime,
+      profileDirectory: profile,
+      ownerAuthorizesReadOnly: true,
+      factory: async (directory) => {
+        context = await chromium.launchPersistentContext(directory, {
+          headless: true,
+        });
+        await context.route('**/*', (route) =>
+          route.fulfill({
+            contentType: 'text/html',
+            body: '<h1>Signed-out lifecycle fixture</h1>',
+          }),
+        );
+        return wrapManualBrowser(context);
+      },
+    });
+    sessions.push(session);
+    try {
+      expect(session.status()).toBe('OPEN_FOR_MANUAL_SIGN_IN');
+      expect(await context!.pages()[0]!.locator('h1').textContent()).toBe(
+        'Signed-out lifecycle fixture',
+      );
+      if (kind === 'requested') {
+        await session.close('CLI_QUIT');
+        expect(session.status()).toBe('CLOSED');
+        expect(lockPresent()).toBe(false);
+      } else {
+        await context!.close();
+        await session.whenClosed();
+        expect(session.stopReason()).toBe('UNEXPECTED_BROWSER_CLOSE');
+        expect(lockPresent()).toBe(true);
+      }
+    } finally {
+      await context?.close();
+    }
+  },
+  30000,
+);
