@@ -22,6 +22,7 @@ import { MockVestAdapter } from '../../packages/simulator/src/index.ts';
 import { FleetController } from '../../packages/execution/src/controller.ts';
 import { SimulationStore } from '../../packages/simulator/src/storage.ts';
 import type { Journal } from '../../packages/execution/src/journal.ts';
+import { LIVE_VEST_SEND } from '../../packages/browser-execution/src/live-command.ts';
 import { envelope, hash } from './src/commands.ts';
 import { loadLocalIdentity } from './src/identity.ts';
 import { loadPrivateAccess, type PrivateAccess } from './src/private-access.ts';
@@ -213,6 +214,7 @@ export async function createDashboard(
   };
   const snapshot = async (csrf: string = token) => ({
     mode: 'SIMULATION_ONLY',
+    liveSend: LIVE_VEST_SEND,
     identity: {
       ...identity,
       authenticated: !!access,

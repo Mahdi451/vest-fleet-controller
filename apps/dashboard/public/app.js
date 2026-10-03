@@ -184,6 +184,7 @@ function invalidate() {
   render();
 }
 function controls() {
+  $('vest-send').disabled = true;
   const fresh =
     preview &&
     Date.now() - preview.createdAt < state?.config.maxPreviewAgeMs &&

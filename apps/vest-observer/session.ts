@@ -14,6 +14,18 @@ import {
 } from './lifecycle.ts';
 
 export const VEST_OFFICIAL_START = 'https://next.vestmarkets.com/';
+export const manualBrowserLaunchArgs = [
+  '--hide-crash-restore-bubble',
+  '--disable-session-crashed-bubble',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-notifications',
+  '--disable-sync',
+  '--disable-search-engine-choice-screen',
+  '--disable-prompt-on-repost',
+  '--start-maximized',
+  '--disable-features=InfiniteSessionRestore,Translate,DiceWebSigninIntercept',
+] as const;
 const allowedOrigin = new URL(VEST_OFFICIAL_START).origin;
 type ProfileLease = Awaited<ReturnType<typeof acquireObserverProfile>>;
 export interface ManualBrowser {
@@ -43,6 +55,8 @@ export async function headedBrowser(
     headless: false,
     acceptDownloads: false,
     timeout: 30000,
+    viewport: null,
+    args: [...manualBrowserLaunchArgs],
   });
   return wrapManualBrowser(context);
 }

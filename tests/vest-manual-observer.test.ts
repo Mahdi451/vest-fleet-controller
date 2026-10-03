@@ -9,6 +9,7 @@ import { acquireObserverProfile } from '../apps/vest-observer/profile.ts';
 import {
   ManualInspectionSession,
   VEST_OFFICIAL_START,
+  manualBrowserLaunchArgs,
   wrapManualBrowser,
   type ManualBrowser,
   type ManualPage,
@@ -567,3 +568,11 @@ it.each(['requested', 'unexpected'] as const)(
   // This is the test deadline, not the observer's authorization or close policy.
   process.platform === 'win32' ? 60000 : 30000,
 );
+
+it('launches the visible browser without Chrome prompt clutter', () => {
+  expect(manualBrowserLaunchArgs).toContain('--hide-crash-restore-bubble');
+  expect(manualBrowserLaunchArgs).toContain('--disable-notifications');
+  expect(manualBrowserLaunchArgs).toContain('--disable-sync');
+  expect(manualBrowserLaunchArgs.join(' ')).not.toContain('AutomationControlled');
+  expect(manualBrowserLaunchArgs).not.toContain('--disable-web-security');
+});

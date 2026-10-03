@@ -53,6 +53,7 @@ async function start(now?: () => number) {
   if (!address || typeof address === 'string') throw new Error('NO_ADDRESS');
   base = `http://127.0.0.1:${address.port}`;
   const state = await (await fetch(`${base}/api/state`)).json();
+  expect(state.liveSend).toBe(false);
   token = state.token;
   sessionId = state.sessionId;
 }
