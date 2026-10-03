@@ -2,14 +2,16 @@
 
 **SIMULATION ONLY.** This is a source-based development beta, with native host
 implementation and acceptance work tracked in [Issue #1](https://github.com/Mahdi451/vest-fleet-controller/issues/1).
-Native CI and physical-device evidence determine release readiness; these instructions
-alone do not establish a supported customer release. Windows installers and signed
-Mac packages are scheduled near final release, not required for this development beta.
+Local `pnpm check` results and physical-device evidence determine release readiness;
+these instructions alone do not establish a supported customer release. Windows
+installers and signed Mac packages are scheduled near final release, not required
+for this development beta.
 
 The target machines are **Windows 11 x64** and **macOS 15 or later**, on Apple silicon
-or Intel. Use the native runtime matching the machine architecture. GitHub's Windows
-Server 2025 runner provides Windows integration evidence; it is not physical Windows
-11 acceptance. The phone displays controls; the desktop owns the simulator and journal.
+or Intel. Use the native runtime matching the machine architecture. A local check
+on Windows 11 is the Windows evidence; it is not a substitute for physical
+acceptance of sleep, reboot, and a real phone. The phone displays controls; the
+desktop owns the simulator and journal.
 No Vest account, login, cookie, API token or funded trade is involved.
 
 ## 1. Install development prerequisites

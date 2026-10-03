@@ -39,7 +39,7 @@ remain in place. No second controller or risk engine was introduced.
 | `apps/dashboard/src/identity.ts`, `legacy-adoption.ts`, `private-access.ts`                                      | Preserve identity/adoption and authenticate against protected native storage                           |
 | `apps/dashboard/server.ts`, `setup-private.ts`, `host.ts`, `src/host-diagnostics.ts`                             | Explicit runtime startup, provisioning and redacted host commands                                      |
 | `tests/host-storage.test.ts`, `host-diagnostics.test.ts`, existing reliability/access/browser tests and fixtures | Actual platform permissions/links, publication, ownership, diagnostics, restart and browser acceptance |
-| `.github/workflows/native-host.yml`, `vitest.config.ts`, `.gitattributes`                                        | Native matrix, reproducible fixture execution and consistent checkout line endings                     |
+| `vitest.config.ts`, `.gitattributes`                                                                             | Reproducible fixture execution and consistent checkout line endings                                    |
 | `docs/native-host-setup.md`, `desktop-phone-sanity-check.md`                                                     | Native development setup and unfilled physical acceptance record                                       |
 
 ## Decisions preserved
@@ -72,7 +72,7 @@ No automatic failover, identity reassignment or re-arm is provided.
 
 Application source: `df5a2c4`, with native corrections in `5f8d81a`.
 Final fixture configuration: `ec387ac`; diagnostic assertions: `6170f2a`.
-Latest [native CI run](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/36790130635).
+Last recorded [native CI run](https://github.com/Mahdi451/vest-fleet-controller/actions/runs/36790130635).
 Results below distinguish native automated runs from physical acceptance.
 
 | Environment                                | Full `pnpm check`                                       | Separate browser suite                                                                                       |
@@ -99,7 +99,7 @@ runners Darwin `24.6.0`, Node `24.20.0` (ARM64) and `24.19.0` (Intel).
 Windows Server reports `10.0.26100`, Node `24.21.0`. pnpm is `11.25.0` throughout.
 The full matrix and each separate browser suite passed at `6170f2a`.
 
-Native CI runs `pnpm check` and the separate browser command on every matrix runner.
+The removed GitHub Actions matrix used to run `pnpm check` and the separate browser command on every runner.
 Tests cover real ACL grants, links/junctions, publication collisions, competing/stale
 owners, unchanged records, wrong owner/instance/account/command, malicious origins,
 missing CSRF, expired/revoked authentication, stale/expired entry, payload conflicts,

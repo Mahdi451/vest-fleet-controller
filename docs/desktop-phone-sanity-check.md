@@ -2,8 +2,9 @@
 
 Use this checklist after [native host setup](native-host-setup.md), for **simulation
 only**. Complete a separate record for Windows 11 x64, macOS Apple silicon and macOS
-Intel that will be offered to users. Native CI, Chromium emulation and source code are
-supporting evidence; they do not check these physical-device conditions.
+Intel that will be offered to users. A local `pnpm check`, Chromium emulation and
+source code are supporting evidence; they do not check these physical-device
+conditions.
 
 **Current physical-device results: not recorded here.** Leave boxes/evidence blank
 until the named checks are actually performed. Screenshots must show the running
@@ -21,7 +22,7 @@ simulator and exclude secrets, cookies, CSRF tokens and private configuration.
 | Phone model/OS                                       |                    |
 | Browser/version                                      |                    |
 | Home Screen installation method                      |                    |
-| Native CI run/link and runner OS                     |                    |
+| Local check command and host OS                      |                    |
 | Expected owner/instance IDs checked privately        |                    |
 | Protected journal/evidence location                  |                    |
 | Defects and follow-up issue                          |                    |

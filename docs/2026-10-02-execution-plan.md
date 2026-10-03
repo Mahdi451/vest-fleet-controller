@@ -254,13 +254,13 @@ Run mutation/chaos cases on synthetic pages or an approved test environment. Do 
 
 Modify only the files necessary for the diagnosed issue; inspect current paths first.
 
-| Work                                | Starting points                                                                                                                           |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows revalidation failure        | `tests/private-mobile.test.ts`, `packages/execution/src/controller.ts`, existing audit/journal logic, `.github/workflows/native-host.yml` |
-| Browser lifetime and login          | `apps/vest-observer/`, `tests/vest-manual-observer.test.ts`, protected host storage boundary                                              |
-| Visible evidence and read-only port | `packages/browser-execution/`, `tests/browser-readonly.test.ts`, inspected synthetic fixtures                                             |
-| Future permitted writer             | Existing browser adapter/coordinator, execution adapter/controller, protection/recovery tests                                             |
-| Evidence and handoff                | `docs/vest-read-only-observation.md`, `docs/vest-execution-gap-audit.md`, `docs/vest-execution-validation.md`, Issue #1                   |
+| Work                                | Starting points                                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Windows revalidation failure        | `tests/private-mobile.test.ts`, `packages/execution/src/controller.ts`, existing audit/journal logic                    |
+| Browser lifetime and login          | `apps/vest-observer/`, `tests/vest-manual-observer.test.ts`, protected host storage boundary                            |
+| Visible evidence and read-only port | `packages/browser-execution/`, `tests/browser-readonly.test.ts`, inspected synthetic fixtures                           |
+| Future permitted writer             | Existing browser adapter/coordinator, execution adapter/controller, protection/recovery tests                           |
+| Evidence and handoff                | `docs/vest-read-only-observation.md`, `docs/vest-execution-gap-audit.md`, `docs/vest-execution-validation.md`, Issue #1 |
 
 Run narrow tests while diagnosing, then required full checks for code changes:
 
@@ -275,7 +275,7 @@ git diff --check
 git diff --stat
 ```
 
-Replace `<changed-files>` with explicit intended files. Review the diff and staged file list before committing; never stage profiles, runtime records or credentials. Do not repeat optional suites once they have resolved the diagnosed risk. Native CI must pass on supported runners for the final code; docs-only changes need formatting/link verification, not a claim of newly executed application tests.
+Replace `<changed-files>` with explicit intended files. Review the diff and staged file list before committing; never stage profiles, runtime records or credentials. Do not repeat optional suites once they have resolved the diagnosed risk. Run `pnpm check` locally for the final code; docs-only changes need formatting/link verification, not a claim of newly executed application tests.
 
 ## 7. Session evidence and stop point
 

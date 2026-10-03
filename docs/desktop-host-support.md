@@ -19,9 +19,8 @@ are implemented. A small host-storage boundary now adds native Windows/macOS sup
   support process-crash tests; sudden power-loss rename durability is not claimed.
 - [Native setup](native-host-setup.md) documents per-user storage, private HTTPS,
   startup/shutdown, diagnostics and conservative recovery.
-- [Native CI](../.github/workflows/native-host.yml) covers Windows Server 2025 x64,
-  macOS 15 ARM64/Intel and Ubuntu regression. Run results must be recorded before
-  claiming automated acceptance; workflow configuration alone is not evidence.
+- Run `pnpm check` on Windows 11, macOS 15, and Ubuntu when those hosts need
+  evidence. A command that has not been run is not acceptance.
 
 See the [native validation report](native-host-validation.md) for actual runner
 results, source commits and test limitations. The identity/storage boundary,

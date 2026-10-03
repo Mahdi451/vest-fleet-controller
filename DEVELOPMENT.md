@@ -159,12 +159,9 @@ pnpm format:check  # Check formatting without changing files
 pnpm check         # Run all validation gates
 ```
 
-The [native host workflow](.github/workflows/native-host.yml) runs the full checks
-and a separate Playwright-backed acceptance suite on Ubuntu 24.04, Windows Server
-2025 x64, macOS 15 Apple silicon and macOS 15 Intel. Record actual run results before
-claiming those platforms validated; a workflow file is not a passing run. Its uploaded
-evidence is limited to redacted counts/platform metadata and synthetic screenshots,
-never TLS keys, host-access secrets, raw failure payloads or runtime journals.
+There is no GitHub Actions workflow. Run `pnpm check` on the machine you claim
+to have validated. Record the actual command, host, and result before calling a
+platform validated.
 
 To repeat the separate browser suite locally:
 
