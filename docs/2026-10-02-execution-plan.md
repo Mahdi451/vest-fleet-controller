@@ -14,7 +14,7 @@ Timezone: America/Los_Angeles. Planning snapshot: October 2, 2026. The source ba
 | Dashboard and host         | Mobile controls, private HTTPS, durable commands and native host storage                                                         | Physical phone/desktop acceptance still open                                     |
 | Browser evidence contracts | Reject incomplete identity, fills, freshness, protection and close proof                                                         | Tests use synthetic evidence; no real funded parser                              |
 | Manual observer            | Dedicated headed browser, protected local profile, owner authorization and lifecycle locks                                       | Unexpected browser closure before verified sign-in; cause unknown                |
-| Google sign-in             | Planned handoff                                                                                                                  | Current additional-page/origin guards reject the required handoff                |
+| Google sign-in             | Same-page `accounts.google.com` allowed until the Vest page returns; profile kept on quit                                        | Completed owner login, MFA return, and funded identity still unverified          |
 | Actual fleet               | User reports ten Instant accounts                                                                                                | Discovery, switching, history, protection and execution timings not yet observed |
 | Live copier                | Not implemented/enabled                                                                                                          | All connected execution and trial gates below                                    |
 
@@ -119,16 +119,17 @@ Acceptance: either the cause is reproduced and fixed, or a clearly bounded remai
 Personal manual read-only inspection is already owner-authorized in the current runbook. Do not reintroduce a mandatory written-letter prerequisite for that same scope. Owner authorization is not venue approval for automated trading or customer distribution.
 
 - [ ] Inspect the actual visible Vest Sign in with Google flow with Mahdi present, without submitting trading actions. Observe the popup/redirect/return destinations through normal browser UI; do not infer them from hidden requests or credentials.
-- [ ] Design a separate bounded authentication phase permitting only the observed, reviewed handoff. Do not globally allow arbitrary origins or additional trading pages.
+- [x] Design a separate bounded authentication phase permitting only the observed same-page `accounts.google.com` handoff. Other origins and extra pages still quarantine the session.
+- [x] Keep the Chromium profile when the inspection window closes, so the next launch can reuse the Vest session. The one-hour limit ends the inspection; it does not log the owner out of Vest.
 - [ ] Mahdi completes account selection, credentials and MFA directly. Our app does not create its own OAuth client pretending to be Vest.
 - [ ] After return, verify the Vest authenticated owner view and expected account context. Google account selection and a `ready` acknowledgement do not establish funded identity.
 - [ ] Return to one verified Vest page before discovery. Extra/unrelated pages, account mismatch, cancellation, expiry and unexpected destinations must block readiness.
-- [ ] Add local synthetic tests for popup and same-page redirects, cancel/deny, wrong return, delayed/duplicate completion, reauthentication and profile reuse. No test credentials or login screenshots in Git.
+- [x] Add local synthetic tests for the same-page Google handoff, a popup, a wrong return, acknowledgement before the Vest page is back, and profile reuse after the inspection hour. No test credentials or login screenshots in Git. A real MFA return is still untested.
 - [ ] Demonstrate one real manual login and a permitted restart/reuse check; expiry must request manual reauthentication. If the normal login rejects the automated browser, record that blocker and evaluate a supported login route; no stealth or anti-bot bypass.
 
 Acceptance: a usable returned Vest session on the intended host, verified owner identity and protected profile, with tested auth failure paths. This is connection evidence, not permission to trade.
 
-Only after B's recovery and C's reviewed handoff are ready, use the existing launcher from a visible terminal:
+Observer-lock recovery is set aside as of 2026-10-03. Do not delete retained locks to force a launch. Use the existing launcher from a visible terminal when this host can take the profile:
 
 ```sh
 pnpm observe:vest --runtime .runtime/dashboard --authorize-owner-read-only

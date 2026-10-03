@@ -174,6 +174,28 @@
               Preview stays in this app. Buy and Sell on the Vest window are not
               clicked.
             </p>
+            <label for="vest-market">Vest market</label
+            ><input id="vest-market" value="BTC-PERP" maxlength="32" />
+            <label for="vest-leverage"
+              >Vest leverage <span>only what this ticket shows</span></label
+            ><select id="vest-leverage"></select>
+            <label for="vest-percent"
+              >Vest size <span>% of the ticket</span></label
+            >
+            <div class="risk-input">
+              <input
+                id="vest-percent"
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                value="1"
+              /><span>%</span>
+            </div>
+            <p class="hint" id="vest-copy-plan">
+              One account at a time. Account 01 must be flat before Account 02.
+            </p>
+            <pre id="copier-status" class="hint"></pre>
             <div class="actions">
               <button id="long" class="long" disabled>↗ LONG SELECTED</button
               ><button id="short" class="short" disabled>

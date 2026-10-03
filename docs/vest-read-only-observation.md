@@ -6,7 +6,7 @@ It opens the official website for the owner to sign in directly. It has no autom
 credential entry, account selector, evidence parser or trading methods. The offline
 contracts remain synthetic and separate from the executable fixture adapter.
 
-## Next login path: Google (planned)
+## Login path: same-page Google, then a kept profile
 
 Use the visible Vest Google sign-in option as the first authentication path to inspect.
 The owner selects their Google account and completes credentials/MFA directly with
@@ -14,17 +14,27 @@ Google. The application does not collect credentials or implement a separate Goo
 OAuth client to impersonate Vest login. A fresh dedicated profile may still require
 initial Google authentication; never import everyday browser session material.
 
-The current launcher quarantines additional pages and non-Vest main-frame origins.
-Therefore a Google popup/redirect is not currently supported. Inspect the exact normal
-handoff, implement a separate reviewed authentication phase, test its destinations and
-return, then require one verified Vest account page. A Google account selection alone
-does not prove funded-account identity or inventory. No guessed allowlist, automatic
-credential entry, token capture/replay or bypass is part of this plan.
+While the session is still waiting for sign-in, the launcher allows one observed
+main-frame origin, `https://accounts.google.com`, including its normal path and query
+changes. Those URLs are not written to the lifecycle record. Any other origin, a
+second page, or a popup still quarantines the session. `ready` is accepted only after
+the main frame is back on `https://next.vestmarkets.com`. That acknowledgement does
+not prove a funded account. After it, a later navigation to Google closes the
+inspection; start the launcher again to sign in. A real completed login and the return
+route after MFA remain unobserved.
 
-First diagnose the earlier unexpected browser closure; retain its observer locks and
-profile until deliberate recovery confirms no competing process owns the session.
-Actual visible UI inspection drives this work. Routine documentation/API research is
-paused; dated factual findings and separate execution/commercial scope remain recorded.
+Quit and the one-hour inspection limit close the window and leave the Chromium profile
+on disk. That is not a Vest logout. The next launch of the same profile can reuse the
+Vest session when Google and Vest still accept it. Signing out, an expired Google
+session, or a new MFA prompt requires the owner to sign in again. Chart colors and
+indicators are not stored by this application. Whether they survive a no-logout
+relaunch is unobserved; a real sign-out has been reported to reset them.
+
+Observer-lock recovery from the October 1 closure is set aside as of 2026-10-03. Do
+not block this login work on it, and do not delete those retained locks to force a
+launch. Actual visible UI inspection drives the account inventory. Routine
+documentation/API research is paused; dated factual findings and separate
+execution/commercial scope remain recorded.
 
 ## October 2 lifecycle diagnosis and recovery boundary
 

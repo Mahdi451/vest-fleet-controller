@@ -9,6 +9,7 @@ import { acquireObserverProfile } from '../apps/vest-observer/profile.ts';
 import {
   ManualInspectionSession,
   VEST_OFFICIAL_START,
+  VEST_SIGN_IN_ORIGIN,
   manualBrowserLaunchArgs,
   wrapManualBrowser,
   type ManualBrowser,
@@ -312,6 +313,10 @@ it.each([
   'https://unreviewed-login.example/',
   'http://next.vestmarkets.com/',
   'https://next.vestmarkets.com.evil.example/',
+  'https://accounts.google.com.evil.example/',
+  'https://myaccount.google.com/',
+  'https://www.google.com/',
+  'http://accounts.google.com/',
   'about:blank',
 ])(
   'quarantines unexpected navigation %s without a guessed login allowlist',
@@ -322,6 +327,66 @@ it.each([
     expect(session.status()).toBe('QUARANTINED');
   },
 );
+it('allows the observed same-page Google sign-in until the Vest page returns', async () => {
+  const { session, browser } = await open();
+  browser.page.navigate(
+    `${VEST_SIGN_IN_ORIGIN}/signin/identifier?code=NEVER_LOG`,
+  );
+  expect(session.status()).toBe('OPEN_FOR_MANUAL_SIGN_IN');
+  expect(() => session.acknowledgeManualInspection()).toThrow(
+    'VEST_RETURN_REQUIRED',
+  );
+  expect(session.status()).toBe('OPEN_FOR_MANUAL_SIGN_IN');
+  browser.page.navigate(`${VEST_SIGN_IN_ORIGIN}/signin/challenge`);
+  expect(session.status()).toBe('OPEN_FOR_MANUAL_SIGN_IN');
+  browser.page.navigate(VEST_OFFICIAL_START);
+  session.acknowledgeManualInspection();
+  expect(session.status()).toBe('MANUAL_INSPECTION_ACKNOWLEDGED');
+  expect(JSON.stringify(timeline())).not.toContain('NEVER_LOG');
+  browser.page.navigate(`${VEST_SIGN_IN_ORIGIN}/`);
+  await session.whenClosed();
+  expect(session.stopReason()).toBe('UNREVIEWED_NAVIGATION');
+});
+it('quarantines a Google popup because only the same-page handoff was observed', async () => {
+  const { session, browser } = await open();
+  browser.page.navigate(`${VEST_SIGN_IN_ORIGIN}/`);
+  browser.add(new Page());
+  await session.whenClosed();
+  expect(session.stopReason()).toBe('EXTRA_PAGE');
+});
+it('keeps the Chromium profile across inspection expiry and the next launch', async () => {
+  vi.useFakeTimers();
+  const { session } = await open();
+  const marker = join(profile, 'chromium', 'session-marker');
+  publishPrivateFileSync(marker, 'KEEP');
+  await vi.advanceTimersByTimeAsync(3600000);
+  await session.whenClosed();
+  expect(session.status()).toBe('QUARANTINED');
+  expect(readFileSync(marker, 'utf8')).toBe('KEEP');
+  expect(lockPresent()).toBe(false);
+  vi.useRealTimers();
+  const again = await open();
+  expect(readFileSync(marker, 'utf8')).toBe('KEEP');
+  expect(again.browser.page.opened).toBe(1);
+  await again.session.close();
+});
+it('tells the operator to return to Vest when ready is typed on the Google page', async () => {
+  const { session, browser } = await open();
+  browser.page.navigate(`${VEST_SIGN_IN_ORIGIN}/`);
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const input = new PassThrough();
+  const detach = attachObserverControls(session, input, new EventEmitter());
+  try {
+    input.write('ready\n');
+    await expect.poll(() => error.mock.calls.length).toBeGreaterThan(0);
+    expect(error.mock.calls[0]?.[0]).toContain('VEST_RETURN_REQUIRED');
+    expect(session.status()).toBe('OPEN_FOR_MANUAL_SIGN_IN');
+  } finally {
+    detach();
+    input.destroy();
+    error.mockRestore();
+  }
+});
 it('retains locks after an ambiguous launch failure and redacts raw browser errors', async () => {
   await expect(
     ManualInspectionSession.open({
@@ -573,6 +638,11 @@ it('launches the visible browser without Chrome prompt clutter', () => {
   expect(manualBrowserLaunchArgs).toContain('--hide-crash-restore-bubble');
   expect(manualBrowserLaunchArgs).toContain('--disable-notifications');
   expect(manualBrowserLaunchArgs).toContain('--disable-sync');
-  expect(manualBrowserLaunchArgs.join(' ')).not.toContain('AutomationControlled');
+  expect(manualBrowserLaunchArgs).toContain('--window-size=1200,720');
+  expect(manualBrowserLaunchArgs).not.toContain('--start-maximized');
+  expect(manualBrowserLaunchArgs).not.toContain('--start-fullscreen');
+  expect(manualBrowserLaunchArgs.join(' ')).not.toContain(
+    'AutomationControlled',
+  );
   expect(manualBrowserLaunchArgs).not.toContain('--disable-web-security');
 });

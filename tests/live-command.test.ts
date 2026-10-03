@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  leverageChoices,
+  observeVestTicket,
+  planSequentialCopy,
   previewCompanionCommand,
   reviewAccounts,
   sendCompanionCommand,
@@ -116,5 +119,120 @@ describe('companion command with Vest send off', () => {
         5000,
       ).halted,
     ).toBe(false);
+  });
+});
+
+describe('sequential Vest copy plan', () => {
+  const copy = {
+    action: 'LONG' as const,
+    market: 'BTC-PERP',
+    accountLabels: ['Account 02'],
+    leverage: '1',
+    offeredLeverage: ['15x', '1x', '2x', '5x', '8x', 'Change to 1x'],
+    percent: '1',
+    stopDistance: '0.3',
+    targetDistance: '0.3',
+    account01Flat: false,
+    scope: 'NEXT_ACCOUNT' as const,
+  };
+
+  it('blocks a new copy while the Account 01 test is open', () => {
+    expect(planSequentialCopy(copy)).toMatchObject({
+      simultaneous: false,
+      liveSend: false,
+      clicksOrderControls: false,
+      blockedReason: 'ACCOUNT_01_NOT_FLAT',
+      steps: [],
+    });
+  });
+
+  it('allows one flatten of Account 01, then one protected copy to Account 02', () => {
+    expect(
+      planSequentialCopy({
+        ...copy,
+        action: 'FLATTEN',
+        accountLabels: ['Account 01'],
+      }).steps,
+    ).toEqual([
+      expect.objectContaining({
+        order: 1,
+        accountLabel: 'Account 01',
+        action: 'FLATTEN',
+        waitForProtection: false,
+      }),
+    ]);
+    const next = planSequentialCopy({ ...copy, account01Flat: true });
+    expect(next.blockedReason).toBeNull();
+    expect(next.steps).toEqual([
+      expect.objectContaining({
+        order: 1,
+        accountLabel: 'Account 02',
+        leverage: '1',
+        percent: '1',
+        waitForProtection: true,
+      }),
+    ]);
+  });
+
+  it('stores the open ticket menu and drops labels that are not leverage', () => {
+    expect(
+      observeVestTicket({
+        market: 'BTC-PERP',
+        leverageLabels: ['15x', '1x', '15x', 'Change to 1x', '2x'],
+        marketClosed: false,
+      }),
+    ).toEqual({
+      market: 'BTC-PERP',
+      choices: ['15', '1', '2'],
+      marketClosed: false,
+    });
+    expect(leverageChoices(['1x', '15x'])).toEqual(['1', '15']);
+  });
+
+  it('accepts only the leverage labels the ticket showed', () => {
+    expect(planSequentialCopy({ ...copy, leverage: '50' }).blockedReason).toBe(
+      'LEVERAGE_NOT_OFFERED',
+    );
+    expect(
+      planSequentialCopy({ ...copy, offeredLeverage: [] }).blockedReason,
+    ).toBe('LEVERAGE_UNOBSERVED');
+    const oddMenu = ['1x', '3x', '25x', '50x', 'Change to 1x', '24h Change'];
+    expect(
+      planSequentialCopy({
+        ...copy,
+        market: 'NQ-PERP',
+        leverage: '50',
+        offeredLeverage: oddMenu,
+        account01Flat: true,
+      }).steps[0],
+    ).toMatchObject({ market: 'NQ-PERP', leverage: '50' });
+    expect(
+      planSequentialCopy({
+        ...copy,
+        market: 'NQ-PERP',
+        leverage: '15',
+        offeredLeverage: oddMenu,
+        account01Flat: true,
+      }).blockedReason,
+    ).toBe('LEVERAGE_NOT_OFFERED');
+    expect(
+      planSequentialCopy({
+        ...copy,
+        market: 'CL-PERP',
+        leverage: '3',
+        offeredLeverage: oddMenu,
+        account01Flat: true,
+      }).steps[0],
+    ).toMatchObject({ leverage: '3' });
+  });
+
+  it('refuses a second account before Account 02 has its own copy', () => {
+    expect(
+      planSequentialCopy({
+        ...copy,
+        account01Flat: true,
+        accountLabels: ['Account 02', 'Account 03'],
+      }).blockedReason,
+    ).toBe('FIRST_COPY_IS_ACCOUNT_02');
   });
 });

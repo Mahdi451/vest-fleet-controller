@@ -278,6 +278,11 @@ function render() {
     $(id).textContent = preview
       ? money(orders.reduce((n, o) => n + Number(o[key]), 0))
       : '—';
+  if ($('copier-status') && state.copier) {
+    const copier = state.copier;
+    $('copier-status').textContent =
+      `Copier ${copier.armed ? 'ARMED' : 'DISARMED'} · send off · ${copier.haltReason || 'no halt'} · missing ${copier.missing.join(', ') || 'none'}`;
+  }
   $('trade-preview').textContent = preview
     ? `Planned loss ${$('loss').textContent} · Notional ${$('notional').textContent} · Margin ${$('margin').textContent}. ${orders.filter((o) => o.approved).length}/${orders.length} approved. Account risk details are on Accounts.`
     : 'Risk preview not loaded';
@@ -445,6 +450,60 @@ async function refresh() {
   $('login-panel').hidden = true;
   $('logout').hidden = !next.identity?.authenticated;
   render();
+  await refreshVestPlan();
+}
+function renderVestLeverage(choices) {
+  const previous = $('vest-leverage').value;
+  $('vest-leverage').replaceChildren(
+    ...choices.map((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = `${value}x`;
+      return option;
+    }),
+  );
+  if (choices.includes(previous)) $('vest-leverage').value = previous;
+}
+async function refreshVestPlan() {
+  const note = $('vest-copy-plan');
+  if (!note || !token) return;
+  const ticket = state?.vestTicketLeverage;
+  if (ticket?.market) $('vest-market').value = ticket.market;
+  const market = $('vest-market').value.trim();
+  const choices =
+    ticket?.market === market && Array.isArray(ticket.choices)
+      ? ticket.choices
+      : [];
+  renderVestLeverage(choices);
+  try {
+    const plan = await api('vest-copy-plan', {
+      action: side,
+      market,
+      accountLabels: ['Account 02'],
+      leverage: $('vest-leverage').value || '0',
+      offeredLeverage: choices.map((choice) => `${choice}x`),
+      percent: String($('vest-percent').value),
+      stopDistance: String($('stop').value),
+      targetDistance: String($('target').value),
+      account01Flat: false,
+      scope: 'NEXT_ACCOUNT',
+    });
+    const reasons = {
+      LEVERAGE_UNOBSERVED: ticket?.marketClosed
+        ? `${market} is closed. Its leverage menu has not been read.`
+        : 'No leverage menu has been read for this market. The ticket supplies the choices.',
+      LEVERAGE_NOT_OFFERED: 'That leverage is not on this market’s ticket.',
+      ACCOUNT_01_NOT_FLAT: 'Account 01 still has the test position.',
+      FIRST_COPY_IS_ACCOUNT_02: 'The next copy is Account 02 only.',
+      FLATTEN_TEST_IS_ACCOUNT_01: 'Flatten the open test on Account 01.',
+    };
+    note.textContent = plan.blockedReason
+      ? `Vest copy blocked: ${reasons[plan.blockedReason] || plan.blockedReason} Send stays off.`
+      : `Next Vest copy: ${plan.steps.map((step) => `${step.order} ${step.accountLabel} ${step.market} ${step.leverage}x`).join(', ')}. Send stays off.`;
+  } catch {
+    note.textContent =
+      'Vest copy plan unavailable. Send stays off, and no Vest button is clicked.';
+  }
 }
 async function action(fn) {
   if (busy) return;
@@ -486,7 +545,12 @@ for (const button of document.querySelectorAll('[data-side]'))
     for (const b of document.querySelectorAll('[data-side]'))
       b.classList.toggle('active', b === button);
     invalidate();
+    if (connected) void refreshVestPlan();
   };
+for (const id of ['vest-market', 'vest-leverage', 'vest-percent'])
+  $(id).addEventListener('input', () => {
+    if (connected) void refreshVestPlan();
+  });
 for (const id of ['leverage', 'mode', 'risk', 'stop', 'target'])
   $(id).addEventListener('input', () => {
     invalidate();

@@ -33,9 +33,10 @@ the official website for normal owner login. Automated account discovery, eviden
 reading and connected execution remain unimplemented. Read-only inspection is now
 owner-authorized; real orders and commercial rollout remain separate gates. The next
 milestone is [browser-first connection](docs/product-implementation-plan.md#browser-first-connection-milestone--current-decision):
-diagnose browser closure, test normal Google sign-in, verify funded inventory and inspect
-real evidence. Google login handoff is planned; the current launcher blocks its additional
-pages/redirects. Routine API/documentation research and visual/installer work are paused.
+use the observed same-page Google sign-in, keep the browser profile so the next launch
+can reuse the Vest session, then verify funded inventory and inspect real evidence.
+The current capability decision is no-go. Other origins and popups still close the
+inspection. Routine API/documentation research and visual/installer work are paused.
 
 ## Quick start
 

@@ -137,6 +137,13 @@ Production limits remain unchanged.
 passed all four platforms at `1173dc3`; Windows passed the full 352-test suite
 (four skips), including 40 observer cases, and the separate 46-test browser suite.
 
+On 2026-10-03 the owner set observer-lock recovery aside. The sign-in phase now allows
+the observed same-page Google origin and keeps the Chromium profile across a close.
+The one-account capability record remains no-go: account count, identity, fills,
+protection, close, and execution terms are unobserved. Phone acceptance, host
+sleep/reboot, and signed installers stay parked. No real read-only port or writer
+was added.
+
 A separate earlier baseline run passed Windows but failed macOS Intel at
 an immediate logout-visibility assertion; the fixture now waits for the authenticated
 view after reachability. That race is distinct from the earlier fleet rejection.

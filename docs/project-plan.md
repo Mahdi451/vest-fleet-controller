@@ -11,10 +11,12 @@ monitoring. Owner-authorized manual read-only inspection precedes review of appl
 automated-execution terms/capabilities and a separately approved one-account trial. No connected execution or real orders are enabled here.
 
 Current implementation follows the [browser-first connection milestone](product-implementation-plan.md#browser-first-connection-milestone--current-decision):
-diagnose browser closure, inspect normal Google sign-in and implement its reviewed
-handoff, then verify funded inventory and visible execution evidence. Google sign-in
-is planned, not currently supported by the restricted launcher. Routine API/documentation
-research is paused; historical facts and safety boundaries remain intact.
+the observed same-page Google sign-in is allowed during inspection and the Chromium
+profile is kept across quit, then verify funded inventory and visible execution
+evidence. A completed owner login is still unverified. The capability record is no-go
+until that inventory exists. Phone acceptance, host sleep/reboot, and signed installers
+stay parked. Routine API/documentation research is paused; historical facts and safety
+boundaries remain intact.
 
 ## Goal
 

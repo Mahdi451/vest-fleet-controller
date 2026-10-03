@@ -173,19 +173,21 @@ authentication bypass or real orders. Missing UI evidence remains unknown.
 
 Immediate work, in order:
 
-1. Diagnose the unexpected headed-browser closure. Preserve the quarantined profile,
-   observer locks and execution records; confirm process ownership before deliberate
-   recovery. Do not automatically restart or take over an ambiguous session.
+1. The unexpected headed-browser closure remains undiagnosed. As of 2026-10-03 the
+   owner set that recovery aside. Preserve the quarantined profile, observer locks and
+   execution records. Do not delete them to force a launch, and do not automatically
+   restart or take over an ambiguous session.
 2. Inspect the visible **Sign in with Google** option and make it the first login path
    to test. The owner completes Google authentication/MFA directly. A new dedicated
    profile may require Google sign-in; existing everyday Chrome authentication is not
    copied into it. Email login remains an alternative if normally supported.
-3. Implement a reviewed authentication phase for the exact observed popup/redirect/
-   return flow. The current launcher rejects extra pages and other origins, so Google
-   sign-in is **planned, not implemented or verified**. Do not guess an OAuth allowlist
-   or capture authentication URLs, authorization codes, tokens or credentials. After
-   the handoff, close authentication pages and require one verified Vest account page.
-   Test denied/expired login, unexpected origins/pages, browser loss and failed return.
+3. The reviewed sign-in phase allows the observed same-page `accounts.google.com`
+   origin until the main frame returns to Vest. `ready` before that return is rejected.
+   Popups and every other origin still quarantine the session. Quit keeps the Chromium
+   profile, so the next launch can reuse a Vest session that Google and Vest still
+   accept. A completed owner login, MFA return, and funded identity are not yet
+   verified. Do not capture authentication URLs, authorization codes, tokens or
+   credentials.
 4. Verify the returned Vest identity corresponds to the owner's intended funded fleet.
    Discover complete visible inventory and inspect serialized switching, exact account
    identity, current positions and existing fills/protection/closing without orders.

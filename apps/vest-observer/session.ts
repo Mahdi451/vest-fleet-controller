@@ -14,6 +14,8 @@ import {
 } from './lifecycle.ts';
 
 export const VEST_OFFICIAL_START = 'https://next.vestmarkets.com/';
+/** Exact origin observed on 2026-10-02 for the same-page Google button. */
+export const VEST_SIGN_IN_ORIGIN = 'https://accounts.google.com';
 export const manualBrowserLaunchArgs = [
   '--hide-crash-restore-bubble',
   '--disable-session-crashed-bubble',
@@ -23,7 +25,8 @@ export const manualBrowserLaunchArgs = [
   '--disable-sync',
   '--disable-search-engine-choice-screen',
   '--disable-prompt-on-repost',
-  '--start-maximized',
+  '--window-position=40,40',
+  '--window-size=1200,720',
   '--disable-features=InfiniteSessionRestore,Translate,DiceWebSigninIntercept',
 ] as const;
 const allowedOrigin = new URL(VEST_OFFICIAL_START).origin;
@@ -128,6 +131,7 @@ export class ManualInspectionSession {
   private closeResult: LifecycleEvent['closeResult'] = 'UNAVAILABLE';
   private readonly lifecycle: ObserverLifecycle;
   private expiration: ReturnType<typeof setTimeout> | undefined;
+  private primary: ManualPage | null = null;
   private readonly completed: Promise<void>;
   private complete!: () => void;
   private constructor(
@@ -243,23 +247,25 @@ export class ManualInspectionSession {
     });
     if (this.closureAmbiguous) throw new Error('OBSERVER_ALREADY_CLOSED');
     this.record('CONTEXT_OPENED');
-    let primary: ManualPage | null = null;
     browser.onPage((page) => {
-      if (this.active() && primary !== null && page !== primary)
+      if (this.active() && this.primary !== null && page !== this.primary)
         void this.quarantine('EXTRA_PAGE').catch(() => {});
     });
     if (browser.pages().length > 1)
       throw new Error('OBSERVER_REQUIRES_ONE_PAGE');
-    primary = browser.pages()[0] ?? (await browser.newPage());
-    const page = primary;
+    this.primary = browser.pages()[0] ?? (await browser.newPage());
+    const page = this.primary;
     const verifyNavigation = () => {
       if (!this.active()) return;
+      let origin: string;
       try {
-        if (new URL(page.url()).origin !== allowedOrigin)
-          void this.quarantine('UNREVIEWED_NAVIGATION').catch(() => {});
+        origin = new URL(page.url()).origin;
       } catch {
         void this.quarantine('UNREVIEWED_NAVIGATION').catch(() => {});
+        return;
       }
+      if (!this.originAllowed(origin))
+        void this.quarantine('UNREVIEWED_NAVIGATION').catch(() => {});
     };
     page.onMainNavigation(verifyNavigation);
     await page.openOfficialStart();
@@ -281,6 +287,14 @@ export class ManualInspectionSession {
     this.state = 'OPEN_FOR_MANUAL_SIGN_IN';
     this.record('OFFICIAL_START_CONFIRMED');
   }
+  private originAllowed(origin: string) {
+    if (origin === allowedOrigin) return true;
+    // Google is permitted only while the owner is still signing in, and only for
+    // the one observed same-page origin. Acknowledgement locks the page to Vest.
+    return (
+      this.state === 'OPEN_FOR_MANUAL_SIGN_IN' && origin === VEST_SIGN_IN_ORIGIN
+    );
+  }
   acknowledgeManualInspection() {
     assertObservationAuthorization(
       this.authorization,
@@ -289,6 +303,13 @@ export class ManualInspectionSession {
     );
     if (this.state !== 'OPEN_FOR_MANUAL_SIGN_IN')
       throw new Error('MANUAL_OBSERVER_NOT_OPEN');
+    let origin = '';
+    try {
+      origin = new URL(this.primary?.url() ?? '').origin;
+    } catch {
+      origin = '';
+    }
+    if (origin !== allowedOrigin) throw new Error('VEST_RETURN_REQUIRED');
     // Operator acknowledgement is never authentication/account/evidence verification.
     this.state = 'MANUAL_INSPECTION_ACKNOWLEDGED';
   }
@@ -315,6 +336,8 @@ export class ManualInspectionSession {
     this.record('CLOSE_REQUESTED');
     this.closing = Promise.resolve()
       .then(async () => {
+        // Closing the window keeps the Chromium profile. Vest/Google cookies stay
+        // on disk; this is not a Vest logout.
         await this.browser!.close(); // Failure preserves locks and prevents takeover.
         this.closeResult = 'RESOLVED';
         if (!this.closeObserved) throw new Error('CONTEXT_CLOSE_NOT_OBSERVED');

@@ -54,6 +54,9 @@ async function start(now?: () => number) {
   base = `http://127.0.0.1:${address.port}`;
   const state = await (await fetch(`${base}/api/state`)).json();
   expect(state.liveSend).toBe(false);
+  expect(state.copier.armed).toBe(false);
+  expect(state.copier.liveSend).toBe(false);
+  expect(state.copier.missing).toContain('exactlyOnceExecution');
   token = state.token;
   sessionId = state.sessionId;
 }
@@ -279,5 +282,74 @@ describe('local dashboard API', () => {
     );
     expect(Number(p.orders[1].notional)).toBeGreaterThan(6249);
     expect(p.orders[1].reasons).toContain('DRAWDOWN_RESERVE');
+  });
+  it('describes the next Vest copy without clicking the venue', async () => {
+    const response = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'BTC-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '1',
+      offeredLeverage: ['15x', '1x', '2x', '5x', '8x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: false,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      simultaneous: false,
+      liveSend: false,
+      clicksOrderControls: false,
+      blockedReason: 'ACCOUNT_01_NOT_FLAT',
+      steps: [],
+    });
+    const nq = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'NQ-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '50',
+      offeredLeverage: ['10x', '20x', '30x', '40x', '50x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: true,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(nq.status).toBe(200);
+    expect((await nq.json()).steps[0]).toMatchObject({
+      market: 'NQ-PERP',
+      leverage: '50',
+    });
+    const wrong = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'BTC-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '50',
+      offeredLeverage: ['15x', '1x', '2x', '5x', '8x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: true,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(wrong.status).toBe(200);
+    expect((await wrong.json()).blockedReason).toBe('LEVERAGE_NOT_OFFERED');
+  });
+  it('replaces the leverage list from the latest ticket read', async () => {
+    const before = await (await fetch(`${base}/api/state`)).json();
+    expect(before.vestTicketLeverage).toBeNull();
+    const posted = await post('vest-ticket', {
+      market: 'NQ-PERP',
+      leverageLabels: ['10x', '50x', 'Change to 10x'],
+      marketClosed: true,
+    });
+    expect(posted.status).toBe(200);
+    const after = await (await fetch(`${base}/api/state`)).json();
+    expect(after.vestTicketLeverage).toEqual({
+      market: 'NQ-PERP',
+      choices: ['10', '50'],
+      marketClosed: true,
+    });
   });
 });

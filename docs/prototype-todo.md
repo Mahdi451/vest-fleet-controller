@@ -20,18 +20,25 @@ retain existing simulation/host safeguards and all physical acceptance requireme
 - [x] Record owner authorization for personal manual read-only inspection and implement
       the protected visible browser launcher; no claim of venue/commercial approval.
 - [ ] Diagnose the unexpected browser closure and review deliberate observer recovery.
-- [ ] Inspect the visible Google sign-in option; implement and test its exact normal
-      popup/redirect/return handoff with owner-completed authentication/MFA.
+      Set aside on 2026-10-03; do not block login or inventory work on it.
+- [x] Allow the observed same-page `accounts.google.com` handoff during sign-in, require
+      a return to the Vest origin before `ready`, and keep the Chromium profile across
+      quit and the one-hour inspection close. A real owner login and MFA return are
+      still unverified. Popups and other origins stay quarantined.
 - [ ] Verify the returned Vest identity and establish a usable authenticated session.
 - [ ] Inspect actual discovery, exact identity, serialized switching and existing
       fills/protection/closing with semantic selectors, without submitting orders.
-- [ ] Measure UI reliability and record an explicit capability go/no-go before any
-      separately authorized one-account execution trial.
+      Record the no-logout chart check in that same visit.
+- [x] Record the current capability decision as no-go while every inventory field is
+      unobserved. `decideOneAccountDriver()` stays `liveSend: false` even if a later
+      review returns GO. Phone acceptance, host sleep/reboot, and signed installers
+      stay parked and cannot unblock packaging before that driver decision.
 
 See [execution gaps](vest-execution-gap-audit.md) and
 [the read-only runbook](vest-read-only-observation.md). No real driver is implemented,
-the manual launcher has not verified sign-in or account discovery, and connected
-execution remains disabled. Google authentication handoff is planned, not shipped.
+the manual launcher has not verified a completed owner sign-in or account discovery,
+and connected execution remains disabled. The same-page Google origin is allowed
+during sign-in; a real login return is still unverified.
 
 ## What works today: local simulation prototype
 

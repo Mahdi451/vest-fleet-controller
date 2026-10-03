@@ -35,8 +35,12 @@ export function attachObserverControls(
         console.log(
           'MANUAL_INSPECTION_ACKNOWLEDGED: account identity, session freshness and evidence still require inspection.',
         );
-      } catch {
-        console.error('MANUAL_ACKNOWLEDGEMENT_REJECTED');
+      } catch (error) {
+        console.error(
+          error instanceof Error && error.message === 'VEST_RETURN_REQUIRED'
+            ? 'VEST_RETURN_REQUIRED: return to the Vest page in the browser, then type ready.'
+            : 'MANUAL_ACKNOWLEDGEMENT_REJECTED',
+        );
       }
     } else
       console.log(
@@ -70,7 +74,7 @@ export async function runManualObserver(args: string[]) {
     'MANUAL_VEST_OBSERVER_OPEN: sign in directly in the visible Vest browser using normal login/MFA. Do not send credentials here or place orders during this inspection.',
   );
   console.log(
-    'Type ready after manual sign-in (acknowledgement only), or quit to close. Account discovery and execution remain unverified and disabled.',
+    'Type ready on the Vest page after manual sign-in (acknowledgement only), or quit to close. Quit keeps this browser profile so the next launch can reuse the Vest session. Account discovery and execution remain unverified and disabled.',
   );
   const detach = attachObserverControls(session);
   try {
