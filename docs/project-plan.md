@@ -4,6 +4,20 @@ Source: user's opening handoff protocol and Sections 1–14 supplied 2026-09-29.
 No separate Section 0 was supplied; the opening protocol served as the handoff.
 Implementation was authorized only after Section 14.
 
+Current priority (2026-10-01): [audit and prove the permitted browser connection and
+execution evidence path](vest-execution-gap-audit.md). Pause visual polish/installers.
+Initial copying starts from our application's master command, not manual leader-trade
+monitoring. Owner-authorized manual read-only inspection precedes review of applicable
+automated-execution terms/capabilities and a separately approved one-account trial. No connected execution or real orders are enabled here.
+
+Current implementation follows the [browser-first connection milestone](product-implementation-plan.md#browser-first-connection-milestone--current-decision):
+the observed same-page Google sign-in is allowed during inspection and the Chromium
+profile is kept across quit, then verify funded inventory and visible execution
+evidence. A completed owner login is still unverified. The capability record is no-go
+until that inventory exists. Phone acceptance, host sleep/reboot, and signed installers
+stay parked. Routine API/documentation research is paused; historical facts and safety
+boundaries remain intact.
+
 ## Goal
 
 Build a reliable local engineering project to manage ten $500 Vest Capital Instant

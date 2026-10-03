@@ -22,8 +22,8 @@ hedge, journaling, duplicate prevention and uncertainty rules.
 Customers initially run one isolated execution instance on their own **Windows or
 macOS computer**; their phone controls it through private authenticated HTTPS. These
 are the customer deployment targets. Linux is a development/reference environment,
-not a required customer installation. Native desktop host support is the next gate;
-the current Linux machine identity and permission checks must be ported and tested
+not a required customer installation. Native desktop host support is implemented;
+physical host/phone acceptance is still required
 without weakening ownership or secret protection. Release only the platforms with
 recorded native acceptance. See [desktop host support](desktop-host-support.md).
 
@@ -149,7 +149,7 @@ validation cannot be compressed into a coding estimate. Re-estimate after stage 
 | ------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A. Mobile simulation            | 1–3 sessions                                           | Focused Trade/Accounts/Activity UI, Home Screen assets, stale/disconnected state, touch-safe preview and flatten                         | Phone browser tests pass; synthetic mode unmistakable; existing checks remain green.                                                                                  |
 | B. Native private desktop host  | Re-estimate after portability review                   | Native Windows/macOS host identity/storage, HTTPS/auth, instance ownership, expiring commands, status recovery and setup instructions    | Native platform checks pass; unauthorized/replayed/cross-owner commands rejected; disconnect/restart cannot duplicate an accepted job.                                |
-| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                               | Written permissions and all required capabilities proven. Stop or narrow the product if absent.                                                                       |
+| C. Vest feasibility             | 1–3 inspection/review sessions after permission/access | Verified login path, accounts, market/rules, fill/protection/exit evidence, measured sequential UI timings                               | Applicable execution terms reviewed, exact trial authorized and all required capabilities proven. Stop or narrow the product if absent.                               |
 | D. Permitted one-account driver | 2–4 sessions after C                                   | Visible UI transport, real account binding, entry/fill/protection/exit reconciliation; initially non-trading/read-only                   | Contract and fault tests pass; no invented evidence, private endpoints or automatic write retries. Required pre-integration review complete before any funded action. |
 | E. Operational acceptance       | 2–4 sessions, reusing existing safeguards              | Session loss/restart/manual intervention/orphan handling, explicit recovery UI, diagnostics, worker monitoring and version gate          | Tests below pass; unknown exposure blocks entries; old/new worker ownership cannot overlap.                                                                           |
 | F. Supervised invitation pilot  | Several real permitted test/trading sessions; measured | Approved paper/test if available, then minimal one-account trial, two accounts, small fleet, up to ten                                   | Separate trade authorization, correct fills and exits, complete protection/cleanup, agreed latency/drift limits and documented recovery.                              |
@@ -163,31 +163,44 @@ Stages C–F are dependent gates. We can demonstrate mobile simulation promptly;
 assign a defensible connected-customer launch date before C. Do not combine effort
 bands into a calendar promise without measured session length and external resolution.
 
-## Immediate implementation order
+## Browser-first connection milestone — current decision
 
-The native identity/storage boundary and native startup/setup instructions are now
-implemented. Native runner results and remaining limitations are recorded in the
-[validation report](native-host-validation.md). Physical desktop/phone acceptance
-is the next operational gate; the order below records the work required for it.
+Treat this as an independent browser-based Vest copier, built around the actual
+visible interface and the existing controller. Stop routine Vest documentation/API
+research as the implementation path. Retain the dated source register and known
+restrictions; this decision does not enable private endpoints, token/cookie replay,
+authentication bypass or real orders. Missing UI evidence remains unknown.
 
-1. **Portable host identity and protected storage.** Review a small OS boundary, then
-   implement native Windows/macOS identity, ownership/secret checks, durable file
-   publication, canonical paths and exclusive runtime locks. Preserve existing
-   Linux/runtime bindings and all command/journal safety state.
-2. **Native startup and first-host setup.** Configure and verify owner/instance,
-   localhost operation, private HTTPS/certificates, sign-in/revocation and actionable
-   diagnostics on Windows/macOS. Provide native setup/start/stop/recovery instructions.
-3. **Native automated validation.** Run the existing simulator/controller suites and
-   platform-specific security, lock, command and restart cases on Windows/macOS
-   runners. Mocks on Linux are not native-platform acceptance.
-4. **Desktop/phone operational acceptance.** Exercise authenticated HTTPS, one
-   protected simulated entry, screen lock/offline/reconnect without a duplicate,
-   flatten/reconcile/logout and actual desktop sleep/reboot/crash recovery. Record
-   native OS/architecture and physical device evidence.
+Immediate work, in order:
 
-Vest feasibility remains a later permission/access gate. Existing permission questions
-may be resolved while desktop simulation work progresses, but no live driver or funded
-execution is authorized by the portability work.
+1. The unexpected headed-browser closure remains undiagnosed. As of 2026-10-03 the
+   owner set that recovery aside. Preserve the quarantined profile, observer locks and
+   execution records. Do not delete them to force a launch, and do not automatically
+   restart or take over an ambiguous session.
+2. Inspect the visible **Sign in with Google** option and make it the first login path
+   to test. The owner completes Google authentication/MFA directly. A new dedicated
+   profile may require Google sign-in; existing everyday Chrome authentication is not
+   copied into it. Email login remains an alternative if normally supported.
+3. The reviewed sign-in phase allows the observed same-page `accounts.google.com`
+   origin until the main frame returns to Vest. `ready` before that return is rejected.
+   Popups and every other origin still quarantine the session. Quit keeps the Chromium
+   profile, so the next launch can reuse a Vest session that Google and Vest still
+   accept. A completed owner login, MFA return, and funded identity are not yet
+   verified. Do not capture authentication URLs, authorization codes, tokens or
+   credentials.
+4. Verify the returned Vest identity corresponds to the owner's intended funded fleet.
+   Discover complete visible inventory and inspect serialized switching, exact account
+   identity, current positions and existing fills/protection/closing without orders.
+5. Build the real read-only evidence port from inspected semantic selectors. Measure
+   switching/read/scan latency; assess exact quantities, fill linkage, freshness,
+   reduce-only protection, persistence and sibling cancellation. Preserve null/unknown
+   values; do not substitute fixture IDs, prices, fees or timestamps.
+6. Only after capability/recovery review and separate authorization, implement and test
+   the one-account execution path through the existing controller, then expand the fleet.
+
+Initial copying originates from our application master command. Monitoring trades
+manually placed on a leader account remains future work. Visual polish/installers stay
+paused; Windows/macOS are customer hosts and phone access is a supporting surface.
 
 ## Near-final customer release packaging
 

@@ -1,10 +1,44 @@
 # Prototype completion checklist
 
-Status checked 2026-09-30. This is the development checklist; the [README](../README.md)
+Priority updated 2026-10-01; historical baseline checked 2026-09-30. This is the development checklist; the [README](../README.md)
 describes what a local user can do today. The [Vest fact register](vest-facts.md) and
 [browser investigation](browser-execution.md) carry sources and detailed evidence gates.
 The [customer implementation and acceptance plan](product-implementation-plan.md)
 covers sign-in, account connection, local/VPS hosting, staged effort and failure tests.
+
+## NOW — permitted Vest connection and execution evidence
+
+Priority changed 2026-10-01: independent browser-first integration using the actual
+visible UI. Stop routine documentation/API research. Pause visual polish and installers;
+retain existing simulation/host safeguards and all physical acceptance requirements.
+
+- [x] Audit the fixture-to-real execution gaps and define minimum visible evidence.
+- [x] Validate the new offline evidence contracts and read-only inspection boundary
+      with 71 tests and targeted review. Current full-suite results and scope are
+      recorded in [the validation report](vest-execution-validation.md).
+- [x] Prepare owner/commercial permission questions and the read-only observation runbook.
+- [x] Record owner authorization for personal manual read-only inspection and implement
+      the protected visible browser launcher; no claim of venue/commercial approval.
+- [ ] Diagnose the unexpected browser closure and review deliberate observer recovery.
+      Set aside on 2026-10-03; do not block login or inventory work on it.
+- [x] Allow the observed same-page `accounts.google.com` handoff during sign-in, require
+      a return to the Vest origin before `ready`, and keep the Chromium profile across
+      quit and the one-hour inspection close. A real owner login and MFA return are
+      still unverified. Popups and other origins stay quarantined.
+- [ ] Verify the returned Vest identity and establish a usable authenticated session.
+- [ ] Inspect actual discovery, exact identity, serialized switching and existing
+      fills/protection/closing with semantic selectors, without submitting orders.
+      Record the no-logout chart check in that same visit.
+- [x] Record the current capability decision as no-go while every inventory field is
+      unobserved. `decideOneAccountDriver()` stays `liveSend: false` even if a later
+      review returns GO. Phone acceptance, host sleep/reboot, and signed installers
+      stay parked and cannot unblock packaging before that driver decision.
+
+See [execution gaps](vest-execution-gap-audit.md) and
+[the read-only runbook](vest-read-only-observation.md). No real driver is implemented,
+the manual launcher has not verified a completed owner sign-in or account discovery,
+and connected execution remains disabled. The same-page Google origin is allowed
+during sign-in; a real login return is still unverified.
 
 ## What works today: local simulation prototype
 
@@ -53,7 +87,7 @@ and permission scope. Do not assume this is authorized by same-owner copying rul
       for a small invited group. The shipped build must clearly identify simulation.
 
 Customer hosts target Windows and macOS. Native host identity, protected storage
-and onboarding instructions are implemented. Physical acceptance is the next gate;
+and onboarding instructions are implemented. Physical acceptance remains a release gate;
 Linux is a reference implementation,
 not a customer requirement. See [desktop host support](desktop-host-support.md).
 
@@ -95,7 +129,7 @@ for any release that can affect customer funded accounts.
 ### Near-final customer release packaging
 
 Scheduled near completion of the intended release scope, after feature/security and
-recovery acceptance. Native host support/setup remains the immediate priority.
+recovery acceptance. Permitted connection and visible execution evidence are the immediate priority.
 
 - [ ] Build a signed Windows `.exe` installer bundling runtime and application assets.
 - [ ] Build the equivalent signed/notarized macOS `.app`/`.dmg` release.
@@ -105,8 +139,9 @@ recovery acceptance. Native host support/setup remains the immediate priority.
 
 ## Gate 1 — permitted integration path
 
-- [ ] Obtain written Vest confirmation for visible-UI automation of the user's Instant
-      accounts, same-owner same-direction copying, and the applicable account/session terms.
+- [x] Record owner authorization for personal manual read-only inspection separately
+      from venue approval; implement the protected visible-browser launcher.
+- [ ] Review automated same-owner copying and applicable account/session/commercial terms.
       Resolve the single-Account clause versus the FAQ's ten funded accounts.
 - [ ] Confirm whether a supported native copier exists and whether it supplies
       independent sizing, per-account fill/protection evidence, reconciliation and flatten.
@@ -114,8 +149,8 @@ recovery acceptance. Native host support/setup remains the immediate priority.
       contract/size units, tick/size precision, leverage, fees and funding. Replace
       simulation defaults only with product-specific evidence.
 
-**Stop condition:** Without explicit permission for the chosen path, keep the project
-simulation-only. The official FAQ excludes funded and Instant API trading; private
+**Stop condition:** Personal read-only inspection is owner-authorized. Connected
+execution stays disabled until capability review and a separately authorized trial. The official FAQ excludes funded and Instant API trading; private
 endpoints and browser session material are not an alternative API.
 
 ## Gate 2 — read-only funded UI investigation

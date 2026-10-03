@@ -3,6 +3,11 @@
 Engineering handoff, implementation reference and planning for `vest-fleet-controller`.
 For installation and daily use, see the [README](README.md).
 
+**Next laptop session:** follow the [October 2 execution plan](docs/2026-10-02-execution-plan.md)
+for the Windows CI failure, observer recovery, Google login and real funded-account
+inspection. It includes acceptance gates, commands and a Codex handoff. PR #2 remains
+unmerged; connected execution remains disabled.
+
 Native host implementation, test evidence and remaining physical-device checks are
 recorded in the [native validation report](docs/native-host-validation.md). Signed
 Windows and Mac packages remain scheduled near final release, after acceptance.
@@ -11,7 +16,8 @@ Windows and Mac packages remain scheduled near final release, after acceptance.
 
 Customer deployment targets are Windows and macOS. Native identity, protected storage,
 startup configuration and diagnostics are implemented; [desktop host acceptance](docs/desktop-host-support.md)
-is the next gate. Record native CI and physical device results separately from Linux evidence.
+remains a release gate. Immediate work is permitted Vest connection/evidence verification.
+Record native CI and physical device results separately from Linux evidence.
 
 Mobile simulation and private HTTPS application work are now delivered around the
 existing engine. See [the current validation report](docs/mobile-private-validation.md),
@@ -26,7 +32,7 @@ subsequent changes. See the [validation record](docs/validation.md).
 
 Recent completed work:
 
-- Fixture-only browser adapter/coordinator and visible-DOM safety tests; funded API execution removed from the plan. Browser permission and real UI evidence remain blockers.
+- Fixture-only browser adapter/coordinator and visible-DOM safety tests; funded API execution removed from the plan. Personal read-only inspection is owner-authorized; real UI evidence and automated execution review remain blockers.
 
 - Independent sizing and margin-allocation controls for the ten-account fleet.
 - Mandatory enabled-account same-market hedge guard, including unselected accounts.
@@ -67,22 +73,26 @@ capability as shipped or remove the simulation-only boundary for presentation po
 
 ## Next development priorities
 
-1. Complete native host validation for Windows and macOS, preserving owner identity,
-   protected storage, durable commands and exclusive execution ownership.
-2. Follow the [native setup guide](docs/native-host-setup.md) and record physical
-   desktop/phone acceptance with the [sanity checklist](docs/desktop-phone-sanity-check.md).
-   Native CI is supporting evidence; Windows Server is not physical Windows 11 proof.
-3. Keep recovery conservative: preserve journals and UNKNOWN outcomes, reconcile first,
-   and never automatically re-arm or fail over. An operator re-arm workflow that
-   preserves balances remains separate future work.
-4. Verify funded-account execution permissions, authentication, market metadata and
-   protection capabilities. Review the [browser investigation](docs/browser-execution.md)
-   and [reliability audit](docs/reliability-audit.md), then update dated primary evidence.
-5. Present the required pre-integration review before any live adapter work. No live
-   trades or private endpoint probing are authorized by this development guide.
-6. Near final release, package signed Windows and Mac installations with the runtime
-   bundled and safe update/recovery behavior. Development setup currently uses Git,
-   Node and pnpm; it is not the intended final customer installation experience.
+The current decision is an independent browser-first copier. Work from the actual
+visible Vest UI and existing engine; stop routine Vest documentation/API research.
+Preserve dated policy evidence, fail-closed behavior and all safety records.
+
+1. Diagnose the quarantined browser closure and deliberate recovery before relaunch.
+2. Inspect normal **Sign in with Google**; owner completes login/MFA directly. Implement
+   a reviewed, exact authentication handoff, then return to one verified Vest page.
+   Current popup/origin guards reject that handoff; Google login is not yet implemented.
+3. Verify owner identity, discover funded inventory, inspect serialized account switching
+   and existing fill/protection/close evidence without submitting orders.
+4. Implement the real read-only evidence port with inspected semantic selectors and
+   measured freshness/timing; missing values remain unknown, not simulator defaults.
+5. Review capabilities/recovery before a separately authorized one-account execution
+   trial. Reuse controller/risk/journals; halt ambiguous outcomes, never retry blindly.
+6. Complete physical Windows/macOS and phone acceptance before customer invitations;
+   signed installers remain near-final work. Manual leader-trade following is future work.
+
+See [the current implementation order](docs/product-implementation-plan.md#browser-first-connection-milestone--current-decision)
+and [the manual observation runbook](docs/vest-read-only-observation.md). No private
+APIs, cookie/token replay, automated credential entry or real orders are authorized.
 
 ## Architecture
 

@@ -209,7 +209,9 @@ select:focus-visible {
 }
 .trade label {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  gap: 4px;
   color: #c8d4e3;
   font-size: 11px;
   margin: 17px 0 8px;
@@ -280,6 +282,10 @@ option {
   line-height: 1.65;
   color: #8d9fb5;
   margin: 14px 0;
+}
+#copier-status {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .full {
   width: 100%;

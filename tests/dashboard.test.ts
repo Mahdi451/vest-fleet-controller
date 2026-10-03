@@ -1,8 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { get } from 'node:http';
 import { createDashboard } from '../apps/dashboard/server.ts';
-import { config, intent } from './helpers.ts';
+import { config, intent, NOW } from './helpers.ts';
+import { MockVestAdapter } from '../packages/simulator/src/index.ts';
 
 let app: Awaited<ReturnType<typeof createDashboard>>;
 let base: string;
@@ -37,8 +38,14 @@ async function preview() {
   expect(response.status).toBe(200);
   return (await response.json()).preview;
 }
-beforeEach(async () => {
-  app = await createDashboard(config);
+async function start(now?: () => number) {
+  app = await createDashboard(
+    config,
+    undefined,
+    false,
+    undefined,
+    now ? { now } : {},
+  );
   await new Promise<void>((resolve) =>
     app.server.listen(0, '127.0.0.1', resolve),
   );
@@ -46,13 +53,93 @@ beforeEach(async () => {
   if (!address || typeof address === 'string') throw new Error('NO_ADDRESS');
   base = `http://127.0.0.1:${address.port}`;
   const state = await (await fetch(`${base}/api/state`)).json();
+  expect(state.liveSend).toBe(false);
+  expect(state.copier.armed).toBe(false);
+  expect(state.copier.liveSend).toBe(false);
+  expect(state.copier.missing).toContain('exactlyOnceExecution');
   token = state.token;
   sessionId = state.sessionId;
-});
+}
+beforeEach(() => start());
 afterEach(async () => {
   await app.close();
+  vi.restoreAllMocks();
 });
 describe('local dashboard API', () => {
+  it('expires controlled-time commands before dispatch and reports aged evidence', async () => {
+    await app.close();
+    let now = NOW;
+    await start(() => now);
+    const orders = vi.spyOn(MockVestAdapter.prototype, 'placeOrder');
+    const { command } = await (
+      await post('preview', { intent, selected })
+    ).json();
+    now += config.maxPreviewAgeMs + 1;
+    const response = await post('execute', {
+      commandId: command.id,
+      payloadHash: command.payloadHash,
+    });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'COMMAND_EXPIRED' });
+    expect(orders).not.toHaveBeenCalled();
+    const state = await (await fetch(`${base}/api/state`)).json();
+    expect(state.freshness).toMatchObject({
+      fresh: false,
+      ageMs: config.maxPreviewAgeMs + 1,
+    });
+    expect(state.commands[0].status).toBe('PREVIEWED');
+  });
+  it('reports a completed partial fleet after controlled-time expiry during revalidation and replays without entry', async () => {
+    await app.close();
+    let now = NOW;
+    await start(() => now);
+    const orders = vi.spyOn(MockVestAdapter.prototype, 'placeOrder');
+    const getAccountState = MockVestAdapter.prototype.getAccountState;
+    let delayed = false;
+    const { command } = await (
+      await post('preview', { intent, selected })
+    ).json();
+    vi.spyOn(MockVestAdapter.prototype, 'getAccountState').mockImplementation(
+      function (this: MockVestAdapter, id) {
+        // Periodic reconciliation also reads account 08. Advance only after
+        // execution has submitted the first seven entries, while its busy guard holds.
+        if (id === '08' && orders.mock.calls.length === 7 && !delayed) {
+          delayed = true;
+          now += config.maxDataAgeMs + 1;
+        }
+        return getAccountState.call(this, id);
+      },
+    );
+    const request = { commandId: command.id, payloadHash: command.payloadHash };
+    const response = await post('execute', request);
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.command.status).toBe('COMPLETE');
+    expect(result.results.map((r: { state: string }) => r.state)).toEqual([
+      ...Array(7).fill('PROTECTED'),
+      'REJECTED',
+      'HALTED',
+      'HALTED',
+    ]);
+    expect(result.results[7].error).toBe('PRETRADE_REVALIDATION_FAILED');
+    expect(result.state.halted).toBe(true);
+    expect(
+      result.state.accounts
+        .slice(0, 7)
+        .every(
+          (a: { positions: { protectionStatus: string }[] }) =>
+            a.positions.length === 1 &&
+            a.positions[0]!.protectionStatus === 'ACTIVE',
+        ),
+    ).toBe(true);
+    expect(orders.mock.calls.map(([order]) => order.accountId)).toEqual(
+      selected.slice(0, 7),
+    );
+    const replay = await (await post('execute', request)).json();
+    expect(replay.command.status).toBe('COMPLETE');
+    expect(replay.results).toEqual(result.results);
+    expect(orders).toHaveBeenCalledTimes(7);
+  });
   it('serves a simulation-only interface with all ten accounts and security headers', async () => {
     const response = await fetch(base);
     expect(await response.text()).toContain('SIMULATION ONLY');
@@ -195,5 +282,74 @@ describe('local dashboard API', () => {
     );
     expect(Number(p.orders[1].notional)).toBeGreaterThan(6249);
     expect(p.orders[1].reasons).toContain('DRAWDOWN_RESERVE');
+  });
+  it('describes the next Vest copy without clicking the venue', async () => {
+    const response = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'BTC-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '1',
+      offeredLeverage: ['15x', '1x', '2x', '5x', '8x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: false,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      simultaneous: false,
+      liveSend: false,
+      clicksOrderControls: false,
+      blockedReason: 'ACCOUNT_01_NOT_FLAT',
+      steps: [],
+    });
+    const nq = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'NQ-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '50',
+      offeredLeverage: ['10x', '20x', '30x', '40x', '50x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: true,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(nq.status).toBe(200);
+    expect((await nq.json()).steps[0]).toMatchObject({
+      market: 'NQ-PERP',
+      leverage: '50',
+    });
+    const wrong = await post('vest-copy-plan', {
+      action: 'LONG',
+      market: 'BTC-PERP',
+      accountLabels: ['Account 02'],
+      leverage: '50',
+      offeredLeverage: ['15x', '1x', '2x', '5x', '8x'],
+      percent: '1',
+      stopDistance: '0.3',
+      targetDistance: '0.3',
+      account01Flat: true,
+      scope: 'NEXT_ACCOUNT',
+    });
+    expect(wrong.status).toBe(200);
+    expect((await wrong.json()).blockedReason).toBe('LEVERAGE_NOT_OFFERED');
+  });
+  it('replaces the leverage list from the latest ticket read', async () => {
+    const before = await (await fetch(`${base}/api/state`)).json();
+    expect(before.vestTicketLeverage).toBeNull();
+    const posted = await post('vest-ticket', {
+      market: 'NQ-PERP',
+      leverageLabels: ['10x', '50x', 'Change to 10x'],
+      marketClosed: true,
+    });
+    expect(posted.status).toBe(200);
+    const after = await (await fetch(`${base}/api/state`)).json();
+    expect(after.vestTicketLeverage).toEqual({
+      market: 'NQ-PERP',
+      choices: ['10', '50'],
+      marketClosed: true,
+    });
   });
 });

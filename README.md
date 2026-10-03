@@ -21,11 +21,22 @@ executing independently sized LONG and SHORT trades with stop-loss and take-prof
 protection. Use the browser dashboard for interactive control or the CLI for repeatable
 scenarios.
 
-> **Simulation only.** Accounts and prices are synthetic. This application does not
-> connect to Vest, automate its website, or send live trades. No Vest login or API key
-> is required. It is an independent project, not an official Vest product.
+> **Simulation only.** Accounts and prices are synthetic. The dashboard does not
+> execute on Vest or send live trades. No Vest login or API key is required for simulation.
+> A separate owner-authorized manual browser launcher supports read-only inspection. It is an independent project, not an official Vest product.
 
 ![Dashboard with independent exposure previews for ten accounts](docs/images/dashboard-preview.png)
+
+Current development priority: [prove the permitted Vest connection and execution evidence path](docs/vest-execution-gap-audit.md).
+Visual polish and installer work are paused. A separate [manual Vest browser launcher](docs/vest-read-only-observation.md) opens
+the official website for normal owner login. Automated account discovery, evidence
+reading and connected execution remain unimplemented. Read-only inspection is now
+owner-authorized; real orders and commercial rollout remain separate gates. The next
+milestone is [browser-first connection](docs/product-implementation-plan.md#browser-first-connection-milestone--current-decision):
+use the observed same-page Google sign-in, keep the browser profile so the next launch
+can reuse the Vest session, then verify funded inventory and inspect real evidence.
+The current capability decision is no-go. Other origins and popups still close the
+inspection. Routine API/documentation research and visual/installer work are paused.
 
 ## Quick start
 
@@ -99,7 +110,7 @@ keep their records for investigation. Restart and reconnect recover status witho
 
 Customer execution hosts target **Windows and macOS**. Native host identity,
 private storage and diagnostics are implemented; physical acceptance is pending.
-[Desktop host compatibility](docs/desktop-host-support.md) is the next acceptance gate;
+[Desktop host compatibility](docs/desktop-host-support.md) remains a release acceptance gate;
 Linux is a reference environment, not a customer requirement.
 
 The phone layout supports Trade, Accounts and Activity, readable account risk cards,

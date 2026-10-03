@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-09-30T23:51:27.766Z",
+  "applicationCommit": "d5f86d0816ee9d6b91d68325d4eb1e9af6de2c4b",
+  "browser": "Playwright Chromium",
+  "phoneViewport": {
+    "width": 390,
+    "height": 844,
+    "deviceScaleFactor": 2
+  },
+  "desktopViewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "mode": "SIMULATION_ONLY",
+  "privateHttps": "isolated localhost test certificate",
+  "physicalPhone": false,
+  "verified": {
+    "simulationLabel": true,
+    "acceptedCommands": 1,
+    "protectedSimulatedAccounts": 10,
+    "disconnectedEntryDisabled": true
+  }
+}

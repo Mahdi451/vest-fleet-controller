@@ -1,6 +1,6 @@
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { parse } from 'yaml';
 import {
@@ -110,8 +110,7 @@ async function main() {
         const replay = await controller.execute(runId, preview.previewId);
         console.log(
           JSON.stringify({
-            replayIsIdentical:
-              JSON.stringify(replay) === JSON.stringify(results),
+            replayIsIdentical: isDeepStrictEqual(replay, results),
           }),
         );
       }
