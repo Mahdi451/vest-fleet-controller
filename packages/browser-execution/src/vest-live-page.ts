@@ -212,7 +212,10 @@ export function vestExecutionPage(
       }
       const panel = await panelText(page, 'Active Positions');
       if (panel === null) return { unparsed: true } as LivePosition;
-      if (/No positions/i.test(panel)) return null;
+      // Live Account 01 heading: "No positions yet". Columns Market, Value,
+      // Open Price, Mid Price, PnL, Fail Price, TP/SL, Funding, and Fee were
+      // visible with no body row, so a non-empty panel stays unparsed.
+      if (/No positions yet|No positions/i.test(panel)) return null;
       return {
         account: null,
         symbol: null,
@@ -256,15 +259,9 @@ export function vestExecutionPage(
     },
     submitFlatten() {
       return clickOnce(async () => {
-        const tab = page.getByRole('tab', {
-          name: 'Active Positions',
-          exact: true,
-        });
-        if ((await tab.count()) === 1) await tab.click({ timeout: 8000 });
-        const button = page.getByRole('button', { name: 'Close', exact: true });
-        if ((await button.count()) !== 1)
-          throw new Error('FLATTEN_CONTROL_NOT_UNIQUE');
-        await button.click({ timeout: 8000 });
+        // The flat Account 01 panel had no action button. A page-level Close
+        // button belongs to other dialogs, so this does not click one.
+        throw new Error('FLATTEN_CONTROL_UNPROVEN');
       });
     },
   };

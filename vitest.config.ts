@@ -1,7 +1,9 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Funded-account evidence must never be collected by ordinary fixture checks.
+    exclude: [...configDefaults.exclude, 'tests/authorized-live/**'],
     // Keep native browser/HTTPS fixtures from competing for a shared CI runner.
     // Domain concurrency and duplicate tests still exercise their explicit races.
     ...(process.env.CI ? { fileParallelism: false } : {}),

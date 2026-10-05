@@ -27,7 +27,26 @@ scenarios.
 
 ![Dashboard with independent exposure previews for ten accounts](docs/images/dashboard-preview.png)
 
-Current development priority: [prove the permitted Vest connection and execution evidence path](docs/vest-execution-gap-audit.md).
+Current development priority: [the security-first audit and adoption plan](docs/security-first-adoption-plan.md).
+The [event-driven fan-out plan](docs/fanout-adoption-plan.md) supersedes the older strict
+sequential follower requirement: prepared followers execute independently, with local
+failures isolated and global security/risk failures stopping new events.
+Use the [implementation checklist](docs/implementation-checklist.md) to track work and
+verified completion evidence.
+Retain the risk engine and durable journal; refactor controller execution for independent
+follower lanes and implement useful Better Vest behavior locally. No Better Vest
+installation, protected-source reuse, automatic updates or live orders are enabled.
+The [offline browser bridge](docs/browser-bridge-goal.md) is a test foundation.
+The [local containment checkpoint](docs/security-containment.md) defines the locked
+artifact and security checks; it does not enable a funded copier.
+The [functional proof goal](docs/functional-proof-goal.md) tracks remaining gates;
+`pnpm verify:functional` runs local checks and reports missing live evidence without
+enabling trading.
+Older connection, phone-access and product plans below are historical where they
+conflict with the security-first plan. No foreground windows or Vest charts may be
+opened during current work.
+
+Earlier priority: [prove the permitted Vest connection and execution evidence path](docs/vest-execution-gap-audit.md).
 Visual polish and installer work are paused. A separate [manual Vest browser launcher](docs/vest-read-only-observation.md) opens
 the official website for normal owner login. Automated account discovery, evidence
 reading and connected execution remain unimplemented. Read-only inspection is now

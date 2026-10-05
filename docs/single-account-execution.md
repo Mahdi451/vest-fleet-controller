@@ -34,11 +34,12 @@ working exits.
 
 Inspection on 2026-10-03 recorded the account banner, `Buy/Long`, `Sell/Short`, the
 `Nx` leverage menu, `25%` `50%` `75%` `100%`, `Order Value $…`, `Amount USD`,
-`Take Profit $`, and `Stop Loss $` on Account 01's BTC ticket. It did not record a
-position-row layout or the flatten control. Until those are read from a live row, a
-position panel that is not an explicit row stays unparsed and fails closed, and
-flatten clicks only a single visible `Close` button in Active Positions. Absence of
-the "market is closed" phrase, together with one Buy/Long button, is the recorded
-signal that the market was open. Two windows on the same login were observed to adopt
-each other's selected account after reload, so this primitive halts when more than one
-trading page is open instead of trying to keep them apart.
+`Take Profit $`, and `Stop Loss $` on Account 01's BTC ticket. A later read of that
+same profile on `/trade/BTC-PERP` showed Account 01, the heading "No positions yet",
+and column headers Market, Value, Open Price, Mid Price, PnL, Fail Price, TP/SL,
+Funding, and Fee. The table had no body row and no action button. A position panel
+that is not that empty heading stays unparsed, and flatten does not click a page-level
+`Close` button. Absence of the "market is closed" phrase, together with one Buy/Long
+button, is the recorded signal that the market was open. Two windows on the same login
+were observed to adopt each other's selected account after reload, so this primitive
+halts when more than one trading page is open instead of trying to keep them apart.

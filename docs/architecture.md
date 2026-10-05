@@ -1,5 +1,17 @@
 # Architecture
 
+Security-first direction: [audit and local adoption plan](security-first-adoption-plan.md).
+Retain the single sequential execution owner. Existing remote-access and research
+browser paths must be excluded from a future trading build; current refusal gates
+remain. Production arming, channel authentication and network containment are not
+implemented. Older architecture assumptions below are historical where inconsistent.
+
+Active direction as of 2026-10-05: [the browser bridge goal](browser-bridge-goal.md).
+The offline bridge shares the existing FleetController and durable Journal. It
+does not enable authenticated requests or live sending. The separate test-only
+copier runner and in-memory run journal have been removed. The dated UI-only
+transport decisions below record the earlier investigation.
+
 Status: initial implementation, simulation-only. Decision date: 2026-09-29.
 
 Priority update 2026-10-01: prove the permitted Vest connection and execution evidence
@@ -51,8 +63,8 @@ an optional later UI implementation, not a dependency for running the current da
 
 ## Major assumptions and decisions
 
-1. Fixed $490 floors, Instant fees, and 95% withdrawal share are observations, not
-   verified current rules. The share is an explicit withdrawal parameter.
+1. Fixed $490 floors and Instant fees are observations, not verified current rules.
+   Capital/payment operations are outside scope; the former payout simulator is removed.
 2. Fixed-dollar and drawdown budget inputs represent all-in planned loss. Margin-percent
    inputs allocate min(balance, equity) as margin, multiplied by leverage for exposure. The original gross sizing formulas
    remain separate tested functions. No hidden leverage multiplier changes P&L.

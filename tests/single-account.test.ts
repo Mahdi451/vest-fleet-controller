@@ -433,8 +433,9 @@ it('reads the displayed account from the page instead of the requested account',
       <button role="tab" aria-controls="positions">Active Positions</button>
       <button role="tab" aria-controls="orders">Open Orders</button>
     </div>
-    <div id="positions" role="tabpanel">No positions</div>
-    <div id="orders" role="tabpanel">No open orders</div>`;
+    <button id="dialog-close" onclick="this.dataset.clicked='yes'">Close</button>
+    <div id="positions" role="tabpanel"><h2>No positions yet</h2></div>
+    <div id="orders" role="tabpanel">No open orders yet</div>`;
   await page.route('https://next.vestmarkets.com/**', (route) =>
     route.fulfill({ contentType: 'text/html', body: html }),
   );
@@ -471,5 +472,9 @@ it('reads the displayed account from the page instead of the requested account',
   );
   expect(result.code).toBe('ACCOUNT_SWITCH_UNKNOWN');
   expect(result.entrySubmissions).toBe(0);
+  expect(await reader.submitFlatten()).toBe('CLICK_UNKNOWN');
+  expect(
+    await page.locator('#dialog-close').getAttribute('data-clicked'),
+  ).toBeNull();
   await context.close();
 });

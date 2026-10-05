@@ -1,5 +1,16 @@
 # Customer product implementation and acceptance plan
 
+Current priority: [security-first audit and local adoption plan](security-first-adoption-plan.md).
+The owner's local-only private copier takes precedence over customer packaging,
+remote phone access, UI polish and older transport assumptions in this document.
+Live execution remains disabled pending the plan's security and evidence gates.
+
+Active execution direction as of 2026-10-05: [the browser bridge goal](browser-bridge-goal.md).
+It supersedes this document's UI-only transport choice. The offline bridge is
+implemented through the existing durable controller; authenticated integration
+and live sending remain disabled. The dated milestones below retain the earlier
+planning context.
+
 Prepared 2026-09-30. Scope: an invitation beta where each customer controls their own
 Vest Instant-account fleet through our mobile dashboard. The current build is a local
 simulation prototype. Mobile UI, durable commands and private single-owner HTTPS

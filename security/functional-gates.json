@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "goal": "Prove an independently implemented private/local Vest event copier with prepared concurrent follower fan-out, durable event identity, isolated follower outcomes and reviewed security/risk controls; never derive live permission from fixture results.",
+  "gates": [
+    {
+      "id": "OFF-SECURITY",
+      "title": "Static security and restricted artifact checks",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["security", "build"],
+      "requires": []
+    },
+    {
+      "id": "OFF-RISK",
+      "title": "Independent sizing, leverage ceilings and enabled-account hedge guard in fixtures",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["regression"],
+      "requires": ["OFF-SECURITY"]
+    },
+    {
+      "id": "OFF-FANOUT",
+      "title": "Concurrent account lanes, isolated outcomes, global revocation and pending-exposure hedge safety in fixtures",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-RISK", "OFF-EVENTS", "OFF-READINESS"]
+    },
+    {
+      "id": "OFF-RECOVERY",
+      "title": "Durable request claims, duplicate/lost-response/crash recovery in fixtures",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["regression"],
+      "requires": ["OFF-SECURITY"]
+    },
+    {
+      "id": "OFF-QUALITY",
+      "title": "Type checking, lint, formatting and regression suite",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["typecheck", "lint", "format", "regression"],
+      "requires": []
+    },
+    {
+      "id": "OFF-ARMING",
+      "title": "Synthetic expiring controller invocation authority and revocation races",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["regression"],
+      "requires": ["OFF-RECOVERY"]
+    },
+    {
+      "id": "OFF-CHANNEL",
+      "title": "Spoof/replay/generation rejection across local channel",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-ARMING"]
+    },
+    {
+      "id": "OFF-DRIFT",
+      "title": "Durable leader events and no automatic reopen after risk/manual exits",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-FANOUT", "OFF-EVENTS", "OFF-RECOVERY"]
+    },
+    {
+      "id": "OFF-SECRETS",
+      "title": "Synthetic credential canaries across all diagnostic and persistence sinks",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-CHANNEL"]
+    },
+    {
+      "id": "OFF-EVENTS",
+      "title": "Durable leader events, immutable follower attempts and safe retry eligibility",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-RECOVERY"]
+    },
+    {
+      "id": "OFF-READINESS",
+      "title": "Precomputed account readiness and session-envelope checks at actual dispatch",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-RISK", "OFF-ARMING"]
+    },
+    {
+      "id": "OFF-REPAIRS",
+      "title": "Incremental account outcomes and scoped idempotent repair without UNKNOWN retry",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-FANOUT", "OFF-RECOVERY"]
+    },
+    {
+      "id": "OFF-LATENCY",
+      "title": "Per-follower timing provenance and measured fan-out latency calculations",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": [],
+      "requires": ["OFF-FANOUT"]
+    },
+    {
+      "id": "VEST-INTEGRATION",
+      "title": "Original local integration without third-party extensions",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-SECURITY", "OFF-QUALITY"]
+    },
+    {
+      "id": "VEST-CHANNEL",
+      "title": "Authenticated controller/browser sender and generation binding",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-CHANNEL", "VEST-INTEGRATION"]
+    },
+    {
+      "id": "VEST-NETWORK",
+      "title": "Exact necessary domain/method/endpoint enforcement and whole-profile egress",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-INTEGRATION"]
+    },
+    {
+      "id": "VEST-SECRETS",
+      "title": "No credential capture by default; no persistence/logging/dashboard exposure",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-SECRETS", "VEST-NETWORK"]
+    },
+    {
+      "id": "VEST-INVENTORY",
+      "title": "Complete enabled account inventory with stable provider IDs and funded product type",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-CHANNEL"]
+    },
+    {
+      "id": "VEST-FRESHNESS",
+      "title": "Fresh balances/equity/drawdown/positions/orders and explicit missing facts",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-INVENTORY"]
+    },
+    {
+      "id": "VEST-MARKET",
+      "title": "Verified venue symbol, contract multiplier, quantity/price steps and market rules",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-FRESHNESS"]
+    },
+    {
+      "id": "VEST-ACCOUNT-SCOPE",
+      "title": "Selected account and native writer/client revision verified before each action",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-INVENTORY", "VEST-MARKET"]
+    },
+    {
+      "id": "VEST-LIFECYCLE",
+      "title": "Login/navigation/staleness/channel loss locks dispatch and recovery",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-ARMING", "VEST-ACCOUNT-SCOPE"]
+    },
+    {
+      "id": "VEST-ORDER-EVIDENCE",
+      "title": "Authoritative request/order/fill/terminal-remainder correlation",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-RECOVERY", "VEST-ACCOUNT-SCOPE"]
+    },
+    {
+      "id": "VEST-COPIER",
+      "title": "Leader entry/reduction/venue-exit detection with durable event identities",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-DRIFT", "VEST-ORDER-EVIDENCE"]
+    },
+    {
+      "id": "VEST-PROFILE",
+      "title": "Dedicated isolated profile, local extension only and restart locking",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["VEST-LIFECYCLE", "VEST-NETWORK"]
+    },
+    {
+      "id": "VEST-NATIVE-HOSTS",
+      "title": "Required desktop platforms pass native background checks",
+      "phase": "VEST_EVIDENCE",
+      "automation": "BROWSER",
+      "checks": [],
+      "requires": ["OFF-QUALITY"]
+    },
+    {
+      "id": "REVIEW-TERMS",
+      "title": "Applicable Vest transport/execution terms accepted with evidence",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": []
+    },
+    {
+      "id": "REVIEW-ORIGINALITY",
+      "title": "Original implementation and dependency/license provenance reviewed",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": ["VEST-INTEGRATION"]
+    },
+    {
+      "id": "REVIEW-SECURITY",
+      "title": "Independent review of exact live implementation/artifact and policy changes",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": [
+        "VEST-CHANNEL",
+        "VEST-NETWORK",
+        "VEST-SECRETS",
+        "VEST-ACCOUNT-SCOPE",
+        "VEST-LIFECYCLE",
+        "REVIEW-ORIGINALITY"
+      ]
+    },
+    {
+      "id": "REVIEW-RECOVERY",
+      "title": "Scoped emergency controls and independent manual recovery procedure reviewed",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": ["VEST-ORDER-EVIDENCE", "VEST-PROFILE"]
+    },
+    {
+      "id": "APPROVE-ONE-ACCOUNT",
+      "title": "Explicit approval of exact minimal account/market/risk/build trial",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": [
+        "REVIEW-TERMS",
+        "REVIEW-SECURITY",
+        "REVIEW-RECOVERY",
+        "VEST-MARKET"
+      ]
+    },
+    {
+      "id": "LIVE-ENTRY",
+      "title": "Armed one-account submission, independent risk and confirmed actual fill",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["APPROVE-ONE-ACCOUNT"]
+    },
+    {
+      "id": "LIVE-PROTECTION",
+      "title": "Fill-relative SL/TP, quantities/reduce-only and protection persistence on disconnect",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["LIVE-ENTRY"]
+    },
+    {
+      "id": "LIVE-CLOSE",
+      "title": "Verified reduction/close, sibling cancellation and no late executable remainder",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["LIVE-PROTECTION"]
+    },
+    {
+      "id": "LIVE-FAILURES",
+      "title": "Approved loss-of-response/restart/protection-failure scenarios preserve uncertainty",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["LIVE-CLOSE", "REVIEW-RECOVERY"]
+    },
+    {
+      "id": "APPROVE-FLEET",
+      "title": "Explicit approval of exact concurrent event-driven fleet test and limits",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": [
+        "LIVE-CLOSE",
+        "LIVE-FAILURES",
+        "VEST-COPIER",
+        "OFF-FANOUT",
+        "OFF-DRIFT",
+        "OFF-REPAIRS",
+        "OFF-LATENCY"
+      ]
+    },
+    {
+      "id": "LIVE-FLEET",
+      "title": "Fast independent fan-out, isolated follower failures, global stops and hedge safety",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["APPROVE-FLEET"]
+    },
+    {
+      "id": "LIVE-DRIFT",
+      "title": "Authorized observation proves no follower stop/manual/breach automatic reopening",
+      "phase": "AUTHORIZED_LIVE",
+      "automation": "LIVE",
+      "checks": [],
+      "requires": ["LIVE-FLEET"]
+    },
+    {
+      "id": "REVIEW-RELEASE",
+      "title": "Owner approval of tested artifact and complete evidence before manual local load",
+      "phase": "HUMAN",
+      "automation": "HUMAN",
+      "checks": [],
+      "requires": ["LIVE-DRIFT", "VEST-NATIVE-HOSTS", "REVIEW-SECURITY"]
+    }
+  ]
+}

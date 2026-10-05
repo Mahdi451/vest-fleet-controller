@@ -1,0 +1,9 @@
+# Review routing only: private-repository branch protection must enforce approval.
+/security/ @Mahdi451
+/scripts/security-*.ts @Mahdi451
+/scripts/local-build.ts @Mahdi451
+/scripts/build-local-trading.ts @Mahdi451
+/apps/local-trading/ @Mahdi451
+/tests/security-*.test.ts @Mahdi451
+/package.json @Mahdi451
+/.github/workflows/ @Mahdi451

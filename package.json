@@ -16,12 +16,15 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "check": "pnpm security:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "dashboard": "node --import tsx apps/dashboard/server.ts",
     "setup:private": "node --import tsx apps/dashboard/setup-private.ts",
     "host:doctor": "node --import tsx apps/dashboard/host.ts doctor",
     "host:protect": "node --import tsx apps/dashboard/host.ts protect",
-    "observe:vest": "node --import tsx apps/vest-observer/cli.ts"
+    "observe:vest": "node --import tsx apps/vest-observer/cli.ts",
+    "security:check": "node --import tsx scripts/security-check.ts",
+    "build:local": "node --import tsx scripts/build-local-trading.ts",
+    "verify:functional": "node --import tsx scripts/verify-functional.ts"
   },
   "dependencies": {
     "decimal.js": "^10.6.0",

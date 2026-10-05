@@ -50,8 +50,6 @@ const auditSchema = z.object({
   equity: z.string().optional(),
   funding: z.string().optional(),
   marketPrice: z.string().optional(),
-  withdrawalGross: z.string().optional(),
-  withdrawalNet: z.string().optional(),
   timestamp: z.number(),
   masterTradeId: z.string(),
   accountId: z.string().optional(),
@@ -223,6 +221,14 @@ export class Journal {
   }
   hasBrowserActions(): boolean {
     return !!this.db.prepare('SELECT 1 FROM browser_actions LIMIT 1').get();
+  }
+  /** Unresolved writes remain blockers even if a later book has changed. */
+  hasUnresolvedBrowserAction(accountId: string, prefix: string): boolean {
+    return !!this.db
+      .prepare(
+        "SELECT 1 FROM browser_actions WHERE account_id=? AND state='SUBMITTING' AND substr(id,1,length(?))=? LIMIT 1",
+      )
+      .get(accountId, prefix, prefix);
   }
   finish(id: string, result: ChildResult[]) {
     this.db

@@ -27,7 +27,7 @@ import {
   observeVestTicket,
   planSequentialCopy,
 } from '../../packages/browser-execution/src/live-command.ts';
-import { unprovenCopierStatus } from '../../packages/browser-execution/src/copier/capabilities.ts';
+import { unprovenCopierStatus } from '../../packages/browser-execution/src/copier-status.ts';
 import { envelope, hash } from './src/commands.ts';
 import { loadLocalIdentity } from './src/identity.ts';
 import { loadPrivateAccess, type PrivateAccess } from './src/private-access.ts';

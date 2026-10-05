@@ -2,26 +2,25 @@
 
 Each new run starts Account 01 at $504.55 and Accounts 02–10 at $500, with $490 fixed
 floors. Account snapshots are defensive copies. Account IDs are unique and balances
-diverge naturally with quantity, fills, fees, withdrawals and disabled state.
+diverge naturally with quantity, fills, fees and disabled state.
 
-| Operation         | Behavior                                                                                                         |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Market entry      | Re-runs the shared risk engine, checks account/fleet safety and deduplicates request ID                          |
-| Fill              | Current synthetic quote plus adverse per-side slippage; charges entry fee and fixed account cost                 |
-| Leverage          | Per-order leverage recorded; estimated initial margin checked by risk engine                                     |
-| Protection        | Separate SL/TP calls after entry fill; reduce-only orders anchored to actual fill                                |
-| Market update     | Mark equity, detect breach and evaluate ACTIVE protection orders                                                 |
-| Stop/target       | Close at current synthetic market price plus adverse slippage, not a guaranteed trigger price                    |
-| Partial close     | Realize proportional P&L and exit fee, preserve the remainder and protection                                     |
-| Funding           | Explicit signed hourly-rate × hours scenario; positive rates debit longs and credit shorts                       |
-| Breach            | Equity at/below effective floor permanently marks breached; open positions close at current simulated price      |
-| Withdrawal        | Flat active account only, within realized profit and reserve; debit gross and report explicit split's net payout |
-| Emergency flatten | Cancel active protection and close all accounts, including disabled; verify both books                           |
+| Operation         | Behavior                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| Market entry      | Re-runs the shared risk engine, checks account/fleet safety and deduplicates request ID                     |
+| Fill              | Current synthetic quote plus adverse per-side slippage; charges entry fee and fixed account cost            |
+| Leverage          | Per-order leverage recorded; estimated initial margin checked by risk engine                                |
+| Protection        | Separate SL/TP calls after entry fill; reduce-only orders anchored to actual fill                           |
+| Market update     | Mark equity, detect breach and evaluate ACTIVE protection orders                                            |
+| Stop/target       | Close at current synthetic market price plus adverse slippage, not a guaranteed trigger price               |
+| Partial close     | Realize proportional P&L and exit fee, preserve the remainder and protection                                |
+| Funding           | Explicit signed hourly-rate × hours scenario; positive rates debit longs and credit shorts                  |
+| Breach            | Equity at/below effective floor permanently marks breached; open positions close at current simulated price |
+| Emergency flatten | Cancel active protection and close all accounts, including disabled; verify both books                      |
 
 Available CLI scenarios: `win`, `loss`, `partial-failure`, `ambiguous`, `timeout`,
 `disabled`, `gap`, `retry`. Each uses the same TradeIntent and risk engine.
 
-The test suite additionally exercises funding, partial closes, profit withdrawal,
+The test suite additionally exercises funding, partial closes,
 price movement between children, adapter timeout, journal restart, stale state and
 same-market opposing positions across enabled accounts. Disabled exposure is ignored
 by the entry guard, while flatten still includes disabled accounts. A failure in one account does not modify another
@@ -34,8 +33,9 @@ account's balance. Circuit-breaker policy may prevent later accounts from partic
 - Equity uses the supplied synthetic quote; bid/ask spread is represented only through
   configured slippage. There is no order book, queue, liquidity or incremental fill-stream model,
   maintenance-margin liquidation formula, trading calendar or real market feed.
-- There is no automatic funding clock or Vest payout API. Withdrawal semantics are
-  assumptions for experimentation, not promises about current Vest rules.
+- There is no automatic funding clock. Capital/payment operations are outside this
+  tool's scope; the former payout simulation has been removed. Historical journal
+  rows remain intact for audit purposes.
 - Entry and protection are separate calls. Raw entry has `protectionStatus: NONE`;
   market updates cannot trigger protection that has not been created. SL and TP must
   both be active for `PROTECTED` establishment. Gaps can occur during this interval.
