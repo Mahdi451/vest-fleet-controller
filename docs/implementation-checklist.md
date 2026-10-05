@@ -204,8 +204,7 @@ Gates: `APPROVE-ONE-ACCOUNT`, live entry/protection/close/failures, `APPROVE-FLE
 | ---------- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
 | 2026-10-05 | Fan-out inspection and this implementation plan | Document checks, 39-gate validation and 127 focused tests; old runtime remains |
 | 2026-10-05 | Retained offline foundation                     | Historical local report above; concurrent and authenticated proof pending      |
-
-| 2026-10-05 | Phase 1 event records and follower outcomes | 61 new tests, independent review, all six integrated checks pass; fixture-only |
+| 2026-10-05 | Phase 1 event records and follower outcomes     | 61 new tests, independent review, all six integrated checks pass; fixture-only |
 
 Next implementation checkpoint: **Phase 2 — independent follower fan-out**.
 Update this checklist as each verified item closes.
