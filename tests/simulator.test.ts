@@ -108,24 +108,6 @@ describe('ten-account simulator', () => {
       s.journal.close();
     }
   });
-  it('withdrawals debit gross profit, pay configured share and preserve floor', async () => {
-    const s = await setup();
-    try {
-      expect(await s.adapter.withdrawProfit('01', '4', '0.95')).toEqual({
-        grossDebit: '4',
-        netPayout: '3.8',
-        floor: '490',
-      });
-      expect((await s.adapter.getAccountState('01')).remainingDrawdown).toBe(
-        '10.55',
-      );
-      await expect(s.adapter.withdrawProfit('02', '1', '0.95')).rejects.toThrow(
-        'UNSAFE_WITHDRAWAL',
-      );
-    } finally {
-      s.journal.close();
-    }
-  });
   it('disabled accounts cannot enter but can be flattened', async () => {
     const s = await setup();
     try {

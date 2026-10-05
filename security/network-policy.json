@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "reviewRequired": true,
+  "approvedOrigins": [
+    "http://127.0.0.1",
+    "http://localhost",
+    "https://next.vestmarkets.com"
+  ],
+  "enabledOrigins": [],
+  "vestApiRoutes": [],
+  "vestWebSocketRoutes": []
+}

@@ -29,6 +29,7 @@ import {
 import type { ExecutionAdapter, ChildResult } from './adapter.ts';
 import { Journal, type RevalidationDiagnostic } from './journal.ts';
 import { validateResult } from './adapter.ts';
+import type { OfflineDispatchAuthorizer } from './offline-authority.ts';
 
 const hash = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -93,6 +94,7 @@ export class FleetController {
     const issue = (accountId: string, code: string) => {
       issues.push({ accountId, code });
       this.circuitOpen = true;
+      this.dispatchAuthority?.revokeEntries();
     };
     this.metrics.reconciliationRuns++;
     let dataFresh = false;
@@ -143,6 +145,12 @@ export class FleetController {
           );
           for (const order of orphan) {
             issue(id, 'ORPHAN_PROTECTION');
+            this.dispatchAuthority?.verifyAccountEvidence(
+              a,
+              id,
+              this.config.maxDataAgeMs,
+            );
+            this.dispatchAuthority?.assertCancel(order, children);
             await this.deadline(this.adapter.cancelOrder(id, order.orderId));
             const canceled = protectionOrderSchema.parse(
               await this.deadline(
@@ -340,6 +348,7 @@ export class FleetController {
     private readonly journal: Journal,
     private readonly clock: () => number = Date.now,
     private readonly timeoutMs = 1000,
+    private readonly dispatchAuthority?: OfflineDispatchAuthorizer,
   ) {
     if (adapter.mode !== 'SIMULATION')
       throw new Error('LIVE_EXECUTION_DISABLED');
@@ -350,6 +359,7 @@ export class FleetController {
   }
   private halt() {
     this.circuitOpen = true;
+    this.dispatchAuthority?.revokeEntries();
     this.journal.halt();
   }
   requestHalt() {
@@ -420,9 +430,65 @@ export class FleetController {
     if (!this.protectionMatches(order, request))
       throw new Error('PROTECTION_UNCONFIRMED');
   }
+  private async authorizeFlatten(accountId: string) {
+    if (!this.dispatchAuthority) return;
+    const account = accountSchema.parse(
+      await this.deadline(this.adapter.getAccountState(accountId)),
+    );
+    const open = (
+      await this.deadline(this.adapter.getOpenOrders(accountId))
+    ).map((o) => protectionOrderSchema.parse(o));
+    if (
+      account.accountId !== accountId ||
+      !isFresh(
+        account.lastSyncTimestamp,
+        this.clock(),
+        this.config.maxDataAgeMs,
+      )
+    ) {
+      this.dispatchAuthority.invalidateIdentity();
+      throw new Error('OFFLINE_IDENTITY_UNCERTAIN');
+    }
+    const children = this.journal.allChildren();
+    for (const p of account.positions) {
+      const child = children.find(
+        (c) => c.requestId === p.entryRequestId && c.accountId === accountId,
+      );
+      const ledger = await this.deadline(
+        this.adapter.getOrder(p.entryRequestId),
+      );
+      if (!child || !ledger) throw new Error('OFFLINE_RECOVERY_UNPROVEN');
+      this.dispatchAuthority.recordConfirmedFill(
+        child,
+        account,
+        ledger,
+        this.config.maxDataAgeMs,
+      );
+    }
+    this.dispatchAuthority.verifyAccountEvidence(
+      account,
+      accountId,
+      this.config.maxDataAgeMs,
+    );
+    this.dispatchAuthority.assertFlatten(account, open, children);
+    return { account, open, children };
+  }
   private async cleanupAccount(accountId: string): Promise<'FLAT' | 'UNKNOWN'> {
     let status: 'FLAT' | 'UNKNOWN' = 'UNKNOWN';
     try {
+      const proof = await this.authorizeFlatten(accountId);
+      if (proof && this.dispatchAuthority) {
+        this.dispatchAuthority.verifyAccountEvidence(
+          proof.account,
+          accountId,
+          this.config.maxDataAgeMs,
+        );
+        this.dispatchAuthority.assertFlatten(
+          proof.account,
+          proof.open,
+          proof.children,
+        );
+      }
       await this.deadline(this.adapter.flattenAccount(accountId));
       const after = accountSchema.parse(
         await this.deadline(this.adapter.getAccountState(accountId)),
@@ -561,6 +627,23 @@ export class FleetController {
             );
             const quote = await this.deadline(this.adapter.getQuote());
             const fleet = await this.deadline(this.adapter.listAccounts());
+            if (
+              this.dispatchAuthority &&
+              (state.accountId !== planned.accountId ||
+                !isFresh(
+                  state.lastSyncTimestamp,
+                  this.clock(),
+                  this.config.maxDataAgeMs,
+                ) ||
+                !isFresh(
+                  quote.timestamp,
+                  this.clock(),
+                  this.config.maxDataAgeMs,
+                ))
+            ) {
+              this.dispatchAuthority.invalidateIdentity();
+              throw new Error('OFFLINE_IDENTITY_UNCERTAIN');
+            }
             const before = preview.accounts[index];
             const validationNow = this.clock();
             actual = sizeTrade(
@@ -637,23 +720,26 @@ export class FleetController {
               result.status = 'UNKNOWN';
               result.error = null;
               this.transition(masterTradeId, result, 'ENTRY_SUBMITTING'); // Durable BEFORE entry side effect.
+              const entryRequest = {
+                requestId,
+                masterTradeId,
+                accountId: state.accountId,
+                intent: preview.intent,
+                preview: actual,
+                quote,
+                config: this.config,
+              };
+              this.dispatchAuthority?.assertEntry(
+                entryRequest,
+                preview.previewId,
+              );
               submitted = true;
               entryStarted = performance.now();
               this.metrics.entries++;
               try {
                 // An entry acknowledgement alone can never establish a protected trade.
                 validateResult(
-                  await this.deadline(
-                    this.adapter.placeOrder({
-                      requestId,
-                      masterTradeId,
-                      accountId: state.accountId,
-                      intent: preview.intent,
-                      preview: actual,
-                      quote,
-                      config: this.config,
-                    }),
-                  ),
+                  await this.deadline(this.adapter.placeOrder(entryRequest)),
                   requestId,
                   state.accountId,
                 );
@@ -755,6 +841,12 @@ export class FleetController {
                 result.actualPlannedLoss = filledRisk.totalLoss;
                 result.remainingAfterStop = filledRisk.remainingAfterStop;
                 if (!filledRisk.approved) throw new Error('FILL_RISK_CHANGED');
+                this.dispatchAuthority?.recordConfirmedFill(
+                  result,
+                  after,
+                  ledger,
+                  this.config.maxDataAgeMs,
+                );
                 const prices = protectionPrices(
                   position.entryPrice,
                   preview.intent,
@@ -801,6 +893,20 @@ export class FleetController {
                     status: 'PROTECTION_SUBMITTING',
                     adapter: this.adapter.name,
                   });
+                  if (this.dispatchAuthority) {
+                    const protectionAccount = accountSchema.parse(
+                      await this.deadline(
+                        this.adapter.getAccountState(state.accountId),
+                      ),
+                    );
+                    this.dispatchAuthority.recordConfirmedFill(
+                      result,
+                      protectionAccount,
+                      ledger,
+                      this.config.maxDataAgeMs,
+                    );
+                    this.dispatchAuthority.assertProtection(request);
+                  }
                   try {
                     await this.deadline(
                       this.adapter.placeProtectionOrder(request),
@@ -951,6 +1057,19 @@ export class FleetController {
       for (const a of accounts) {
         let status: 'FLAT' | 'UNKNOWN' = 'UNKNOWN';
         try {
+          const proof = await this.authorizeFlatten(a.accountId);
+          if (proof && this.dispatchAuthority) {
+            this.dispatchAuthority.verifyAccountEvidence(
+              proof.account,
+              a.accountId,
+              this.config.maxDataAgeMs,
+            );
+            this.dispatchAuthority.assertFlatten(
+              proof.account,
+              proof.open,
+              proof.children,
+            );
+          }
           await this.deadline(this.adapter.flattenAccount(a.accountId));
           const after = await this.deadline(
             this.adapter.getAccountState(a.accountId),

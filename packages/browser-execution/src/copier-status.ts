@@ -16,14 +16,15 @@ export type CapabilityProof = Record<CopierCapability, boolean>;
 export interface SendGate {
   readonly executionProven: boolean;
   readonly liveIntegrationProven: boolean;
+  readonly capabilityReady: boolean;
   readonly liveSend: false;
   readonly armed: false;
-  readonly sendPermitted: boolean;
+  readonly sendPermitted: false;
   readonly missing: CopierCapability[];
   readonly haltReason: string | null;
 }
 
-/** Code paths do not arm Send. Live Vest integration is a separate proof. */
+/** Dashboard status only. Offline tests do not establish live integration. */
 export function evaluateSendGate(
   proven: Partial<CapabilityProof>,
   liveIntegrationProven = false,
@@ -35,9 +36,10 @@ export function evaluateSendGate(
   return {
     executionProven,
     liveIntegrationProven,
+    capabilityReady: executionProven && liveIntegrationProven,
     liveSend: false,
     armed: false,
-    sendPermitted: executionProven && liveIntegrationProven,
+    sendPermitted: false,
     missing,
     haltReason: null,
   };

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "mode": "LOCKED_OFFLINE_ONLY",
+  "entry": "apps/local-trading/index.ts",
+  "sourceFiles": ["apps/local-trading/index.ts"],
+  "artifactFiles": [
+    "index.js",
+    "network-policy.json",
+    "build-policy.json",
+    "browser-policy.json",
+    "manifest.json"
+  ],
+  "runtimeDependencies": []
+}

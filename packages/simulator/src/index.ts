@@ -623,37 +623,4 @@ export class MockVestAdapter implements ExecutionAdapter {
       if (a.status === 'BREACHED') this.close(a);
     }
   }
-  async withdrawProfit(id: string, grossDebit: string, profitShare: string) {
-    this.ready();
-    positive.parse(grossDebit);
-    positive.parse(profitShare);
-    const a = this.account(id),
-      amount = new D(grossDebit),
-      share = new D(profitShare);
-    if (
-      share.gt(1) ||
-      a.status !== 'ACTIVE' ||
-      a.executionStatus === 'UNKNOWN' ||
-      a.positions.length > 0 ||
-      amount.gt(new D(a.balance).minus(a.startingBalance)) ||
-      new D(a.remainingDrawdown)
-        .minus(amount)
-        .lt(this.config.minimumRemainingDrawdownAfterStop)
-    )
-      throw new Error('UNSAFE_WITHDRAWAL');
-    a.balance = new D(a.balance).minus(amount).toFixed();
-    markAccount(a, this.quote.price, this.clock());
-    this.log('WITHDRAWAL', {
-      accountId: id,
-      withdrawalGross: grossDebit,
-      withdrawalNet: amount.mul(share).toFixed(),
-      balance: a.balance,
-      equity: a.equity,
-    });
-    return {
-      grossDebit,
-      netPayout: amount.mul(share).toFixed(),
-      floor: a.drawdown.floor,
-    };
-  }
 }

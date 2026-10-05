@@ -1,6 +1,10 @@
 import { expect, it } from 'vitest';
 import { LIVE_VEST_SEND } from '../packages/browser-execution/src/live-command.ts';
 import {
+  COPIER_CAPABILITIES,
+  evaluateSendGate,
+} from '../packages/browser-execution/src/copier-status.ts';
+import {
   customerReleaseStatus,
   decideOneAccountDriver,
   unobservedFleetReview,
@@ -23,6 +27,33 @@ function proven(): FleetCapabilityReview {
     chartLayoutAfterRelaunch: 'KEPT',
   };
 }
+
+it('keeps the dashboard disarmed when only offline execution has been proven', () => {
+  const unread = evaluateSendGate({});
+  expect(unread).toMatchObject({
+    liveSend: false,
+    armed: false,
+    sendPermitted: false,
+  });
+  expect(unread.missing).toContain('flattenAvailable');
+  const evidence = Object.fromEntries(
+    COPIER_CAPABILITIES.map((capability) => [capability, true]),
+  );
+  expect(evaluateSendGate(evidence)).toMatchObject({
+    executionProven: true,
+    liveIntegrationProven: false,
+    liveSend: false,
+    armed: false,
+    sendPermitted: false,
+    missing: [],
+  });
+  expect(evaluateSendGate(evidence, true)).toMatchObject({
+    capabilityReady: true,
+    liveSend: false,
+    armed: false,
+    sendPermitted: false,
+  });
+});
 
 it('keeps the current fleet at no-go while every field is unobserved', () => {
   const decision = decideOneAccountDriver(unobservedFleetReview());
