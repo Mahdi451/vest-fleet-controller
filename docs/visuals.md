@@ -1,6 +1,6 @@
 # Visual assets
 
-Updated 2026-09-29. All application captures use the real local simulator with synthetic
+Updated 2026-10-05. All application captures use the real local simulator with synthetic
 accounts and prices. No generated trading UI, fabricated balances or live Vest session
 is represented as a screenshot.
 
@@ -15,6 +15,18 @@ action. The capture script also checks header image loading and favicon delivery
 | `images/dashboard-risk-rejection.png` | 50x / 25% allocation fails reserve checks                       | Running dashboard                       |
 | `images/execution-flow.png`           | Fill-based protection, numerical example and failure cleanup    | Editable `images/execution-flow.svg`    |
 | `images/logo-concept.png`             | Original independent identity exploration                       | Built-in image generation; concept only |
+
+## Current README visuals
+
+The README retains the logo and one explicitly labeled simulation dashboard capture.
+`images/fanout-flow.svg` and its PNG render explain the planned concurrent copier.
+They are architecture illustrations, not implemented UI or provider evidence. The
+older `execution-flow.svg/png` describe the legacy sequential simulator and are not
+the target copier architecture.
+
+The existing captures were not refreshed for this documentation milestone: Phase 1
+changed records, not dashboard controls. Future follower UI captures must come from
+the implemented local app and be labeled synthetic until provider behavior is proven.
 
 ## Reproduce screenshots
 

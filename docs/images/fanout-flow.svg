@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+<title id="title">Planned event-driven copier architecture</title>
+<desc id="desc">Account 01 events are validated and journaled, then sent to independent followers 02 through 10. Outcomes are monitored separately. Local failures remain isolated; global integrity failures stop new events. Connected execution is pending.</desc>
+<defs><style>
+text {font-family:Arial,Helvetica,sans-serif;fill:#edf3f7}
+.small {font-size:16px;fill:#afbbc8}
+.label {font-size:14px;letter-spacing:1.3px;fill:#5ee3ba;font-weight:700}
+.heading {font-size:24px;font-weight:700}
+.box {fill:#111e2a;stroke:#344659;stroke-width:1.5}
+.line {fill:none;stroke:#5ee3ba;stroke-width:2}
+</style><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#5ee3ba"/></marker></defs>
+<rect width="1200" height="650" rx="18" fill="#0b1118"/>
+<text x="40" y="46" class="label">VEST FLEET CONTROLLER</text>
+<text x="1160" y="46" class="small" text-anchor="end">PLANNED ARCHITECTURE · LIVE LOCKED</text>
+<text x="40" y="94" font-size="34" font-weight="700">One leader event. Independent followers.</text>
+<rect x="40" y="127" width="275" height="115" rx="12" class="box"/>
+<text x="60" y="161" class="label">ACCOUNT 01 · LEADER</text>
+<text x="60" y="198" class="heading">New leader event</text>
+<text x="60" y="225" class="small">Not a position snapshot</text>
+<path d="M315 185 H376" class="line" marker-end="url(#arrow)"/>
+<rect x="385" y="127" width="355" height="115" rx="12" class="box"/>
+<text x="405" y="161" class="label">VALIDATE + JOURNAL</text>
+<text x="405" y="198" class="heading">Journal command IDs</text>
+<text x="405" y="225" class="small">Identity · armed limits · risk · hedge guard</text>
+<path d="M740 185 H806" class="line" marker-end="url(#arrow)"/>
+<rect x="815" y="127" width="345" height="115" rx="12" class="box"/>
+<text x="835" y="161" class="label">FAST FAN-OUT</text>
+<text x="835" y="198" class="heading">Prepared contexts</text>
+<text x="835" y="225" class="small">No waiting for another follower's fill</text>
+<path d="M987 242 V283 M96 283 H1104" class="line"/>
+<path d="M96 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="40" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="96" y="358" text-anchor="middle" class="heading">02</text>
+<text x="96" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M96 418 V455" class="line"/>
+<path d="M222 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="166" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="222" y="358" text-anchor="middle" class="heading">03</text>
+<text x="222" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M222 418 V455" class="line"/>
+<path d="M348 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="292" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="348" y="358" text-anchor="middle" class="heading">04</text>
+<text x="348" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M348 418 V455" class="line"/>
+<path d="M474 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="418" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="474" y="358" text-anchor="middle" class="heading">05</text>
+<text x="474" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M474 418 V455" class="line"/>
+<path d="M600 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="544" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="600" y="358" text-anchor="middle" class="heading">06</text>
+<text x="600" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M600 418 V455" class="line"/>
+<path d="M726 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="670" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="726" y="358" text-anchor="middle" class="heading">07</text>
+<text x="726" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M726 418 V455" class="line"/>
+<path d="M852 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="796" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="852" y="358" text-anchor="middle" class="heading">08</text>
+<text x="852" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M852 418 V455" class="line"/>
+<path d="M978 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="922" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="978" y="358" text-anchor="middle" class="heading">09</text>
+<text x="978" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M978 418 V455" class="line"/>
+<path d="M1104 283 V316" class="line" marker-end="url(#arrow)"/>
+<rect x="1048" y="324" width="112" height="94" rx="10" class="box"/>
+<text x="1104" y="358" text-anchor="middle" class="heading">10</text>
+<text x="1104" y="387" text-anchor="middle" class="small">Independent</text>
+<path d="M1104 418 V455" class="line"/>
+<path d="M96 455 H1104 M600 455 V478" class="line" marker-end="url(#arrow)"/>
+<rect x="40" y="487" width="1120" height="87" rx="12" class="box"/>
+<text x="60" y="521" class="label">MONITOR EACH FOLLOWER</text>
+<text x="60" y="553" font-size="20">Fill + price · Stop · Target · Exposure · Error · Safe repair eligibility · Measured latency</text>
+<text x="40" y="610" class="small">Local failure → flag that follower. Global integrity or fleet-risk failure → stop new events.</text>
+<text x="40" y="635" class="small">UNKNOWN → reconcile, never blind retry. Follower exit → no automatic reopening.</text>
+</svg>

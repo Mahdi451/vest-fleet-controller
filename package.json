@@ -1,9 +1,9 @@
 {
   "name": "vest-fleet-controller",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Local risk and fleet controller for managing multiple Vest Capital funded trading accounts.",
+  "description": "Private local event-driven Vest copier prototype with offline risk controls and durable execution records.",
   "packageManager": "pnpm@11.25.0",
   "engines": {
     "node": ">=24 <25"

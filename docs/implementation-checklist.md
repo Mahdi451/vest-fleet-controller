@@ -173,8 +173,12 @@ execution/journal measurement fields. Gates: `OFF-REPAIRS`, `OFF-LATENCY`.
 - [ ] Verify required desktop platforms, dependency/license provenance and applicable
       Vest transport/execution terms. Independently review the exact candidate artifact.
 - [ ] Document manual recovery and manual build/update/load procedures.
-- [ ] Remove obsolete sequential coordinator/shared-browser paths only after replacement
-      coverage; update README/rendered documentation while retaining the logo.
+- [ ] Remove obsolete sequential coordinator/shared-browser paths only after replacement coverage.
+- [x] Refresh README and architecture visuals for the current offline milestone, retain
+      the logo and move detailed simulator instructions into their own guide. Version
+      0.1.1: local links checked, fan-out SVG/PNG inspected headlessly, and all six
+      `pnpm verify:functional` checks pass. Evidence:
+      `dist/functional-proof-a3b7ea39-304a-4ef1-9f1d-b6f35f80b24d/report.json`.
 - [ ] Run all relevant checks and `pnpm verify:functional`; inspect the diff and resolve
       required independent review findings. No fixture result approves live trading.
 
@@ -200,11 +204,12 @@ Gates: `APPROVE-ONE-ACCOUNT`, live entry/protection/close/failures, `APPROVE-FLE
 
 ## Progress log
 
-| Date       | Completed work                                  | Evidence / limits                                                              |
-| ---------- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| 2026-10-05 | Fan-out inspection and this implementation plan | Document checks, 39-gate validation and 127 focused tests; old runtime remains |
-| 2026-10-05 | Retained offline foundation                     | Historical local report above; concurrent and authenticated proof pending      |
-| 2026-10-05 | Phase 1 event records and follower outcomes     | 61 new tests, independent review, all six integrated checks pass; fixture-only |
+| Date       | Completed work                                  | Evidence / limits                                                                        |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 2026-10-05 | Fan-out inspection and this implementation plan | Document checks, 39-gate validation and 127 focused tests; old runtime remains           |
+| 2026-10-05 | Retained offline foundation                     | Historical local report above; concurrent and authenticated proof pending                |
+| 2026-10-05 | Phase 1 event records and follower outcomes     | 61 new tests, independent review, all six integrated checks pass; fixture-only           |
+| 2026-10-05 | Version 0.1.1 documentation refresh             | Concise README, planned fan-out visual and simulator guide; six checks pass, live LOCKED |
 
 Next implementation checkpoint: **Phase 2 — independent follower fan-out**.
 Update this checklist as each verified item closes.

@@ -3,10 +3,10 @@
 Engineering handoff, implementation reference and planning for `vest-fleet-controller`.
 For installation and daily use, see the [README](README.md).
 
-**Next laptop session:** follow the [October 2 execution plan](docs/2026-10-02-execution-plan.md)
-for the Windows CI failure, observer recovery, Google login and real funded-account
-inspection. It includes acceptance gates, commands and a Codex handoff. PR #2 remains
-unmerged; connected execution remains disabled.
+**Current direction:** follow the [implementation checklist](docs/implementation-checklist.md).
+Phase 1 event records are verified offline; Phase 2 independent follower fan-out is next.
+Live trading remains locked. Earlier connection, platform and sequential-execution
+notes below are historical wherever they conflict with that checklist.
 
 Native host implementation, test evidence and remaining physical-device checks are
 recorded in the [native validation report](docs/native-host-validation.md). Signed
@@ -16,7 +16,7 @@ Windows and Mac packages remain scheduled near final release, after acceptance.
 
 Customer deployment targets are Windows and macOS. Native identity, protected storage,
 startup configuration and diagnostics are implemented; [desktop host acceptance](docs/desktop-host-support.md)
-remains a release gate. Immediate work is permitted Vest connection/evidence verification.
+remains a release gate. Immediate work is offline independent follower fan-out.
 Record native CI and physical device results separately from Linux evidence.
 
 Mobile simulation and private HTTPS application work are now delivered around the
