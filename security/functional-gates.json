@@ -79,7 +79,7 @@
       "title": "Durable leader events, immutable follower attempts and safe retry eligibility",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-RECOVERY"]
     },
     {

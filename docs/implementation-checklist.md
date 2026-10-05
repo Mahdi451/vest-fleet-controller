@@ -47,22 +47,36 @@ gates UNPROVEN and live LOCKED. This is not a new full verification report.
 
 ## 1. Event identity, journal and outcome model
 
-- [ ] Define normalized leader entry/add/reduce/close and TP/SL-change events with
+- [x] Define normalized leader entry/add/reduce/close and TP/SL-change events with
       stable provider identity, account/symbol scope and observation generation.
-- [ ] Persist leader events and follower commands/attempts in the existing Journal.
+- [x] Persist leader events and follower commands/attempts in the existing Journal.
       Bind immutable payload hashes; claim atomically before dispatch.
-- [ ] Separate entry certainty, fill state, stop state, target state and exposure
+- [x] Separate entry certainty, fill state, stop state, target state and exposure
       PRESENT/ABSENT/UNKNOWN. Include intended side/quantity, fill price and reason.
-- [ ] Separate account-local blockers from global halt state; preserve historical rows.
-- [ ] Add per-event exit/skip dispositions so snapshots, reloads and reconciliation
+- [x] Separate account-local blockers from global halt state; preserve historical rows.
+- [x] Add per-event exit/skip dispositions so snapshots, reloads and reconciliation
       never reopen stopped/manual-closed/liquidated/breached/flattened/skipped followers.
-- [ ] Define explicit retry eligibility: conclusively rejected/not sent, no outstanding
+- [x] Define explicit retry eligibility: conclusively rejected/not sent, no outstanding
       remainder or possible late fill. UNKNOWN is reconcile-only; retries are linked attempts.
-- [ ] Test duplicate/changed/reordered events, competing claims, SQLite restart at
+- [x] Test duplicate/changed/reordered events, competing claims, SQLite restart at
       claim/send boundaries, retry eligibility and every no-reopen condition.
 
-Main files: `execution/src/adapter.ts`, `journal.ts`, new normalized event module,
-`core/src/index.ts`, focused event/journal tests. Gate: `OFF-EVENTS`, `OFF-DRIFT`.
+Evidence: `packages/execution/src/copier-events.ts`, `copier-records.ts`, additive
+`journal.ts` integration and `tests/copier-records.test.ts`: 61 focused tests pass.
+Type checking, lint and security checks pass; independent review findings resolved.
+See [record-layer contracts and limits](copier-event-records.md).
+
+Completed here means synthetic record-layer behavior, not a live provider event source
+or dispatch capability. Account-local/global separation applies to the new records;
+the legacy controller remains unchanged. `OFF-EVENTS` now has regression evidence;
+`OFF-DRIFT` stays unproven until the concurrent dispatcher obeys these records.
+Integrated verification (2026-10-05): `pnpm verify:functional` passed all six checks,
+including the full offline regression suite. Current report:
+`dist/functional-proof-02c4a5d5-6098-46a4-a62b-28f1fc2ba155/report.json`.
+The source fingerprints match, `OFF-EVENTS` passes, and live remains LOCKED with
+`functional=false`. The initial integrated run exposed eager table creation breaking
+strict legacy recovery; lazy schema activation fixed it, and all 79 focused copier,
+legacy-adoption and dashboard-command tests passed before the integrated rerun.
 
 ## 2. Independent follower fan-out
 

@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { childResultSchema, type ChildResult } from './adapter.ts';
+import { CopierRecords } from './copier-records.ts';
 
 export const revalidationDiagnosticSchema = z.object({
   gateReasons: z.array(
@@ -98,6 +99,10 @@ export const commandSchema = z.object({
 export type CommandEnvelope = z.infer<typeof commandSchema>;
 export class Journal {
   private db: DatabaseSync;
+  private copierRecords?: CopierRecords;
+  get copier(): CopierRecords {
+    return (this.copierRecords ??= new CopierRecords(this.db));
+  }
   constructor(path = ':memory:') {
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
