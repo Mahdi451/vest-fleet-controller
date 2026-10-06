@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   checkIds,
   createVerificationReport,
@@ -69,6 +70,42 @@ function catalog() {
   };
 }
 describe('local-only functional proof report', () => {
+  it('maps the checked-in offline coverage without promoting connected or live gates', () => {
+    const checkedIn = validateCatalog(
+      JSON.parse(
+        readFileSync(
+          new URL('../security/functional-gates.json', import.meta.url),
+          'utf8',
+        ),
+      ),
+    );
+    const report = createVerificationReport(
+      checkedIn,
+      passes,
+      fingerprint,
+      fingerprint,
+    );
+    expect(report.offlineGatesComplete).toBe(true);
+    for (const id of [
+      'OFF-DRIFT',
+      'OFF-SECRETS',
+      'OFF-PROFILE',
+      'OFF-NETWORK',
+    ]) {
+      expect(checkedIn.gates.find((gate) => gate.id === id)?.checks).toEqual([
+        'regression',
+      ]);
+      expect(report.gates.find((gate) => gate.id === id)?.status).toBe('PASS');
+    }
+    expect(
+      report.gates
+        .filter((gate) => gate.phase !== 'OFFLINE')
+        .every((gate) => gate.status !== 'PASS'),
+    ).toBe(true);
+    expect(report.functional).toBe(false);
+    expect(report.authorizesLive).toBe(false);
+    expect(report.liveState).toBe('LOCKED');
+  });
   it('never closes live/evidence/human gates from passing fixtures', () => {
     const report = createVerificationReport(
       catalog(),

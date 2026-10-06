@@ -21,7 +21,7 @@ This plan supersedes earlier strict sequential follower requirements.
 - Fixture results prove offline behavior only. Real provider evidence, human review
   and funded-test authorization remain separate. No checkbox or report arms trading.
 - All current tests run in the background. No foreground windows, Vest charts, live
-  trades, browser-profile changes or commits/pushes are side effects of this checklist.
+  trades, existing-browser-profile changes or commits/pushes are side effects of this checklist.
 
 ## 0. Retained foundation
 
@@ -165,14 +165,16 @@ against matching final source fingerprints. Report:
 - [x] Exercise controller-driven entry, reduction and protection changes through real fixture pages, independent follower loss and global leader loss.
 - [x] Retain a timed-out account lane until underlying work settles; other follower lanes remain independent.
 - [x] Add exact-file build guards requiring the reviewed headless launch syntax; production build remains inert and excludes the fixture host/Playwright.
-- [ ] Prove process-wide browser network containment and a persistent real Vest profile. Context routing and suppression flags do not establish this proof.
+- [x] Prove Linux offline fixture process-tree network isolation with namespaces and actual browser/descendant TCP/UDP canaries. This namespace has no provider egress.
+- [x] Integrate the private owner-bound persistent profile lease into headless Chromium inside the offline Linux namespace. Synthetic browser markers persist through clean restart; controller authority returns to LOCKED. Existing/unbound profiles, competing owners and stale leases fail closed; uncertain closure retains the lease.
+- [ ] Prove production provider networking and a persistent authenticated Vest browser profile. Integrated synthetic profile/containment tests do not establish this proof.
 
 Evidence and limits: [managed-browser fixture](managed-browser-fixture.md). These checks do not complete connected Phase 4.
 
 - [x] Select the runtime target: local controller/dashboard with a dedicated managed
       Vest browser and no Chrome extension required. Owner decision 2026-10-06;
       [architecture and constraints](fanout-adoption-plan.md#chosen-runtime-target).
-- [ ] Implement managed-browser lifecycle and private controller transport; prove
+- [ ] Implement authenticated Vest managed-browser lifecycle and private controller transport; prove
       dedicated-profile isolation, restart/disconnect locking and zero public debug access.
 - [ ] Establish a background observation approach respecting the no-chart constraint;
       any necessary relaxation must be explicitly agreed before using it.
@@ -289,8 +291,8 @@ separate remaining-exposure projections, aggregate ADD risk checks and ordered R
 Missed followers never receive an old event after restart. Unsupported side/leverage changes
 fail closed; terminal local revision rejections do not halt valid followers. Fresh leverage,
 active reduce-only/unfilled exits and ownership are checked before verification. Legacy
-mutating repairs are refused after a root changes; current-root manual repair controls remain
-open. See the [simulation guide](copier-simulation-guide.md).
+mutating repairs are refused after a root changes; current-root manual repair controls now
+use explicit operator identities and the current quantity/revision. See the [simulation guide](copier-simulation-guide.md).
 
 Before checking off any connected item: pass its acceptance tests, resolve independent review
 findings, and record evidence here. Retain required protection on entries; no default
@@ -304,8 +306,10 @@ remain outside this priority batch.
       and build time. Unknown endpoints fail closed; no arbitrary network interface.
 - [ ] Exclude update/remote-code/configuration, telemetry/analytics, promo/donation,
       capital/payment/account-management features and unnecessary dependencies.
-- [ ] Test synthetic credential canaries across errors/logs/files/SQLite/browser
-      storage/dashboard/network sinks. Never collect real secrets for tests.
+- [x] Test synthetic credential canaries at reviewed offline application boundaries:
+      provider errors, diagnostics, SQLite/files, dashboard, private channel and blocked
+      network requests. Never collect real secrets. Actual authenticated browser/native
+      credential containment remains an open `VEST-SECRETS` requirement.
 - [ ] Validate isolated local-only browser profile, lifecycle locking and whole-profile
       network behavior; document remaining official-page and local-host trust.
 - [ ] Verify required desktop platforms, dependency/license provenance and applicable
@@ -351,20 +355,21 @@ Gates: `APPROVE-ONE-ACCOUNT`, live entry/protection/close/failures, `APPROVE-FLE
 
 ## Progress log
 
-| Date       | Completed work                                   | Evidence / limits                                                                                    |
-| ---------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-| 2026-10-05 | Fan-out inspection and this implementation plan  | Document checks, 39-gate validation and 127 focused tests; old runtime remains                       |
-| 2026-10-05 | Retained offline foundation                      | Historical local report above; concurrent and authenticated proof pending                            |
-| 2026-10-05 | Phase 1 event records and follower outcomes      | 61 new tests, independent review, all six integrated checks pass; fixture-only                       |
-| 2026-10-05 | Phase 2 independent follower fan-out             | 40 fan-out/exposure tests, 175 focused tests and independent review; synthetic ENTRY-only            |
-| 2026-10-05 | Phase 3 offline readiness and concurrent channel | 79 targeted tests and independent review; real Vest context/provisioning pending                     |
-| 2026-10-05 | Version 0.1.1 documentation refresh              | Concise README, planned fan-out visual and simulator guide; six checks pass, live LOCKED             |
-| 2026-10-06 | Provider contracts and Phase 5 offline workflow  | Reviewed repairs, latency and dashboard; all six checks pass; real Vest integration remains open     |
-| 2026-10-06 | Phase 6 offline security/release preparation     | Secret canaries and manual procedures; connected containment and release reviews remain open         |
-| 2026-10-06 | Protection follow-up implemented offline         | Durable stop/target propagation, immediate pending states and duplicate-stop controls; fixtures only |
-| 2026-10-06 | Managed-browser target selected                  | Local controller/dashboard and dedicated browser; no extension required; connection still unproven   |
+| Date       | Completed work                                         | Evidence / limits                                                                                                                 |
+| ---------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-05 | Fan-out inspection and this implementation plan        | Document checks, 39-gate validation and 127 focused tests; old runtime remains                                                    |
+| 2026-10-05 | Retained offline foundation                            | Historical local report above; concurrent and authenticated proof pending                                                         |
+| 2026-10-05 | Phase 1 event records and follower outcomes            | 61 new tests, independent review, all six integrated checks pass; fixture-only                                                    |
+| 2026-10-05 | Phase 2 independent follower fan-out                   | 40 fan-out/exposure tests, 175 focused tests and independent review; synthetic ENTRY-only                                         |
+| 2026-10-05 | Phase 3 offline readiness and concurrent channel       | 79 targeted tests and independent review; real Vest context/provisioning pending                                                  |
+| 2026-10-05 | Version 0.1.1 documentation refresh                    | Concise README, planned fan-out visual and simulator guide; six checks pass, live LOCKED                                          |
+| 2026-10-06 | Provider contracts and Phase 5 offline workflow        | Reviewed repairs, latency and dashboard; all six checks pass; real Vest integration remains open                                  |
+| 2026-10-06 | Phase 6 offline security/release preparation           | Secret canaries and manual procedures; connected containment and release reviews remain open                                      |
+| 2026-10-06 | Protection follow-up implemented offline               | Durable stop/target propagation, immediate pending states and duplicate-stop controls; fixtures only                              |
+| 2026-10-06 | Managed-browser target selected                        | Local controller/dashboard and dedicated browser; no extension required; connection still unproven                                |
+| 2026-10-06 | Current-position repairs and offline browser isolation | 65 execution/dashboard tests, 14 containment/profile tests, independent review and six checks pass; no provider or live authority |
 
-Latest offline checkpoint evidence (2026-10-06): managed-browser tests **19 PASS**;
+Earlier offline checkpoint evidence (2026-10-06): managed-browser tests **19 PASS**;
 owned-event tests **21 PASS**; mutation-store tests **6 PASS**; headless/security-policy
 checks **20 PASS**; dashboard API/desktop/mobile tests **10 PASS**. Simulator-owned
 mutation tests also pass as part of the full regression suite. Independent review
@@ -376,13 +381,63 @@ fingerprints. Report: `dist/functional-proof-5c3d215f-10c6-484b-99e2-fdf4b76550e
 Offline checkpoint review: the managed lifecycle and owned-event executor passed
 independent review after fixes for authority loss, launch syntax, unresolved repair
 isolation, fresh protection evidence and partial-activation replay. Current-root repair
-controls and real provider semantics remain explicit gaps.
+controls are now implemented and tested; real provider semantics remain an explicit gap.
+
+Historical background checkpoint (2026-10-06, before the persistent-profile and extended lifecycle batch): current-root operator repairs **21 PASS**,
+shared root reservations **6 PASS**, owned leader events **21 PASS**, mutation store
+**6 PASS**, dashboard API/desktop/mobile **11 PASS**, owned provider mutations **24 PASS**,
+and containment/profile checks **14 PASS**. Independent execution and containment reviews
+have no remaining blockers for their stated offline scope. Desktop and mobile renders
+were inspected. All six `pnpm verify:functional` checks pass with matching source
+fingerprints: `3d6f9be77e016e2f4ae558768b94790d8eb04153582c8587b0606e009d44e95b`.
+Report: `dist/functional-proof-e3e3155a-a609-4f70-9040-4abf2a411d49/report.json`.
+
+The batch adds current-quantity operator repairs, cross-process dispatch reservations,
+transactional reconciliation admission, stale-revision refusal and repair secret canaries.
+At that historical checkpoint Linux namespaces isolated the synthetic browser tree,
+while persistent profile leasing was separately tested and not yet integrated. No Vest
+authentication, foreground window, trading chart, funded order, commit or push was
+performed. At that point the broader `OFF-DRIFT` and `OFF-SECRETS` gates were UNPROVEN;
+scenario regressions did not close those complete-boundary proofs. The production build
+remained inert and LOCKED; connected, platform, live and release gates stayed open.
+
+Latest background checkpoint (2026-10-06): the owner-bound persistent headless profile
+is now integrated into the offline Linux namespace. Synthetic browser markers survive
+clean restart, authority returns to LOCKED, and uncertain browser/process closure retains
+the lease. These tests do not use an existing browser profile or authenticate to Vest.
+
+Lifecycle coverage is **10 PASS**, including 25 leader entry/reduce/close cycles across
+followers 02–10, **675 unique provider sends**, **five UNKNOWN_AFTER acknowledgements**
+reconciled through read-only receipt lookup without resend, and **five durable restarts**.
+No root reservations remain after clean cycles. Restart stays LOCKED until explicit
+fixture arming; replayed prior ENTRY/ADD/protection events cannot reopen exposure.
+Actual mock stop/target triggers, breached status and manual closes are exercised;
+liquidation and real provider exit evidence are not claimed. Readiness cache invalidation
+fixes pass **56 focused tests**. Strict fixture network checks pass **18 tests** and new
+boundary canaries pass **five tests**.
+
+`OFF-DRIFT` now covers durable event/no-reopen behavior for modeled fixture exits;
+`OFF-SECRETS` covers synthetic canaries at reviewed offline application boundaries.
+Both are mapped to regression checks. New `OFF-PROFILE` and `OFF-NETWORK` gates cover
+the persistent Linux headless fixture and its exact local routes/header rejection and
+whole-browser TCP/UDP containment. **All six integrated checks and all 15 offline gates
+pass**, with identical before/after/current source fingerprints:
+`b63bf5491df7e7ae5cb38ea3c3853f5c9de57e566a0c064e1786dc5e295ce10a`.
+Current [report](evidence/offline-checkpoint-2026-10-06.json).
+Independent review is clear. Previous reports above are historical.
+
+- [x] Complete the planned background/offline acceptance scope and exact-source verification.
+- [x] Stop owned POSIX verification process groups on cancellation/timeout, including repeated interrupts; six scoped tests pass. Windows descendant cleanup still needs native proof.
+- [ ] Complete authentic provider evidence, connected implementation, native platform proof and separately approved trading trials. Background fixture results cannot supply these prerequisites.
+      All actual Vest, connected-provider, desktop-platform, human-review, release and live
+      gates remain open. The production artifact remains inert and LOCKED; no foreground
+      window, Vest chart, authentication or funded order was used.
 
 Next implementation checkpoint: **Phase 4 authentic provider evidence and original
 connected adapter**, then remaining Phase 6 security proof and separately authorized
 Phase 7 trials. Three major phases remain (4, 6 and 7), with Phase 5 protection follow-ups now verified in fixtures and pending authentic integration. The original Phase 5 offline scope is complete;
 Phases 4 and 6 remain partial.
-Update this checklist as each verified item closes.
+Update this checklist as each verified item closes. The [next authenticated checkpoint](next-authenticated-checkpoint.md) lists what requires owner-assisted read-only evidence; do not launch the historical observer automatically.
 
 ### Prototype retirement audit
 
@@ -390,6 +445,6 @@ Update this checklist as each verified item closes.
 - [x] Keep `risk-engine`, hedge checks, journaling, single-account execution and security verification as shared foundations.
 - [x] Separate the concurrent `/copier` fixture fleet and mutation records from the original `/` dashboard and `FleetController` simulation.
 - [ ] Retire legacy dashboard/controller and fixture bridge transports after the authentic managed adapter covers their required behavior and migration tests pass. They still serve compatibility tests; deleting them now would remove working coverage without a proven replacement.
-- [ ] Provide current-root Add Stop/Add Target/Flatten repair scopes after ADD/REDUCE; old initial-fill repair scopes already fail closed.
+- [x] Provide current-root Add Stop/Add Target/Flatten and read-only reconciliation after ADD/REDUCE. Durable operator identities, shared root reservations and fresh owned evidence prevent overlap, stale-size actions and UNKNOWN resends.
 
 No updater, remote configuration, third-party extension, payout/payment capability or credentials were added. This batch remains offline.

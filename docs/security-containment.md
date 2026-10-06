@@ -55,17 +55,21 @@ No automatic updater, remote configuration or runtime code-download path is intr
 There is no live enable environment variable. Updates remain reviewed local changes,
 tested and audited before owner approval and manual build/load.
 
-## Next implementation gates
+## Current fixture proof and connected gates
 
-1. Memory-only, short-lived arming and constrained recovery authority, tested offline
-   at the sole sequential dispatch boundary.
-2. Authenticated local browser channel, exact account/client identity and provider-order
-   evidence; no generic route, function or executable-code command.
-3. Original observation/drift flow that proposes controller intents and never automatically
-   reopens a follower after a stop, manual close or breach.
-4. Dedicated-profile and independent egress proof under the strict domain policy.
-5. Reviewed artifact and explicit authorization for a scoped live trial, only after all
-   release gates pass. No fixture or locked build provides live execution evidence.
+Memory-only arming, prepared concurrent follower lanes, authenticated local fixture channels and durable event identities are implemented and tested offline. Current-position repairs use separate operator identities and shared atomic root reservations; UNKNOWN stays reserved and never causes a blind resend. Followers are not forced back into an old leader position after closing.
+
+Linux offline fixtures can now run their worker, loopback provider and entire Chromium tree inside kernel namespaces. Real headless browser and child-process TCP/UDP canaries verify that host networking is unavailable. A separate private owner-bound profile lease is tested but not integrated with Chromium. Neither result approves production Vest networking or a persistent authenticated profile.
+
+The remaining connected gates are:
+
+1. Authenticated provider evidence, stable account/context identity and genuine leader/order identities.
+2. Exact deliberately reviewed trading/read operations, network scopes, units and protection/remainder semantics.
+3. Production dedicated-profile integration, approved egress enforcement, lifecycle locking and credential containment.
+4. Independent review of the exact connected artifact and manual release/recovery procedure.
+5. Separate authorization for scoped live trials after prerequisite proof. Fixtures and an inert build provide no live evidence.
+
+See the [next authenticated checkpoint](next-authenticated-checkpoint.md). The current no-foreground/no-chart instruction remains in force; no historical observer launch is automatic.
 
 All current checks run in the background on local or synthetic fixtures. No foreground
 windows, authenticated Vest requests or real trading charts are needed for this stage.

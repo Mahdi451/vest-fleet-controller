@@ -56,6 +56,203 @@ async function fixture() {
   return { ...f, base, request };
 }
 describe('atomic synthetic owned mutations', () => {
+  it('operator repairs use current aggregate root after ADD without advancing leader ordering', async () => {
+    const f = await fixture();
+    try {
+      await f.adapter.addOwnedPosition(
+        f.request('ADD') as OwnedMutationRequest & { operation: 'ADD' },
+      );
+      const stop = (await f.adapter.getOpenOrders('02')).find(
+        (o) => o.type === 'STOP_LOSS',
+      )!;
+      await f.adapter.cancelOrder('02', stop.orderId);
+      const current = await f.adapter.getAccountState('02'),
+        p = current.positions[0]!;
+      const requestId = 'd'.repeat(64);
+      const request = f.request('STOP_CHANGED', {
+        requestId,
+        expectedRevision: current.revision,
+        expectedQuantity: p.quantity,
+        expectedBasis: p.entryPrice,
+        operator: {
+          operationId: requestId,
+          expectedRootRevision: 1,
+          action: 'ADD_STOP',
+        },
+      }) as OwnedMutationRequest & { operation: 'STOP_CHANGED' };
+      const receipt = await f.adapter.changeOwnedProtection(request);
+      expect(receipt.status).toBe('VERIFIED');
+      expect(receipt.sequence).toBe(2);
+      expect(receipt.operator).toEqual(request.operator);
+      expect(receipt.stop?.quantity).toBe(p.quantity);
+      expect(receipt.stop?.orderId).toBe(stop.orderId);
+      const next = await f.adapter.getAccountState('02'),
+        position = next.positions[0]!;
+      const reduced = await f.adapter.reduceOwnedPosition(
+        f.request('REDUCE', {
+          requestId: 'e'.repeat(64),
+          sequence: 3,
+          expectedRevision: next.revision,
+          expectedQuantity: position.quantity,
+          expectedBasis: position.entryPrice,
+        }) as OwnedMutationRequest & { operation: 'REDUCE' },
+      );
+      expect(reduced.status).toBe('VERIFIED');
+      expect(reduced.operator).toBeUndefined();
+    } finally {
+      f.journal.close();
+    }
+  });
+  it('operator flatten after ADD ignores smaller arm ceilings and survives duplicate/restart replay', async () => {
+    const f = await fixture();
+    try {
+      await f.adapter.addOwnedPosition(
+        f.request('ADD') as OwnedMutationRequest & { operation: 'ADD' },
+      );
+      const current = await f.adapter.getAccountState('02'),
+        p = current.positions[0]!,
+        requestId = 'd'.repeat(64);
+      const req = f.request('CLOSE', {
+        requestId,
+        maxNotional: '0.1',
+        maxPlannedLoss: '0.1',
+        expectedRevision: current.revision,
+        expectedQuantity: p.quantity,
+        expectedBasis: p.entryPrice,
+        operator: {
+          operationId: requestId,
+          expectedRootRevision: 1,
+          action: 'FLATTEN',
+        },
+      }) as OwnedMutationRequest & { operation: 'CLOSE' };
+      const receipt = await f.adapter.closeOwnedPosition(req);
+      expect(receipt.status).toBe('VERIFIED');
+      expect(receipt.after.quantity).toBe('0');
+      expect(receipt.operator).toEqual(req.operator);
+      expect(await f.adapter.closeOwnedPosition(req)).toEqual(receipt);
+      const restored = new MockVestAdapter(
+        config,
+        f.clock,
+        undefined,
+        '30400',
+        undefined,
+        undefined,
+        f.adapter.exportSnapshot(),
+      );
+      await restored.connect();
+      expect(await restored.closeOwnedPosition(req)).toEqual(receipt);
+      expect(await restored.readOwnedMutation(requestId)).toEqual(receipt);
+      expect((await restored.getAccountState('02')).positions).toEqual([]);
+      await expect(
+        restored.closeOwnedPosition({
+          ...req,
+          operator: { ...req.operator!, expectedRootRevision: 2 },
+        }),
+      ).rejects.toThrow('IDEMPOTENCY_CONFLICT');
+    } finally {
+      f.journal.close();
+    }
+  });
+  it('operator add-only stop rejects an existing active stop without replacement', async () => {
+    const f = await fixture();
+    try {
+      const before = await f.adapter.getAccountState('02'),
+        orders = await f.adapter.getOpenOrders('02'),
+        requestId = 'a'.repeat(64);
+      const receipt = await f.adapter.changeOwnedProtection(
+        f.request('STOP_CHANGED', {
+          operator: {
+            operationId: requestId,
+            expectedRootRevision: 0,
+            action: 'ADD_STOP',
+          },
+        }) as OwnedMutationRequest & { operation: 'STOP_CHANGED' },
+      );
+      expect(receipt.status).toBe('REJECTED');
+      expect(receipt.reason).toBe('PROTECTION_ALREADY_PRESENT');
+      expect(await f.adapter.getAccountState('02')).toEqual(before);
+      expect(await f.adapter.getOpenOrders('02')).toEqual(orders);
+    } finally {
+      f.journal.close();
+    }
+  });
+  it('pending operator blocks leader, other operator and legacy repair on the same root', async () => {
+    const f = await fixture();
+    try {
+      const req = f.request('CLOSE', {
+        operator: {
+          operationId: f.base.requestId,
+          expectedRootRevision: 0,
+          action: 'FLATTEN',
+        },
+      }) as OwnedMutationRequest & { operation: 'CLOSE' };
+      f.adapter.injectOwnedMutationFault('02', 'UNKNOWN_BEFORE');
+      const receipt = await f.adapter.closeOwnedPosition(req);
+      expect(receipt.status).toBe('UNKNOWN');
+      const before = await f.adapter.getAccountState('02');
+      expect(
+        (
+          await f.adapter.closeOwnedPosition(
+            f.request('CLOSE', {
+              requestId: 'd'.repeat(64),
+              sequence: 3,
+            }) as OwnedMutationRequest & { operation: 'CLOSE' },
+          )
+        ).status,
+      ).toBe('REJECTED');
+      expect(
+        (
+          await f.adapter.closeOwnedPosition({
+            ...req,
+            requestId: 'e'.repeat(64),
+            operator: { ...req.operator!, operationId: 'e'.repeat(64) },
+          })
+        ).status,
+      ).toBe('REJECTED');
+      await expect(
+        f.adapter.flattenOwnedPosition({
+          accountId: '02',
+          entryRequestId: req.entryRequestId,
+          expectedRevision: before.revision,
+        }),
+      ).rejects.toThrow('OWNED_MUTATION_REFUSED');
+      expect(await f.adapter.getAccountState('02')).toEqual(before);
+    } finally {
+      f.journal.close();
+    }
+  });
+  it('pending leader mutation blocks operator repair and malformed operator metadata refuses', async () => {
+    const f = await fixture();
+    try {
+      f.adapter.injectOwnedMutationFault('02', 'UNKNOWN_BEFORE');
+      await f.adapter.addOwnedPosition(
+        f.request('ADD') as OwnedMutationRequest & { operation: 'ADD' },
+      );
+      const req = f.request('CLOSE', {
+        requestId: 'd'.repeat(64),
+        operator: {
+          operationId: 'd'.repeat(64),
+          expectedRootRevision: 0,
+          action: 'FLATTEN',
+        },
+      }) as OwnedMutationRequest & { operation: 'CLOSE' };
+      expect((await f.adapter.closeOwnedPosition(req)).status).toBe('REJECTED');
+      expect(
+        ownedMutationRequestSchema.safeParse({
+          ...req,
+          operator: { ...req.operator!, operationId: 'e'.repeat(64) },
+        }).success,
+      ).toBe(false);
+      expect(
+        ownedMutationRequestSchema.safeParse({
+          ...req,
+          operator: { ...req.operator!, action: 'ADD_STOP' },
+        }).success,
+      ).toBe(false);
+    } finally {
+      f.journal.close();
+    }
+  });
   it('legacy owned flatten and protection repair refuse an unresolved mutation without effects', async () => {
     const f = await fixture();
     try {

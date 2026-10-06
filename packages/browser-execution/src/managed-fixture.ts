@@ -101,12 +101,22 @@ const hash = (value: unknown) =>
 export async function createManagedFixture(
   configInput: RiskConfig,
   clock: () => number = Date.now,
+  persistentNamespaceProfile = false,
 ) {
+  if (typeof persistentNamespaceProfile !== 'boolean')
+    throw new Error('MANAGED_FIXTURE_PROFILE_REFUSED');
   const parsedConfig = riskConfigSchema.safeParse(configInput);
   if (!parsedConfig.success) throw new Error('MANAGED_FIXTURE_CONFIG_REFUSED');
   const config = parsedConfig.data,
     generation = randomUUID();
-  const profile = mkdtempSync(join(tmpdir(), 'vest-managed-fixture-'));
+  if (
+    persistentNamespaceProfile &&
+    process.env.VEST_FIXTURE_PERSISTENT_PROFILE !== '1'
+  )
+    throw new Error('MANAGED_FIXTURE_PROFILE_REFUSED');
+  const profile = persistentNamespaceProfile
+    ? '/tmp/owned-browser-profile'
+    : mkdtempSync(join(tmpdir(), 'vest-managed-fixture-'));
   const mock = new MockVestAdapter(config, clock);
   const identities = new Map<string, Identity>(),
     pages = new Map<string, Page>();
@@ -223,6 +233,9 @@ export async function createManagedFixture(
     );
     if (
       request.method !== 'GET' ||
+      Object.keys(request.headers).some((name) =>
+        /^(?:proxy-)?authorization$/i.test(name),
+      ) ||
       request.headers.host !== new URL(origin).host ||
       !identity
     ) {
@@ -503,7 +516,7 @@ export async function createManagedFixture(
       });
     await new Promise<void>((resolve, reject) => {
       server.once('error', reject);
-      server.listen(0, '127.0.0.1', () => {
+      server.listen(persistentNamespaceProfile ? 43127 : 0, '127.0.0.1', () => {
         server.removeListener('error', reject);
         resolve();
       });
@@ -535,15 +548,23 @@ export async function createManagedFixture(
       if (!closing) emit('GLOBAL', 'CHANNEL_INTEGRITY_LOST', null);
     });
     await context.route('**/*', async (route) => {
-      const url = new URL(route.request().url());
+      const actual = route.request().url();
+      let headerNamesProven = false;
+      try {
+        headerNamesProven = !Object.keys(
+          await route.request().allHeaders(),
+        ).some((name) => /^(?:proxy-)?authorization$/i.test(name));
+      } catch {
+        /* A failed header read refuses the request. */
+      }
       const allowed =
-        url.origin === origin &&
+        headerNamesProven &&
+        route.request().method() === 'GET' &&
         [...identities.values()].some(
           (value) =>
-            url.pathname === `/context/${value.contextId}` ||
-            url.pathname === `/fixture/${value.contextId}.js`,
-        ) &&
-        url.search === '';
+            actual === `${origin}/context/${value.contextId}` ||
+            actual === `${origin}/fixture/${value.contextId}.js`,
+        );
       if (!allowed) {
         blockedRequests++;
         emit('GLOBAL', 'CHANNEL_INTEGRITY_LOST', null);
@@ -632,7 +653,8 @@ export async function createManagedFixture(
     await mock.disconnect().catch(() => {});
     if (server.listening)
       await new Promise<void>((resolve) => server.close(() => resolve()));
-    rmSync(profile, { recursive: true, force: true });
+    if (!persistentNamespaceProfile)
+      rmSync(profile, { recursive: true, force: true });
     throw new Error('MANAGED_FIXTURE_LAUNCH_REFUSED');
   }
   const close = async () => {
@@ -642,10 +664,30 @@ export async function createManagedFixture(
     state = 'CLOSED';
     emit('GLOBAL', 'CHANNEL_INTEGRITY_LOST', null);
     await Promise.allSettled([...lanes.values()]);
-    await context!.close().catch(() => {});
-    await mock.disconnect();
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-    rmSync(profile, { recursive: true, force: true });
+    let browserClosed = false;
+    try {
+      await context!.close();
+      browserClosed = true;
+    } catch {
+      /* Closure remains unconfirmed. */
+    }
+    let cleanupConfirmed = true;
+    try {
+      await mock.disconnect();
+    } catch {
+      cleanupConfirmed = false;
+    }
+    try {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    } catch {
+      cleanupConfirmed = false;
+    }
+    if (!browserClosed || !cleanupConfirmed)
+      throw new Error('MANAGED_FIXTURE_CLOSE_UNCONFIRMED');
+    if (!persistentNamespaceProfile)
+      rmSync(profile, { recursive: true, force: true });
   };
   const adapter = {
     name: 'ManagedBrowser:OFFLINE_FIXTURE',

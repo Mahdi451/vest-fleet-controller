@@ -419,6 +419,9 @@ export async function createDashboard(
           '/api/copier/scenario',
           '/api/copier/change',
           '/api/copier/change-reconcile',
+          '/api/copier/root-repair',
+          '/api/copier/root-reconcile',
+          '/api/copier/root-repair-reconcile',
         ].includes(path)
       ) {
         reply(404, { error: 'NOT_FOUND' });

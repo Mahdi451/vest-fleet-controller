@@ -27,10 +27,11 @@ Preserve owner edits, browser profiles and runtime records.
 
 ## Automated report
 
-[security/functional-gates.json](../security/functional-gates.json) tracks 39 gates with
-explicit prerequisites. `OFF-FANOUT` replaces the retired sequential requirement and
-starts UNPROVEN. Event identity, readiness, repairs and latency now have separate pending
-gates. Passing old sequential fixtures cannot close these new gates.
+[security/functional-gates.json](../security/functional-gates.json) tracks 41 gates with
+explicit prerequisites. Offline gates cover concurrent fan-out, event identities,
+readiness, recovery, repairs, latency, modeled exits, synthetic secret canaries and Linux
+headless profile/network isolation. Each requires its corresponding acceptance tests;
+passing old sequential fixtures cannot substitute for concurrent-flow evidence.
 
 Run `pnpm verify:functional` for six fixed local commands: security, locked local build,
 typecheck, lint, formatting and regression. Tests run without file parallelism to avoid
@@ -41,7 +42,8 @@ programs, arbitrary arguments, network destinations or live-enable configuration
 Each run writes a fresh `dist/functional-proof-<id>/report.json` with normalized results
 and source fingerprints before/after execution. Relevant changes during a run invalidate
 evidence. No raw subprocess output, stacks, account records, profiles or secrets are
-stored. Invalid catalog fields, dependency cycles and unknown prerequisites fail closed.
+stored. Cancellation stops the owned background check process group on POSIX; Windows
+descendant cancellation remains a native validation gap. Invalid catalog fields, dependency cycles and unknown prerequisites fail closed.
 
 `localChecksPassed` means all six commands passed, not product completion.
 `offlineGatesComplete` additionally requires every offline gate to pass. Gates without
@@ -59,7 +61,9 @@ The historical report at
 `dist/functional-proof-0f2e9b45-ffa3-4e41-95b8-4b63bf5700a5/report.json` passed six commands
 against the earlier source/catalog. It is not current fan-out evidence. Existing risk,
 observed-position hedge, recovery, containment and synthetic controller-invocation
-arming tests remain useful foundations. The unfinished channel prototype is unvalidated.
+arming tests remain useful foundations. The current channel and managed headless browser
+are validated against synthetic localhost fixtures, including durable profile restarts.
+See the implementation checklist for the latest exact-source verification report.
 
 Implement the checklist in order: durable events/outcomes → independent lanes →
 readiness/arming/channel → original Vest integration → visibility/latency/repairs →

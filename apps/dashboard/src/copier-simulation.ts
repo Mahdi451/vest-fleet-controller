@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Journal } from '../../../packages/execution/src/journal.ts';
 import { OfflineFanoutController } from '../../../packages/execution/src/fanout-controller.ts';
 import { leaderEventSchema } from '../../../packages/execution/src/copier-events.ts';
+import { ownedRepairIntentSchema } from '../../../packages/execution/src/copier-owned-repairs.ts';
 import { repairOperationSchema } from '../../../packages/execution/src/copier-repairs.ts';
 import { MockVestAdapter } from '../../../packages/simulator/src/index.ts';
 import {
@@ -206,6 +207,22 @@ export async function createCopierSimulation(
         .parse(input);
       return copier.reconcileChange(request.mutationId);
     }
+    if (path === '/api/copier/root-repair')
+      return copier.repairOwnedRoot(ownedRepairIntentSchema.parse(input));
+    if (path === '/api/copier/root-reconcile') {
+      const request = z
+        .object({ rootId: z.string().regex(/^[a-f0-9]{64}$/) })
+        .strict()
+        .parse(input);
+      return copier.reconcileOwnedRoot(request.rootId);
+    }
+    if (path === '/api/copier/root-repair-reconcile') {
+      const request = z
+        .object({ operationId: z.string().regex(/^[a-f0-9]{64}$/) })
+        .strict()
+        .parse(input);
+      return copier.reconcileOwnedRepair(request.operationId);
+    }
     if (path === '/api/copier/scenario') {
       const scenario = scenarioSchema.parse(input);
       if (copier.status() !== 'ARMED') throw new Error('OFFLINE_ENTRY_LOCKED');
@@ -241,6 +258,9 @@ export async function createCopierSimulation(
           Math.max(0, ...events.map((row) => row.event.sequence)) + 1,
         accounts: await adapter.listAccounts(),
         ownedRoots: journal.mutations.roots(),
+        ownedRepairs: journal.ownedRepairs
+          .records()
+          .map((row) => ({ ...row, request: undefined, receipt: undefined })),
         mutationActivations: journal.mutations.activations(),
         mutations: journal.mutations.records().map((row) => ({
           ...row,

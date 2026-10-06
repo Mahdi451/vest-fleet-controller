@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "goal": "Prove an independently implemented private/local Vest event copier with prepared concurrent follower fan-out, durable event identity, isolated follower outcomes and reviewed security/risk controls; never derive live permission from fixture results.",
+  "liveState": "LOCKED",
+  "functional": false,
+  "authorizesLive": false,
+  "stale": false,
+  "sourceFingerprintBefore": "b63bf5491df7e7ae5cb38ea3c3853f5c9de57e566a0c064e1786dc5e295ce10a",
+  "sourceFingerprintAfter": "b63bf5491df7e7ae5cb38ea3c3853f5c9de57e566a0c064e1786dc5e295ce10a",
+  "checks": [
+    {
+      "id": "security",
+      "exit": 0,
+      "durationMs": 1324
+    },
+    {
+      "id": "build",
+      "exit": 0,
+      "durationMs": 1495
+    },
+    {
+      "id": "typecheck",
+      "exit": 0,
+      "durationMs": 5167
+    },
+    {
+      "id": "lint",
+      "exit": 0,
+      "durationMs": 5782
+    },
+    {
+      "id": "format",
+      "exit": 0,
+      "durationMs": 5988
+    },
+    {
+      "id": "regression",
+      "exit": 0,
+      "durationMs": 242852
+    }
+  ],
+  "gates": [
+    {
+      "id": "OFF-SECURITY",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-RISK",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-FANOUT",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-RECOVERY",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-QUALITY",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-ARMING",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-CHANNEL",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-DRIFT",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-SECRETS",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-EVENTS",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-READINESS",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-REPAIRS",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-LATENCY",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-PROFILE",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "OFF-NETWORK",
+      "phase": "OFFLINE",
+      "status": "PASS"
+    },
+    {
+      "id": "VEST-INTEGRATION",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-CHANNEL",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-NETWORK",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-SECRETS",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-INVENTORY",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-FRESHNESS",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-MARKET",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-ACCOUNT-SCOPE",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-LIFECYCLE",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-ORDER-EVIDENCE",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-COPIER",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-PROFILE",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "VEST-NATIVE-HOSTS",
+      "phase": "VEST_EVIDENCE",
+      "status": "UNPROVEN"
+    },
+    {
+      "id": "REVIEW-TERMS",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "REVIEW-ORIGINALITY",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "REVIEW-SECURITY",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "REVIEW-RECOVERY",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "APPROVE-ONE-ACCOUNT",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "LIVE-ENTRY",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "LIVE-PROTECTION",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "LIVE-CLOSE",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "LIVE-FAILURES",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "APPROVE-FLEET",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    },
+    {
+      "id": "LIVE-FLEET",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "LIVE-DRIFT",
+      "phase": "AUTHORIZED_LIVE",
+      "status": "AUTHORIZATION_REQUIRED"
+    },
+    {
+      "id": "REVIEW-RELEASE",
+      "phase": "HUMAN",
+      "status": "REVIEW_REQUIRED"
+    }
+  ],
+  "localChecksPassed": true,
+  "offlineGatesComplete": true
+}

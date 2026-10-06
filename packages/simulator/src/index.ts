@@ -715,6 +715,7 @@ export class MockVestAdapter implements ExecutionAdapter {
       symbol: request.symbol,
       side: request.side,
       sequence: request.sequence,
+      ...(request.operator ? { operator: request.operator } : {}),
       operation: request.operation,
       requestHash: fingerprint,
       status: 'REJECTED',
@@ -763,7 +764,9 @@ export class MockVestAdapter implements ExecutionAdapter {
         (item) =>
           item.receipt.rootKey !== request.rootKey ||
           !item.receipt.noFutureExecution ||
-          item.receipt.sequence >= request.sequence,
+          (!request.operator &&
+            !item.receipt.operator &&
+            item.receipt.sequence >= request.sequence),
       ) ||
       [...staged.values()].some(
         (item) =>
@@ -933,6 +936,10 @@ export class MockVestAdapter implements ExecutionAdapter {
         return record();
       }
       let order = active.find((item) => item.type === type);
+      if (request.operator && order) {
+        receipt.reason = 'PROTECTION_ALREADY_PRESENT';
+        return record();
+      }
       if (
         !order &&
         owned.some(

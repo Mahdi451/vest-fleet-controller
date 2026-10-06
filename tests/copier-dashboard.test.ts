@@ -241,6 +241,75 @@ describe('additive synthetic copier dashboard API', () => {
         hook.mockRestore();
       }
     }));
+  it('repairs the current root through strict authenticated routes without creating leader events', async () =>
+    fixture(async (f) => {
+      await f.post('arm', { ...arm, maxPlannedLoss: '1000' });
+      await f.post('scenario', { accountId: '02', fault: 'REJECT_TARGET' });
+      await f.post('entry', event());
+      let state = await f.read();
+      const entryEventId = state.events[0].eventId;
+      await f.post('change', {
+        entryEventId,
+        eventKey: randomUUID(),
+        sequence: 2,
+        kind: 'REDUCE',
+        quantity: '0.25',
+      });
+      state = await f.read();
+      let root = state.ownedRoots.find(
+        (r: { accountId: string }) => r.accountId === '02',
+      );
+      const request = {
+        actionId: randomUUID(),
+        rootId: root.rootId,
+        expectedRootRevision: root.revision,
+        operation: 'ADD_TARGET',
+        price: '30500',
+      };
+      expect((await f.post('root-repair', request)).status).toBe(200);
+      expect((await f.post('root-repair', request)).status).toBe(200);
+      state = await f.read();
+      expect(state.events).toHaveLength(2);
+      expect(state.ownedRepairs).toHaveLength(1);
+      expect(state.ownedRepairs[0].state).toBe('VERIFIED');
+      expect(state.ownedRepairs[0]).not.toHaveProperty('request');
+      expect(state.ownedRepairs[0]).not.toHaveProperty('receipt');
+      expect(
+        (
+          await f.post('root-repair', {
+            ...request,
+            actionId: randomUUID(),
+            expectedRootRevision: root.revision,
+          })
+        ).status,
+      ).toBe(200);
+      expect((await f.read()).ownedRepairs[1].state).toBe('REFUSED');
+      expect(
+        (await f.post('root-repair', { ...request, route: '/arbitrary' }))
+          .status,
+      ).toBe(400);
+      expect(
+        (await f.post('root-repair', request, { 'X-Session-Token': '' }))
+          .status,
+      ).toBe(403);
+      await f.post('lock', {});
+      expect(
+        (await f.post('root-reconcile', { rootId: root.rootId })).status,
+      ).toBe(200);
+      root = (await f.read()).ownedRoots.find(
+        (r: { accountId: string }) => r.accountId === '02',
+      );
+      expect(
+        (
+          await f.post('root-repair', {
+            actionId: randomUUID(),
+            rootId: root.rootId,
+            expectedRootRevision: root.revision,
+            operation: 'FLATTEN',
+          })
+        ).status,
+      ).toBe(400);
+    }));
   it('rejects unauthorized and unknown capabilities with zero execution and sanitized errors', async () =>
     fixture(async (f) => {
       const entry = vi.spyOn(MockVestAdapter.prototype, 'placeOrder');
@@ -580,6 +649,22 @@ describe('headless synthetic copier dashboard', () => {
               .getElementById('changes')
               ?.textContent?.includes('REDUCE · VERIFIED'),
           );
+          const rootCard = page.locator(
+            '#owned-roots [data-root-account="02"]',
+          );
+          const price = rootCard.locator(
+            'input[aria-label="02 Add Target price"]',
+          );
+          await price.fill('30500');
+          await page.waitForTimeout(600);
+          expect(await price.inputValue()).toBe('30500');
+          await rootCard.locator('[data-root-operation="ADD_TARGET"]').click();
+          await page.waitForFunction(() =>
+            document
+              .getElementById('owned-repairs')
+              ?.textContent?.includes('Add Target · VERIFIED'),
+          );
+          expect(await rootCard.textContent()).toContain('target 30500');
           await page.locator('#change-kind').selectOption('CLOSE');
           await page.locator('#change').click();
           await page.waitForFunction(() =>

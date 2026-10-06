@@ -10,6 +10,25 @@ import {
 const id = z.string().regex(/^[A-Za-z0-9_:.-]{1,100}$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const integer = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+export const ownedOperatorSchema = z
+  .object({
+    operationId: hash,
+    expectedRootRevision: integer,
+    action: z.enum(['ADD_STOP', 'ADD_TARGET', 'FLATTEN']),
+  })
+  .strict();
+const operatorMatches = (value: {
+  requestId: string;
+  operation: string;
+  operator?: z.infer<typeof ownedOperatorSchema> | undefined;
+}) =>
+  !value.operator ||
+  (value.operator.operationId === value.requestId &&
+    {
+      ADD_STOP: 'STOP_CHANGED',
+      ADD_TARGET: 'TARGET_CHANGED',
+      FLATTEN: 'CLOSE',
+    }[value.operator.action] === value.operation);
 const identity = {
   environment: z.literal('OFFLINE_FIXTURE'),
   evidence: z.literal('SYNTHETIC'),
@@ -21,6 +40,7 @@ const identity = {
   symbol: z.literal('NDX'),
   side: sideSchema,
   sequence: integer.refine((value) => value > 0),
+  operator: ownedOperatorSchema.optional(),
 };
 const base = {
   ...identity,
@@ -31,29 +51,35 @@ const base = {
   maxNotional: positive,
   maxPlannedLoss: positive,
 };
-export const ownedMutationRequestSchema = z.discriminatedUnion('operation', [
-  z
-    .object({ ...base, operation: z.literal('ADD'), deltaQuantity: positive })
-    .strict(),
-  z
-    .object({
-      ...base,
-      operation: z.literal('REDUCE'),
-      deltaQuantity: positive,
-    })
-    .strict(),
-  z.object({ ...base, operation: z.literal('CLOSE') }).strict(),
-  z
-    .object({ ...base, operation: z.literal('STOP_CHANGED'), price: positive })
-    .strict(),
-  z
-    .object({
-      ...base,
-      operation: z.literal('TARGET_CHANGED'),
-      price: positive,
-    })
-    .strict(),
-]);
+export const ownedMutationRequestSchema = z
+  .discriminatedUnion('operation', [
+    z
+      .object({ ...base, operation: z.literal('ADD'), deltaQuantity: positive })
+      .strict(),
+    z
+      .object({
+        ...base,
+        operation: z.literal('REDUCE'),
+        deltaQuantity: positive,
+      })
+      .strict(),
+    z.object({ ...base, operation: z.literal('CLOSE') }).strict(),
+    z
+      .object({
+        ...base,
+        operation: z.literal('STOP_CHANGED'),
+        price: positive,
+      })
+      .strict(),
+    z
+      .object({
+        ...base,
+        operation: z.literal('TARGET_CHANGED'),
+        price: positive,
+      })
+      .strict(),
+  ])
+  .refine(operatorMatches, 'INVALID_OPERATOR_MUTATION');
 export type OwnedMutationRequest = z.infer<typeof ownedMutationRequestSchema>;
 const positionFacts = z
   .object({
@@ -96,6 +122,7 @@ export const ownedMutationReceiptSchema = z
       'RISK_LIMIT',
       'INVALID_QUANTITY',
       'PROTECTION_UNPROVEN',
+      'PROTECTION_ALREADY_PRESENT',
       'INVALID_PROTECTION',
       'SIMULATED_REJECTION',
       'PROVIDER_UNCERTAIN',
@@ -105,6 +132,7 @@ export const ownedMutationReceiptSchema = z
   .strict()
   .superRefine((receipt, ctx) => {
     if (
+      !operatorMatches(receipt) ||
       (receipt.status === 'UNKNOWN' && receipt.noFutureExecution) ||
       (receipt.status !== 'UNKNOWN' && !receipt.noFutureExecution) ||
       new D(receipt.before.quantity).isZero() !==

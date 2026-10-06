@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { runVerificationChild } from './verification-child.ts';
 import {
   lstatSync,
   mkdirSync,
@@ -16,6 +16,10 @@ import {
 } from './verification-report.ts';
 
 const root = realpathSync(process.cwd());
+const cancellation = new AbortController();
+const cancel = () => cancellation.abort();
+process.on('SIGINT', cancel);
+process.on('SIGTERM', cancel);
 const commands = [
   ['security', ['security:check']],
   ['build', ['build:local']],
@@ -96,40 +100,15 @@ async function run(): Promise<void> {
   const results: CheckResult[] = [];
   for (const [id, args] of commands) {
     const started = Date.now();
-    const exit = await new Promise<0 | 1>((resolveExit) => {
-      const child = spawn(
-        process.platform === 'win32' ? process.execPath : 'pnpm',
-        process.platform === 'win32' ? [pnpmEntry!, ...args] : [...args],
-        {
-          cwd: root,
-          stdio: 'ignore',
-          shell: false,
-          windowsHide: true,
-          detached: process.platform !== 'win32',
-        },
-      );
-      const timeout = setTimeout(
-        () => {
-          try {
-            if (process.platform !== 'win32' && child.pid)
-              process.kill(-child.pid, 'SIGKILL');
-            else child.kill('SIGKILL');
-          } catch {
-            // Cleanup failures still fail the check; never emit raw errors.
-          }
-          resolveExit(1);
-        },
-        id === 'regression' ? 600_000 : 180_000,
-      );
-      child.on('error', () => {
-        clearTimeout(timeout);
-        resolveExit(1);
-      });
-      child.on('close', (code) => {
-        clearTimeout(timeout);
-        resolveExit(code === 0 ? 0 : 1);
-      });
+    const outcome = await runVerificationChild({
+      command: process.platform === 'win32' ? process.execPath : 'pnpm',
+      args: process.platform === 'win32' ? [pnpmEntry!, ...args] : [...args],
+      cwd: root,
+      signal: cancellation.signal,
+      timeoutMs: id === 'regression' ? 600_000 : 180_000,
     });
+    if (cancellation.signal.aborted) throw new Error('VERIFICATION_CANCELLED');
+    const exit = outcome.exit;
     results.push({ id, exit, durationMs: Math.max(0, Date.now() - started) });
     console.log(`${id}: ${exit === 0 ? 'PASS' : 'FAIL'}`);
   }
@@ -160,7 +139,12 @@ async function run(): Promise<void> {
   if (!report.localChecksPassed) process.exitCode = 1;
 }
 
-void run().catch(() => {
-  console.error('Verification failed closed; no live authorization.');
-  process.exitCode = 1;
-});
+void run()
+  .catch(() => {
+    console.error('Verification failed closed; no live authorization.');
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    process.removeListener('SIGINT', cancel);
+    process.removeListener('SIGTERM', cancel);
+  });

@@ -27,7 +27,7 @@ implemented and proven. See the [target decision](docs/fanout-adoption-plan.md#c
 | Leader events and follower records                   | Phase 1 verified offline: durable identity, atomic claims and independent outcomes |
 | Fast follower fan-out                                | Phase 2 verified offline; additive synthetic dashboard now available               |
 | Session arming, readiness and secure browser channel | Fixture contracts and managed pages verified; Vest readiness unproven              |
-| Managed browser lifecycle                            | Real headless localhost fixtures verified; authentic Vest profile remains unproven |
+| Managed browser lifecycle                            | Persistent headless namespace fixtures verified; authentic Vest profile unproven   |
 | Vest execution and reconciliation                    | Original fixture evidence contracts added; connected implementation unproven       |
 | Follower repair controls and latency metrics         | Verified offline; scoped repairs, latency and headless dashboard tests pass        |
 | Funded-account execution                             | Locked; requires separate evidence, review and authorization                       |
@@ -48,16 +48,29 @@ Leader ADD/REDUCE/CLOSE and stop/target changes now work in fixtures, with durab
 replay-only activation, current exposure tracking and no automatic reopen/resend.
 Real headless fixture pages exercise the managed-browser lifecycle without opening
 Vest or foreground windows. These prove local behavior; actual Vest execution and
-browser-wide network containment remain unproven. See the
+connected browser network containment remain unproven. Linux offline fixtures now have
+process-tree isolation tested with local TCP/UDP canaries. The owner-bound persistent
+profile is integrated into the headless namespace fixture: synthetic browser markers
+survive a clean restart, authority returns to LOCKED, and uncertain closure retains
+the lease instead of allowing another owner. See the
 [managed fixture limits](docs/managed-browser-fixture.md).
 
-The additive `/copier` dashboard exercises independent follower outcomes, safe repairs
+The additive `/copier` dashboard exercises independent follower outcomes, current-position repairs
 and observed fixture latency using a separate synthetic fleet. Restart restores its
 journal but returns to LOCKED. Phase 5 offline verification and independent review
-passed; the current report is
-`dist/functional-proof-5c3d215f-10c6-484b-99e2-fdf4b76550e0/report.json`.
-Actual Vest integration, exit propagation and complete credential containment remain
-unproven. See the [copier simulation guide](docs/copier-simulation-guide.md).
+passed at the earlier checkpoint; its historical report is
+`dist/functional-proof-e3e3155a-a609-4f70-9040-4abf2a411d49/report.json`.
+
+The latest background checks include **10 lifecycle tests** with 25 cycles across nine
+followers, 675 unique sends, five lost acknowledgements reconciled without resend and
+five durable restarts. Readiness cache fixes pass 56 focused tests; strict fixture
+network checks pass 18 tests and new boundary canaries pass five tests. The narrowed
+`OFF-DRIFT`/`OFF-SECRETS` gates and new `OFF-PROFILE`/`OFF-NETWORK` gates are mapped to
+offline regression checks. All six checks and all 15 offline gates pass in the current
+[verification report](docs/evidence/offline-checkpoint-2026-10-06.json),
+with matching source fingerprints and independent review. These results do not
+establish actual Vest integration, provider exit propagation or complete credential
+containment. See the [copier simulation guide](docs/copier-simulation-guide.md).
 
 ## Planned copy-trading flow
 
@@ -122,7 +135,10 @@ visible in the report. Funded tests are excluded from ordinary verification.
 
 ## Next milestone and documentation
 
-**Next: obtain the missing Phase 4 provider evidence and implement the original connected adapter.**
+**Next: owner-assisted read-only evidence, then the original connected adapter.**
+The [pending checklist](docs/pending-checklist.md) lists the remaining work in order.
+The [next authenticated checkpoint](docs/next-authenticated-checkpoint.md) records the
+foreground boundary and preserves the current no-window/no-chart restriction.
 Connected Vest execution remains unimplemented. Phase 5 fixture visibility/repairs and
 Phase 6 canaries/manual release preparation do not substitute for provider proof or
 authorize funded testing.

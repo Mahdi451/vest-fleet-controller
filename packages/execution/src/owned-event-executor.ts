@@ -27,7 +27,7 @@ import {
 import type { OfflineFanoutArm } from './fanout-controller.ts';
 import type { ExecutionAdapter } from './adapter.ts';
 import type { Journal } from './journal.ts';
-interface Context {
+export interface OwnedExecutionContext {
   adapter: ExecutionAdapter;
   journal: Journal;
   generation: string;
@@ -43,6 +43,7 @@ interface Context {
     run: (read: <R>(run: () => Promise<R>) => Promise<R>) => Promise<T>,
   ) => Promise<T>;
 }
+type Context = OwnedExecutionContext;
 const pendingState = new Set(['QUEUED', 'DISPATCHING', 'UNKNOWN']);
 const economic = new Set(['ADD', 'REDUCE', 'CLOSE']);
 /** Only genuine accepted fixture events can mutate an already owned root. */
@@ -295,6 +296,9 @@ export class OwnedEventExecutor {
         throw new Error('MUTATION_ROOT_CLOSED');
       if (
         root.certainty !== 'PRESENT' ||
+        c.journal.ownedRepairs
+          .records(root.rootId)
+          .some((row) => ['DISPATCHING', 'UNKNOWN'].includes(row.state)) ||
         c.journal.mutations
           .records(root.rootId)
           .some(
@@ -388,7 +392,7 @@ export class OwnedEventExecutor {
         'QUEUED',
         'DISPATCHING',
         c.now(),
-        { request, submitAt: c.now() },
+        { request, submitAt: c.now(), reservedRootRevision: root.revision },
       );
       dispatched = true;
       const result = await read(() =>

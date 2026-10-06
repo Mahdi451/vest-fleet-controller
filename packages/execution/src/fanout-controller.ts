@@ -43,6 +43,8 @@ import {
   type LeaderEvent,
 } from './copier-events.ts';
 import type { FleetPreview } from './controller.ts';
+import { OwnedRepairExecutor } from './owned-repair-executor.ts';
+import type { OwnedRepairIntent } from './copier-owned-repairs.ts';
 import { OwnedEventExecutor } from './owned-event-executor.ts';
 
 const armSchema = z
@@ -99,7 +101,9 @@ export class OfflineFanoutController {
   private listeners = new Set<(update: FollowerCopyUpdate) => void>();
   private latest = new Map<string, FollowerCopyUpdate>();
   private readonly ownedEvents: OwnedEventExecutor;
+  private readonly ownedRootRepairs: OwnedRepairExecutor;
   private readonly readiness: OfflineFanoutReadiness;
+  private preparationEpoch = {};
   private preparation: {
     prepared: PreparedFollowers;
     fleet: Account[];
@@ -120,33 +124,40 @@ export class OfflineFanoutController {
       throw new Error('OFFLINE_FANOUT_ADAPTER_REFUSED');
     this.config = riskConfigSchema.parse(config);
     this.readiness = new OfflineFanoutReadiness(this.config, clock);
-    this.ownedEvents = new OwnedEventExecutor({
-      adapter,
-      journal,
-      generation: this.generation,
-      now: clock,
-      config: this.config,
-      policy: () => {
-        if (this.status() !== 'ARMED')
-          throw new Error('OFFLINE_MUTATION_LOCKED');
-        return {
-          value: structuredClone(this.armState!),
-          revision: this.armRevision,
-        };
-      },
-      active: (revision) => this.active(revision),
-      available: (accountId) => this.readiness.available(accountId),
-      fleet: async () =>
-        this.accounts(await this.provider(() => this.adapter.listAccounts())),
-      fail: (reason) => this.fail(reason),
-      queue: (accountId, run) => this.queueOwnedEvent(accountId, run),
-    });
+    const ownedContext: import('./owned-event-executor.ts').OwnedExecutionContext =
+      {
+        adapter,
+        journal,
+        generation: this.generation,
+        now: clock,
+        config: this.config,
+        policy: () => {
+          if (this.status() !== 'ARMED')
+            throw new Error('OFFLINE_MUTATION_LOCKED');
+          return {
+            value: structuredClone(this.armState!),
+            revision: this.armRevision,
+          };
+        },
+        active: (revision) => this.active(revision),
+        available: (accountId) => this.readiness.available(accountId),
+        fleet: async () =>
+          this.accounts(await this.provider(() => this.adapter.listAccounts())),
+        fail: (reason) => this.fail(reason),
+        queue: (accountId, run) => this.queueOwnedEvent(accountId, run),
+      };
+    this.ownedEvents = new OwnedEventExecutor(ownedContext);
+    this.ownedRootRepairs = new OwnedRepairExecutor(ownedContext);
     if (
       !Number.isSafeInteger(timeoutMs) ||
       timeoutMs < 1 ||
       this.config.maxDataAgeMs > 60000
     )
       throw new Error('INVALID_FANOUT_BUDGET');
+  }
+  private invalidatePreparation() {
+    this.preparationEpoch = {};
+    this.preparation = null;
   }
   status(): 'LOCKED' | 'ARMED' | 'HALTED' {
     try {
@@ -166,7 +177,7 @@ export class OfflineFanoutController {
     this.armState = null;
     this.armRevision++;
     this.readiness.lock();
-    this.preparation = null;
+    this.invalidatePreparation();
   }
   private globalStop() {
     try {
@@ -258,18 +269,20 @@ export class OfflineFanoutController {
   }
   invalidateContext(accountId: string) {
     const scope = this.readiness.invalidateContext(accountId);
-    this.preparation = null;
+    this.invalidatePreparation();
     if (scope === 'GLOBAL') this.halt('LEADER_IDENTITY_UNCERTAIN');
   }
   async restoreContext(accountId: string) {
     if (this.status() !== 'ARMED') throw new Error('OFFLINE_ENTRY_LOCKED');
-    const account = accountSchema.parse(
+    const parsed = accountSchema.safeParse(
       await this.provider(() => this.adapter.getAccountState(accountId)),
     );
+    if (!parsed.success) return this.fail('ACCOUNT_MAPPING_CORRUPT');
+    const account = parsed.data;
     if (account.accountId !== accountId)
       return this.fail('ACCOUNT_MAPPING_CORRUPT');
     this.readiness.restoreContext(account);
-    this.preparation = null;
+    this.invalidatePreparation();
   }
   async prepare(input: TradeIntent) {
     const { prepared } = await this.prepareFollowers(input);
@@ -282,15 +295,22 @@ export class OfflineFanoutController {
   }
   private async prepareFollowers(input: TradeIntent) {
     if (this.status() !== 'ARMED') throw new Error('OFFLINE_ENTRY_LOCKED');
-    const revision = this.armRevision;
-    const intent = intentSchema.parse(input);
+    const revision = this.armRevision,
+      epoch = this.preparationEpoch;
+    const parsed = intentSchema.safeParse(input);
+    if (!parsed.success) throw new Error('READINESS_INTENT_INVALID');
+    const intent = parsed.data;
     const fleet = this.accounts(
       await this.deadline(this.provider(() => this.adapter.listAccounts())),
     );
-    const quote = quoteSchema.parse(
+    const quoteResult = quoteSchema.safeParse(
       await this.deadline(this.provider(() => this.adapter.getQuote())),
     );
+    if (!quoteResult.success) throw new Error('READINESS_QUOTE_INVALID');
+    const quote = quoteResult.data;
     this.active(revision);
+    if (epoch !== this.preparationEpoch)
+      throw new Error('READINESS_PREPARATION_CHANGED');
     const prepared = this.readiness.prepare(intent, fleet, quote);
     const bundle = { prepared, fleet, quote };
     this.preparation = bundle;
@@ -330,11 +350,13 @@ export class OfflineFanoutController {
       });
     this.lanes.set(accountId, tail);
     void tail.then(() => {
+      this.invalidatePreparation();
       if (this.lanes.get(accountId) === tail) this.lanes.delete(accountId);
     });
     return result;
   }
   async copyChange(eventId: string) {
+    this.invalidatePreparation();
     try {
       return await this.ownedEvents.copy(eventId);
     } catch (error) {
@@ -346,10 +368,68 @@ export class OfflineFanoutController {
       )
         this.halt('JOURNAL_INTEGRITY_LOST');
       throw error;
+    } finally {
+      this.invalidatePreparation();
     }
   }
-  reconcileChange(mutationId: string) {
-    return this.ownedEvents.reconcile(mutationId);
+  async reconcileChange(mutationId: string) {
+    this.invalidatePreparation();
+    try {
+      return await this.ownedEvents.reconcile(mutationId);
+    } finally {
+      this.invalidatePreparation();
+    }
+  }
+  async repairOwnedRoot(input: OwnedRepairIntent) {
+    this.invalidatePreparation();
+    try {
+      return await this.ownedRootRepairs.repair(input);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /STORAGE|STATE_CONFLICT|REVISION_CONFLICT|IDENTITY_CONFLICT/.test(
+          error.message,
+        )
+      )
+        this.halt('JOURNAL_INTEGRITY_LOST');
+      throw error;
+    } finally {
+      this.invalidatePreparation();
+    }
+  }
+  private async reconcileWithIntegrityGuard<T>(read: () => Promise<T>) {
+    this.invalidatePreparation();
+    try {
+      return await read();
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /STORAGE|STATE_CONFLICT|REVISION_CONFLICT|IDENTITY_CONFLICT/.test(
+          error.message,
+        )
+      )
+        this.halt('JOURNAL_INTEGRITY_LOST');
+      if (
+        error instanceof Error &&
+        /^(OWNED_REPAIR|ROOT_RESERVATION|MUTATION)_[A-Z_]{1,80}$/.test(
+          error.message,
+        )
+      )
+        throw error;
+      throw new Error('OWNED_REPAIR_RECONCILE_UNCONFIRMED');
+    } finally {
+      this.invalidatePreparation();
+    }
+  }
+  reconcileOwnedRoot(rootId: string) {
+    return this.reconcileWithIntegrityGuard(() =>
+      this.ownedRootRepairs.reconcileRoot(rootId),
+    );
+  }
+  reconcileOwnedRepair(operationId: string) {
+    return this.reconcileWithIntegrityGuard(() =>
+      this.ownedRootRepairs.reconcile(operationId),
+    );
   }
   acceptSyntheticLeaderEvent(event: LeaderEvent) {
     return this.journal.copier.recordLeaderEvent(event, {
@@ -407,6 +487,7 @@ export class OfflineFanoutController {
     update: FollowerCopyUpdate;
     repair: CopierRepairRecord | null;
   }> {
+    this.invalidatePreparation();
     if (
       (operation === 'RETRY' && expectedAttemptId === undefined) ||
       (expectedAttemptId !== undefined &&
@@ -460,9 +541,10 @@ export class OfflineFanoutController {
       });
     this.lanes.set(accountId, tail);
     void tail.then(() => {
+      this.invalidatePreparation();
       if (this.lanes.get(accountId) === tail) this.lanes.delete(accountId);
     });
-    return run;
+    return run.finally(() => this.invalidatePreparation());
   }
   private async runRepair(
     eventId: string,
@@ -1060,6 +1142,16 @@ export class OfflineFanoutController {
     eventId: string,
     input: TradeIntent,
   ): Promise<FollowerCopyUpdate[]> {
+    try {
+      return await this.copyEntryBatch(eventId, input);
+    } finally {
+      this.invalidatePreparation();
+    }
+  }
+  private async copyEntryBatch(
+    eventId: string,
+    input: TradeIntent,
+  ): Promise<FollowerCopyUpdate[]> {
     const event = this.journal.copier.leaderEvent(eventId);
     const parsed = intentSchema.safeParse(input);
     if (!event || !parsed.success || event.kind !== 'ENTRY')
@@ -1103,6 +1195,11 @@ export class OfflineFanoutController {
       this.active(revision);
     } catch (error) {
       if (error instanceof CopierSystemError) throw error;
+      if (
+        error instanceof Error &&
+        error.message === 'READINESS_PREPARATION_CHANGED'
+      )
+        throw error;
       if (this.status() !== 'ARMED') throw new Error('OFFLINE_ENTRY_LOCKED');
       return this.fail('CHANNEL_INTEGRITY_LOST');
     }
@@ -1128,6 +1225,7 @@ export class OfflineFanoutController {
       { accounts: fleet, maxAgeMs: this.config.maxDataAgeMs },
     );
     if (!activation.fresh) return this.snapshot(eventId);
+    this.invalidatePreparation();
     const jobs = policy.followerAccountIds.map((accountId) => {
       const index = preview.accounts.findIndex(
           (a) => a.accountId === accountId,
@@ -1208,6 +1306,7 @@ export class OfflineFanoutController {
           });
         this.lanes.set(key, tail);
         void tail.then(() => {
+          this.invalidatePreparation();
           if (this.lanes.get(key) === tail) this.lanes.delete(key);
         });
         this.publish({

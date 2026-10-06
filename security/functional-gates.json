@@ -60,18 +60,18 @@
     },
     {
       "id": "OFF-DRIFT",
-      "title": "Durable leader events and no automatic reopen after risk/manual exits",
+      "title": "Durable leader events and no automatic reopen after modeled risk/manual exits in fixtures",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-FANOUT", "OFF-EVENTS", "OFF-RECOVERY"]
     },
     {
       "id": "OFF-SECRETS",
-      "title": "Synthetic credential canaries across all diagnostic and persistence sinks",
+      "title": "Synthetic credential canaries across reviewed offline application boundaries",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-CHANNEL"]
     },
     {
@@ -105,6 +105,22 @@
       "automation": "LOCAL",
       "checks": ["regression"],
       "requires": ["OFF-FANOUT"]
+    },
+    {
+      "id": "OFF-PROFILE",
+      "title": "Owner-bound persistent headless fixture profile, clean restart locking and uncertain-close lease retention on Linux",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["regression"],
+      "requires": ["OFF-CHANNEL", "OFF-ARMING"]
+    },
+    {
+      "id": "OFF-NETWORK",
+      "title": "Exact fixture GET routes, authentication-header rejection and whole-browser TCP/UDP containment on Linux",
+      "phase": "OFFLINE",
+      "automation": "LOCAL",
+      "checks": ["regression"],
+      "requires": ["OFF-PROFILE", "OFF-SECURITY"]
     },
     {
       "id": "VEST-INTEGRATION",
@@ -196,7 +212,7 @@
     },
     {
       "id": "VEST-PROFILE",
-      "title": "Dedicated isolated profile, local extension only and restart locking",
+      "title": "Dedicated managed profile without unrelated extensions and restart locking",
       "phase": "VEST_EVIDENCE",
       "automation": "BROWSER",
       "checks": [],

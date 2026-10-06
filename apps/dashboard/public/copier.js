@@ -1,4 +1,6 @@
 /* global document, fetch, setInterval, crypto */
+const rootPriceDrafts = new Map(),
+  pendingRootActions = new Set();
 const byId = (id) => document.getElementById(id);
 let state,
   token,
@@ -45,6 +47,7 @@ function render() {
     state.session !== 'ARMED' || sending || !entries.length;
   byId('change-value').disabled = byId('change-kind').value === 'CLOSE';
   renderChanges();
+  renderOwnedRepairs();
   const list = byId('events');
   list.replaceChildren();
   if (!entries.length) {
@@ -207,6 +210,8 @@ function protectionLabel(status, price) {
 function renderChanges() {
   const roots = byId('owned-roots'),
     changes = byId('changes');
+  const focusedPrice = document.activeElement?.dataset?.rootPrice;
+  const selection = focusedPrice ? document.activeElement.selectionStart : null;
   roots.replaceChildren();
   changes.replaceChildren();
   if (!state.ownedRoots.length)
@@ -237,7 +242,103 @@ function renderChanges() {
           'warn',
         ),
       );
+    const pending =
+      pendingRootActions.has(root.rootId) ||
+      state.ownedRepairs.some(
+        (row) =>
+          row.intent.rootId === root.rootId &&
+          ['QUEUED', 'DISPATCHING', 'UNKNOWN'].includes(row.state),
+      ) ||
+      state.mutations.some(
+        (row) =>
+          row.rootId === root.rootId &&
+          ['DISPATCHING', 'UNKNOWN'].includes(row.state),
+      );
+    const reconcile = node('button', 'Reconcile position', 'secondary');
+    reconcile.dataset.rootOperation = 'RECONCILE';
+    reconcile.addEventListener('click', async () => {
+      reconcile.disabled = true;
+      try {
+        await post('root-reconcile', { rootId: root.rootId });
+        message('Current owned position reconciled.');
+      } catch (error) {
+        message(error.message);
+      }
+      await refresh();
+    });
+    card.append(reconcile);
+    for (const operation of ['ADD_STOP', 'ADD_TARGET', 'FLATTEN']) {
+      if (
+        root.closed ||
+        root.certainty !== 'PRESENT' ||
+        (operation === 'ADD_STOP' && root.stopId) ||
+        (operation === 'ADD_TARGET' && root.targetId)
+      )
+        continue;
+      const label =
+        operation === 'ADD_STOP'
+          ? 'Add Stop'
+          : operation === 'ADD_TARGET'
+            ? 'Add Target'
+            : 'Flatten';
+      let input;
+      if (operation !== 'FLATTEN') {
+        const key = `${root.rootId}:${operation}`;
+        input = node('input');
+        input.type = 'text';
+        input.inputMode = 'decimal';
+        input.dataset.rootPrice = key;
+        input.setAttribute('aria-label', `${root.accountId} ${label} price`);
+        input.placeholder = 'Enter price';
+        input.value = rootPriceDrafts.get(key) ?? '';
+        input.addEventListener('input', () =>
+          rootPriceDrafts.set(key, input.value),
+        );
+        const field = node('label', `${label} price`);
+        field.append(input);
+        card.append(field);
+      }
+      const button = node('button', label, 'secondary');
+      button.dataset.rootOperation = operation;
+      button.disabled = state.session !== 'ARMED' || pending;
+      button.addEventListener('click', async () => {
+        if (pendingRootActions.has(root.rootId) || state.session !== 'ARMED')
+          return;
+        const request = {
+          actionId: crypto.randomUUID(),
+          rootId: root.rootId,
+          expectedRootRevision: root.revision,
+          operation,
+          ...(input ? { price: input.value } : {}),
+        };
+        pendingRootActions.add(root.rootId);
+        button.disabled = true;
+        try {
+          const result = await post('root-repair', request);
+          message(
+            `${label}: ${result.result.state}. Inspect current exposure.`,
+          );
+        } catch (error) {
+          message(
+            `Repair requires inspection: ${error.message}. No automatic resend.`,
+          );
+        } finally {
+          pendingRootActions.delete(root.rootId);
+          await refresh();
+        }
+      });
+      card.append(button);
+    }
     roots.append(card);
+  }
+  if (focusedPrice) {
+    const input = [...roots.querySelectorAll('input')].find(
+      (element) => element.dataset.rootPrice === focusedPrice,
+    );
+    if (input) {
+      input.focus({ preventScroll: true });
+      if (selection !== null) input.setSelectionRange(selection, selection);
+    }
   }
   for (const activation of state.mutationActivations) {
     for (const accountId of activation.followerAccountIds) {
@@ -269,7 +370,7 @@ function renderChanges() {
       ),
       node(
         'p',
-        `Event ${mutation.sequence} · ${mutation.price ? `desired price ${mutation.price}` : mutation.deltaQuantity ? `quantity delta ${mutation.deltaQuantity}` : 'close owned position'} · ${mutation.reason ?? '—'}`,
+        `Event ${mutation.sequence} · ${mutation.price ? `desired price ${mutation.price}` : mutation.deltaQuantity ? `quantity delta ${mutation.deltaQuantity}` : mutation.operation === 'CLOSE' ? 'close owned position' : 'no quantity/price command prepared'} · ${mutation.reason ?? '—'}`,
       ),
       node(
         'p',
@@ -296,6 +397,50 @@ function renderChanges() {
     changes.append(card);
   }
 }
+function renderOwnedRepairs() {
+  const list = byId('owned-repairs');
+  list.replaceChildren();
+  if (!state.ownedRepairs.length)
+    list.append(node('p', 'No operator repairs yet.'));
+  for (const row of state.ownedRepairs) {
+    const card = node('article', undefined, 'event');
+    card.dataset.ownedRepair = row.operationId;
+    const label =
+      row.intent.operation === 'FLATTEN'
+        ? 'Flatten'
+        : row.intent.operation === 'ADD_STOP'
+          ? 'Add Stop'
+          : 'Add Target';
+    card.append(
+      node(
+        'strong',
+        `${row.accountId} · ${label} · ${row.state === 'DISPATCHING' ? 'SUBMITTING' : row.state}`,
+      ),
+      node(
+        'p',
+        `${row.intent.price ? `Desired price ${row.intent.price} · ` : ''}${row.reason ?? '—'}`,
+      ),
+    );
+    if (['UNKNOWN', 'DISPATCHING'].includes(row.state)) {
+      const button = node('button', 'Reconcile repair', 'secondary');
+      button.dataset.rootOperation = 'RECONCILE_REPAIR';
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const result = await post('root-repair-reconcile', {
+            operationId: row.operationId,
+          });
+          message(`Repair reconciliation: ${result.result.state}`);
+        } catch (error) {
+          message(error.message);
+        }
+        await refresh();
+      });
+      card.append(button);
+    }
+    list.append(card);
+  }
+}
 async function refresh() {
   if (polling) return;
   polling = true;
@@ -309,6 +454,8 @@ async function refresh() {
   } catch (error) {
     byId('entry').disabled = true;
     byId('change').disabled = true;
+    for (const button of document.querySelectorAll('[data-root-operation]'))
+      button.disabled = true;
     message(error.message);
   } finally {
     polling = false;

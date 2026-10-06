@@ -4,6 +4,7 @@ import { childResultSchema, type ChildResult } from './adapter.ts';
 import { CopierRecords } from './copier-records.ts';
 import { CopierRepairs } from './copier-repairs.ts';
 import { CopierLatencyStore } from './copier-latency.ts';
+import { CopierOwnedRepairs } from './copier-owned-repairs.ts';
 import { CopierMutations } from './copier-mutations.ts';
 
 export const revalidationDiagnosticSchema = z.object({
@@ -105,6 +106,10 @@ export class Journal {
   private copierRecords?: CopierRecords;
   private repairRecords?: CopierRepairs;
   private latencyRecords?: CopierLatencyStore;
+  private ownedRepairRecords?: CopierOwnedRepairs;
+  get ownedRepairs(): CopierOwnedRepairs {
+    return (this.ownedRepairRecords ??= new CopierOwnedRepairs(this.db));
+  }
   private mutationRecords?: CopierMutations;
   get mutations(): CopierMutations {
     return (this.mutationRecords ??= new CopierMutations(this.db));

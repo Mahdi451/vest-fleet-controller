@@ -1,3 +1,11 @@
+import {
+  initializeRootReservations,
+  reserveRoot,
+  verifyRootReservation,
+  releaseRoot,
+  rootReservation,
+  assertRootIdle,
+} from './root-reservations.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { D, nonnegative, positive, sideSchema } from '../../core/src/index.ts';
@@ -93,6 +101,8 @@ export const mutationRecordSchema = mutationPlanSchema
     detectedAt: time,
     detectionGeneration: z.string().uuid(),
     verifiedGeneration: z.string().uuid().nullable(),
+    reservationRequired: z.literal(true).optional(),
+    reservedRootRevision: time.optional(),
   })
   .strict();
 export type MutationRecord = z.infer<typeof mutationRecordSchema>;
@@ -114,6 +124,7 @@ export const mutationId = (eventId: string, accountId: string) =>
 export class CopierMutations {
   constructor(private db: DatabaseSync) {
     try {
+      initializeRootReservations(db);
       db.exec(
         'CREATE TABLE IF NOT EXISTS copier_owned_roots(id TEXT PRIMARY KEY, record TEXT NOT NULL); CREATE TABLE IF NOT EXISTS copier_mutations(id TEXT PRIMARY KEY, record TEXT NOT NULL); CREATE TABLE IF NOT EXISTS copier_mutation_activations(id TEXT PRIMARY KEY, record TEXT NOT NULL)',
       );
@@ -185,7 +196,10 @@ export class CopierMutations {
       } catch {
         /* failure remains closed */
       }
-      if (error instanceof Error && /^MUTATION_[A-Z_]+$/.test(error.message))
+      if (
+        error instanceof Error &&
+        /^(MUTATION|ROOT_RESERVATION)_[A-Z_]+$/.test(error.message)
+      )
         throw error;
       throw new Error('MUTATION_STORAGE_FAILED');
     }
@@ -266,6 +280,21 @@ export class CopierMutations {
       this.writeRoot(rootId, expectedRevision, changes),
     );
   }
+  reconcileIdleRoot(
+    rootId: string,
+    expectedRevision: number,
+    changes: Partial<OwnedRoot> | null,
+  ) {
+    return this.transaction(() => {
+      assertRootIdle(this.db, rootId);
+      const current = this.root(rootId);
+      if (!current || current.revision !== expectedRevision)
+        throw new Error('MUTATION_REVISION_CONFLICT');
+      return changes
+        ? this.writeRoot(rootId, expectedRevision, changes)
+        : current;
+    });
+  }
   private writeRoot(
     rootId: string,
     expectedRevision: number,
@@ -290,7 +319,8 @@ export class CopierMutations {
       root.initialFollowerQuantity !== old.initialFollowerQuantity ||
       root.initialLeaderQuantity !== old.initialLeaderQuantity ||
       (old.closed && !root.closed) ||
-      root.updatedAt < old.updatedAt
+      root.updatedAt < old.updatedAt ||
+      root.providerRevision < old.providerRevision
     )
       throw new Error('MUTATION_ROOT_REFUSED');
     this.db
@@ -356,7 +386,21 @@ export class CopierMutations {
       (state === 'REJECTED' && receipt?.status !== 'REJECTED')
     )
       throw new Error();
+    if (
+      record.reservationRequired &&
+      ['DISPATCHING', 'UNKNOWN'].includes(state)
+    )
+      verifyRootReservation(this.db, {
+        rootId: record.rootId,
+        commandId: record.mutationId,
+        kind: 'LEADER_EVENT',
+        ownerGeneration: record.ownerGeneration,
+        rootRevision: record.reservedRootRevision!,
+      });
     return record;
+  }
+  reservation(rootId: string) {
+    return rootReservation(this.db, rootId);
   }
   records(rootId?: string): MutationRecord[] {
     try {
@@ -472,7 +516,12 @@ export class CopierMutations {
     options: Partial<
       Pick<
         MutationRecord,
-        'request' | 'receipt' | 'reason' | 'submitAt' | 'verifiedAt'
+        | 'request'
+        | 'receipt'
+        | 'reason'
+        | 'submitAt'
+        | 'verifiedAt'
+        | 'reservedRootRevision'
       >
     > = {},
   ) {
@@ -481,9 +530,24 @@ export class CopierMutations {
       if (!old || old.state !== expected || at < old.updatedAt)
         throw new Error('MUTATION_STATE_CONFLICT');
       this.assertTransition(old, next, at);
+      if (next === 'DISPATCHING') {
+        if (options.reservedRootRevision === undefined)
+          throw new Error('MUTATION_PLAN_INVALID');
+        reserveRoot(this.db, {
+          rootId: old.rootId,
+          commandId: old.mutationId,
+          kind: 'LEADER_EVENT',
+          ownerGeneration: old.ownerGeneration,
+          rootRevision: options.reservedRootRevision,
+          at,
+        });
+      }
       return this.writeRecord({
         ...old,
         ...options,
+        ...(next === 'DISPATCHING'
+          ? { reservationRequired: true as const }
+          : {}),
         state: next,
         updatedAt: at,
       });
@@ -507,6 +571,14 @@ export class CopierMutations {
       const root = this.root(old.rootId);
       if (!root) throw new Error('MUTATION_STORAGE_INVALID');
       this.writeRoot(root.rootId, root.revision, { ...changes, updatedAt: at });
+      if (old.reservationRequired && next !== 'UNKNOWN')
+        releaseRoot(this.db, {
+          rootId: old.rootId,
+          commandId: old.mutationId,
+          kind: 'LEADER_EVENT',
+          ownerGeneration: old.ownerGeneration,
+          rootRevision: old.reservedRootRevision!,
+        });
       return this.writeRecord({
         ...old,
         state: next,
