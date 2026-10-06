@@ -14,6 +14,7 @@ export function offlineBridge(mock: MockVestAdapter, clock: () => number) {
   let quarantined = false;
   const port: OfflineBridgePort = {
     environment: 'OFFLINE_FIXTURE',
+    concurrency: 'ACCOUNT_BOUND',
     sessionId: randomUUID(),
     async exchange(message) {
       if (quarantined) throw new Error('FIXTURE_CLOSED');

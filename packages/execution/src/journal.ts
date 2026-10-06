@@ -2,6 +2,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { childResultSchema, type ChildResult } from './adapter.ts';
 import { CopierRecords } from './copier-records.ts';
+import { CopierRepairs } from './copier-repairs.ts';
+import { CopierLatencyStore } from './copier-latency.ts';
+import { CopierMutations } from './copier-mutations.ts';
 
 export const revalidationDiagnosticSchema = z.object({
   gateReasons: z.array(
@@ -100,6 +103,18 @@ export type CommandEnvelope = z.infer<typeof commandSchema>;
 export class Journal {
   private db: DatabaseSync;
   private copierRecords?: CopierRecords;
+  private repairRecords?: CopierRepairs;
+  private latencyRecords?: CopierLatencyStore;
+  private mutationRecords?: CopierMutations;
+  get mutations(): CopierMutations {
+    return (this.mutationRecords ??= new CopierMutations(this.db));
+  }
+  get latency(): CopierLatencyStore {
+    return (this.latencyRecords ??= new CopierLatencyStore(this.db));
+  }
+  get repairs(): CopierRepairs {
+    return (this.repairRecords ??= new CopierRepairs(this.db));
+  }
   get copier(): CopierRecords {
     return (this.copierRecords ??= new CopierRecords(this.db));
   }

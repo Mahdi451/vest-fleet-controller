@@ -141,6 +141,7 @@ export function parseMessage(message: string): unknown {
 export interface OfflineBridgePort {
   readonly environment: 'OFFLINE_FIXTURE';
   readonly sessionId: string;
+  readonly concurrency?: 'ACCOUNT_BOUND';
   exchange(message: string): Promise<string>;
   quarantine(): Promise<void>;
   close(): Promise<void>;

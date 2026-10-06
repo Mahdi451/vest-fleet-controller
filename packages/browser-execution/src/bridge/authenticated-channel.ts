@@ -79,6 +79,8 @@ export function authenticatedOfflineBridge(
   options: {
     lifetimeMs?: number;
     maxAgeMs?: number;
+    maxInFlight?: number;
+    maxRequests?: number;
     // Adversarial fixture transport sees wire data and a verifying receiver only.
     wireExchange?: (
       wire: string,
@@ -91,6 +93,9 @@ export function authenticatedOfflineBridge(
   const session = z.string().uuid().safeParse(backing.sessionId);
   const lifetimeMs = options.lifetimeMs ?? 60_000;
   const maxAgeMs = options.maxAgeMs ?? 5000;
+  const maxInFlight = options.maxInFlight ?? 64;
+  const maxRequests = options.maxRequests ?? 4096;
+  const concurrency = backing.concurrency;
   const createdAt = clock();
   if (
     !identity.success ||
@@ -101,6 +106,12 @@ export function authenticatedOfflineBridge(
     ![lifetimeMs, maxAgeMs].every(
       (value) => Number.isSafeInteger(value) && value > 0 && value <= 60_000,
     ) ||
+    !Number.isSafeInteger(maxInFlight) ||
+    maxInFlight < 1 ||
+    maxInFlight > 256 ||
+    !Number.isSafeInteger(maxRequests) ||
+    maxRequests < 1 ||
+    maxRequests > 100_000 ||
     !Number.isSafeInteger(createdAt + lifetimeMs)
   )
     throw new Error('INVALID_OFFLINE_CHANNEL');
@@ -120,13 +131,21 @@ export function authenticatedOfflineBridge(
   let lastObservedAt = createdAt;
   let nextOutbound = 1;
   let nextRequest = 1;
-  let nextResponse = 1;
-  let busy = false;
-  let dispatching = false;
+  const pending = new Map<
+    number,
+    {
+      body: string;
+      request: ReturnType<typeof parseBridgeRequest>;
+      state: 'ALLOCATED' | 'REQUEST_CONSUMED';
+    }
+  >();
+  const messageIds = new Set<string>();
+  const lanes = new Map<string, Promise<void>>();
   function revoke(next: 'QUARANTINED' | 'CLOSED') {
     if (state === 'CLOSED' || (state === 'QUARANTINED' && next !== 'CLOSED'))
       return;
     state = next;
+    pending.clear();
     requestKey.fill(0);
     responseKey.fill(0);
     void backing.quarantine().catch(() => {});
@@ -139,7 +158,8 @@ export function authenticatedOfflineBridge(
       now < lastObservedAt ||
       now >= binding.expiresAt ||
       backing.environment !== binding.environment ||
-      backing.sessionId !== binding.sessionId
+      backing.sessionId !== binding.sessionId ||
+      backing.concurrency !== concurrency
     ) {
       revoke('QUARANTINED');
       throw new Error('OFFLINE_CHANNEL_UNAVAILABLE');
@@ -194,16 +214,26 @@ export function authenticatedOfflineBridge(
         (direction === 'REQUEST' ? 'CONTROLLER' : 'BROWSER_FIXTURE') ||
       wire.receiver !==
         (direction === 'REQUEST' ? 'BROWSER_FIXTURE' : 'CONTROLLER') ||
-      wire.sequence !==
-        (direction === 'REQUEST' ? nextRequest : nextResponse) ||
+      (direction === 'REQUEST' && wire.sequence !== nextRequest) ||
       wire.sentAt > now ||
       now - wire.sentAt > maxAgeMs ||
       bridgeMessageBytes(wire.body) > MAX_BRIDGE_MESSAGE_BYTES
     )
       throw new Error('OFFLINE_CHANNEL_PROOF_REFUSED');
-    // Consume before dispatch. A lost response never permits this message again.
-    if (direction === 'REQUEST') nextRequest++;
-    else nextResponse++;
+    const expected = pending.get(wire.sequence);
+    if (
+      !expected ||
+      (direction === 'REQUEST' &&
+        (expected.state !== 'ALLOCATED' || expected.body !== wire.body)) ||
+      (direction === 'RESPONSE' && expected.state !== 'REQUEST_CONSUMED')
+    )
+      throw new Error('OFFLINE_CHANNEL_CORRELATION_REFUSED');
+    // Consume before dispatch. Responses may finish in any order, but each
+    // sequence belongs to exactly one pending request and can be consumed once.
+    if (direction === 'REQUEST') {
+      nextRequest++;
+      expected.state = 'REQUEST_CONSUMED';
+    }
     return wire;
   }
   function responseBody(
@@ -225,56 +255,87 @@ export function authenticatedOfflineBridge(
       result: bridgeResultSchemas[response.operation].parse(response.result),
     });
   }
+  function laneKey(request: ReturnType<typeof parseBridgeRequest>) {
+    if (concurrency !== 'ACCOUNT_BOUND') return 'SERIAL';
+    const payload = request.payload;
+    return 'accountId' in payload ? `ACCOUNT:${payload.accountId}` : 'FLEET';
+  }
   async function receive(message: string): Promise<string> {
     try {
-      if (dispatching) throw new Error('OFFLINE_CHANNEL_BUSY');
       const wire = open(message, 'REQUEST');
       const request = parseBridgeRequest(wire.body);
       if (request.sessionId !== binding.sessionId)
         throw new Error('OFFLINE_CHANNEL_SESSION_REFUSED');
-      dispatching = true;
-      // No await between this check and the trusted fixture dispatch.
-      assertActive();
-      const body = await backing.exchange(JSON.stringify(request));
-      assertActive();
-      const response = responseBody(body, request);
-      if (JSON.parse(response).capturedAt < wire.sentAt)
-        throw new Error('OFFLINE_CHANNEL_CAPTURE_REFUSED');
-      return seal('RESPONSE', wire.sequence, response);
+      const key = laneKey(request);
+      const previous = lanes.get(key) ?? Promise.resolve();
+      const operation = previous.then(async () => {
+        const now = assertActive();
+        if (now - wire.sentAt > maxAgeMs)
+          throw new Error('OFFLINE_CHANNEL_REQUEST_STALE');
+        // No await between this check and the trusted fixture dispatch.
+        const body = await backing.exchange(JSON.stringify(request));
+        assertActive();
+        const response = responseBody(body, request);
+        if (JSON.parse(response).capturedAt < wire.sentAt)
+          throw new Error('OFFLINE_CHANNEL_CAPTURE_REFUSED');
+        return seal('RESPONSE', wire.sequence, response);
+      });
+      // Keep ownership until the underlying operation settles, including errors.
+      const tail = operation.then(
+        () => {},
+        () => {},
+      );
+      lanes.set(key, tail);
+      void tail.then(() => {
+        if (lanes.get(key) === tail) lanes.delete(key);
+      });
+      return await operation;
     } catch {
       revoke('QUARANTINED');
       throw new Error('AUTHENTICATED_CHANNEL_UNCONFIRMED');
-    } finally {
-      dispatching = false;
     }
   }
   const port: OfflineBridgePort = {
     environment: 'OFFLINE_FIXTURE',
     sessionId: binding.sessionId,
+    ...(concurrency === 'ACCOUNT_BOUND' ? { concurrency } : {}),
     async exchange(message) {
+      let sequence: number | undefined;
       try {
         assertActive();
-        if (busy) throw new Error('OFFLINE_CHANNEL_BUSY');
+        if (
+          pending.size >= maxInFlight ||
+          nextOutbound > maxRequests ||
+          !Number.isSafeInteger(nextOutbound) ||
+          (concurrency !== 'ACCOUNT_BOUND' && pending.size > 0)
+        )
+          throw new Error('OFFLINE_CHANNEL_CAPACITY_REFUSED');
         const request = parseBridgeRequest(message);
-        if (request.sessionId !== binding.sessionId)
+        if (
+          request.sessionId !== binding.sessionId ||
+          messageIds.has(request.messageId)
+        )
           throw new Error('OFFLINE_CHANNEL_SESSION_REFUSED');
-        busy = true;
-        const outgoing = seal(
-          'REQUEST',
-          nextOutbound++,
-          JSON.stringify(request),
-        );
+        const body = JSON.stringify(request);
+        sequence = nextOutbound++;
+        messageIds.add(request.messageId);
+        pending.set(sequence, { body, request, state: 'ALLOCATED' });
+        const outgoing = seal('REQUEST', sequence, body);
         const wire = options.wireExchange
           ? await options.wireExchange(outgoing, receive)
           : await receive(outgoing);
         assertActive();
         const incoming = open(wire, 'RESPONSE');
-        return responseBody(incoming.body, request);
+        if (incoming.sequence !== sequence)
+          throw new Error('OFFLINE_CHANNEL_CORRELATION_REFUSED');
+        const response = responseBody(incoming.body, request);
+        pending.delete(sequence);
+        return response;
       } catch {
         revoke('QUARANTINED');
         throw new Error('AUTHENTICATED_CHANNEL_UNCONFIRMED');
       } finally {
-        busy = false;
+        if (sequence !== undefined) pending.delete(sequence);
       }
     },
     async quarantine() {

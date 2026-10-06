@@ -8,6 +8,31 @@ All testing stays in the background, without opening Vest charts.
 Track implementation and completion evidence in the
 [working checklist](implementation-checklist.md).
 
+## Chosen runtime target
+
+Owner decision, 2026-10-06: **local controller + local dashboard + dedicated managed
+browser**, with no Chrome extension required. This selects the architecture, not a
+proven Vest transport or permission to connect or trade.
+
+- The controller owns arming, risk, event/command identity, independent account lanes,
+  persistent outcomes, latency and recovery. The dashboard has no direct browser authority.
+- An independently implemented browser adapter exposes only named observation and
+  trading operations. No arbitrary browser script, URL or authenticated request is
+  exposed to the dashboard or general application code.
+- Use a dedicated Vest profile, separate from everyday browsing. Keep browser control
+  private to the local controller, preferably through a process-owned pipe; do not expose
+  a general debugging service. Do not export or log authenticated browser state.
+- Prove background operation, accepted leader-event detection, stable independent
+  account binding, order/fill/protection correlation and measured latency before adoption.
+  A browser context is not by itself proof of a selected Vest account.
+- Preserve manual local updates, restart LOCKED, exact network/operation restrictions
+  and all existing safety controls. Testing opens no foreground windows or Vest charts.
+- If reliable operation requires an extension, a chart page or a different integration,
+  report the blocker and revisit the decision with the owner; do not silently substitute it.
+
+The automation library, authentication bootstrap and actual Vest page functions remain
+implementation decisions requiring Phase 4 evidence. Current browser contracts are fixtures.
+
 ## Current enforcement to replace
 
 - `packages/execution/src/controller.ts`: `execute()` awaits the whole child lifecycle

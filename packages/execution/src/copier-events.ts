@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { D, nonnegative, positive, sideSchema } from '../../core/src/index.ts';
+import {
+  D,
+  nonnegative,
+  positive,
+  sideSchema,
+  intentSchema,
+} from '../../core/src/index.ts';
 
 const id = z.string().regex(/^[A-Za-z0-9_:.\-]{1,100}$/);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -71,6 +77,33 @@ export const followerPlanSchema = z
   })
   .strict();
 export type FollowerPlan = z.infer<typeof followerPlanSchema>;
+export const fanoutBatchPlanSchema = z
+  .object({
+    eventId: digest,
+    followerAccountIds: z
+      .array(id)
+      .min(1)
+      .max(9)
+      .refine((ids) => new Set(ids).size === ids.length)
+      .transform((ids) => [...ids].sort()),
+    intent: intentSchema.transform((intent) => ({
+      ...intent,
+      stopDistancePoints: new D(intent.stopDistancePoints).toFixed(),
+      takeProfitPoints: new D(intent.takeProfitPoints).toFixed(),
+      riskValue: new D(intent.riskValue).toFixed(),
+      leverage: new D(intent.leverage).toFixed(),
+    })),
+  })
+  .strict();
+export type FanoutBatchPlan = z.infer<typeof fanoutBatchPlanSchema>;
+export const fanoutBatchSchema = fanoutBatchPlanSchema
+  .extend({
+    payloadHash: digest,
+    ownerGeneration: z.string().uuid(),
+    activatedAt: timestamp,
+  })
+  .strict();
+export type FanoutBatch = z.infer<typeof fanoutBatchSchema>;
 export const dispositionSchema = z
   .object({
     eventId: digest,
@@ -109,6 +142,8 @@ export const followerOutcomeSchema = z
     fillPrice: amount.nullable(),
     stop: exitState,
     target: exitState,
+    stopPrice: amount.optional(),
+    targetPrice: amount.optional(),
     exposure: z.enum(['PRESENT', 'ABSENT', 'UNKNOWN']),
     reason: z.enum([
       'NONE',
@@ -119,6 +154,7 @@ export const followerOutcomeSchema = z
       'SL_MISSING',
       'TP_MISSING',
       'ACCOUNT_UNAVAILABLE',
+      'FILL_RISK_CHANGED',
       'EXIT_VERIFIED',
     ]),
   })

@@ -28,6 +28,13 @@ import { z } from 'zod';
 import { resultSchema } from '../../execution/src/adapter.ts';
 import { createHash } from 'node:crypto';
 import type { AuditEvent } from '../../execution/src/journal.ts';
+import {
+  ownedMutationRequestSchema,
+  ownedMutationReceiptSchema,
+  type OwnedMutationRequest,
+  type OwnedMutationReceipt,
+} from '../../execution/src/owned-mutation-contract.ts';
+import { assessOwnedIncrease } from '../../risk-engine/src/owned-increase.ts';
 
 const snapshotSchema = z
   .object({
@@ -43,6 +50,16 @@ const snapshotSchema = z
         .object({ fingerprint: z.string(), order: protectionOrderSchema })
         .strict(),
     ),
+    ownedMutations: z
+      .array(
+        z
+          .object({
+            fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+            receipt: ownedMutationReceiptSchema,
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 
@@ -55,6 +72,8 @@ export type Fault =
 export class MockVestAdapter implements ExecutionAdapter {
   readonly name = 'MockVestAdapter';
   readonly mode = 'SIMULATION' as const;
+  readonly environment = 'OFFLINE_FIXTURE' as const;
+  readonly scheduling = 'ACCOUNT_LANES' as const;
   private connected = false;
   private accounts: Map<string, Account>;
   private quote: Quote;
@@ -72,6 +91,14 @@ export class MockVestAdapter implements ExecutionAdapter {
     'REJECT' | 'TIMEOUT_BEFORE_CREATE' | 'AMBIGUOUS_AFTER_CREATE'
   >();
   private config: RiskConfig;
+  private ownedMutations = new Map<
+    string,
+    { fingerprint: string; receipt: OwnedMutationReceipt }
+  >();
+  private ownedMutationFaults = new Map<
+    string,
+    'REJECT' | 'UNKNOWN_BEFORE' | 'UNKNOWN_AFTER' | 'PARTIAL_REDUCE'
+  >();
   constructor(
     config: RiskConfig,
     private readonly clock: () => number = Date.now,
@@ -107,6 +134,23 @@ export class MockVestAdapter implements ExecutionAdapter {
       this.protection = new Map(
         saved.protection.map((o) => [o.order.orderId, o]),
       );
+      if (
+        new Set(
+          (saved.ownedMutations ?? []).map((item) => item.receipt.requestId),
+        ).size !== (saved.ownedMutations ?? []).length ||
+        (saved.ownedMutations ?? []).some(
+          (item) =>
+            !ids.has(item.receipt.accountId) ||
+            item.fingerprint !== item.receipt.requestHash,
+        )
+      )
+        throw new Error('INVALID_SIMULATION_SNAPSHOT');
+      this.ownedMutations = new Map(
+        (saved.ownedMutations ?? []).map((item) => [
+          item.receipt.requestId,
+          item,
+        ]),
+      );
       return;
     }
     const validated = (fleet ?? initialFleet(clock())).map((a) =>
@@ -130,6 +174,7 @@ export class MockVestAdapter implements ExecutionAdapter {
       accounts: [...this.accounts.values()],
       orders: [...this.orders.values()],
       protection: [...this.protection.values()],
+      ownedMutations: [...this.ownedMutations.values()],
     });
   }
   async connect() {
@@ -411,7 +456,8 @@ export class MockVestAdapter implements ExecutionAdapter {
       (item) =>
         item.order.accountId === a.accountId &&
         item.order.entryRequestId === request.entryRequestId &&
-        item.order.type === request.type,
+        item.order.type === request.type &&
+        !['REJECTED', 'CANCELED'].includes(item.order.status),
     );
     const anchor = p
       ? new D(request.triggerPrice).minus(p.entryPrice).mul(direction(p.side))
@@ -535,6 +581,478 @@ export class MockVestAdapter implements ExecutionAdapter {
         this.cancelProtection(item.order);
     }
     this.close(a);
+  }
+  async flattenOwnedPosition(scope: {
+    accountId: string;
+    entryRequestId: string;
+    expectedRevision: number;
+  }) {
+    this.ready();
+    const a = this.account(scope.accountId);
+    if (
+      [...this.ownedMutations.values()].some(
+        ({ receipt }) =>
+          receipt.accountId === scope.accountId &&
+          receipt.entryRequestId === scope.entryRequestId &&
+          !receipt.noFutureExecution,
+      ) ||
+      a.revision !== scope.expectedRevision ||
+      a.positions.length !== 1 ||
+      a.positions[0]?.entryRequestId !== scope.entryRequestId ||
+      [...this.protection.values()].some(
+        ({ order }) =>
+          order.accountId === scope.accountId &&
+          order.status === 'ACTIVE' &&
+          order.entryRequestId !== scope.entryRequestId,
+      )
+    )
+      throw new Error('OWNED_MUTATION_REFUSED');
+    return this.flattenAccount(scope.accountId);
+  }
+  async repairOwnedProtection(
+    request: ProtectionRequest,
+    expectedRevision: number,
+  ) {
+    this.ready();
+    const a = this.account(request.accountId);
+    if (
+      [...this.ownedMutations.values()].some(
+        ({ receipt }) =>
+          receipt.accountId === request.accountId &&
+          receipt.entryRequestId === request.entryRequestId &&
+          !receipt.noFutureExecution,
+      ) ||
+      a.revision !== expectedRevision ||
+      a.positions.length !== 1 ||
+      a.positions[0]?.entryRequestId !== request.entryRequestId
+    )
+      throw new Error('OWNED_MUTATION_REFUSED');
+    return this.placeProtectionOrder(request);
+  }
+  injectOwnedMutationFault(
+    accountId: string,
+    fault: 'REJECT' | 'UNKNOWN_BEFORE' | 'UNKNOWN_AFTER' | 'PARTIAL_REDUCE',
+  ) {
+    this.account(accountId);
+    this.ownedMutationFaults.set(accountId, fault);
+  }
+  async readOwnedMutation(requestId: string) {
+    this.ready();
+    if (!/^[a-f0-9]{64}$/.test(requestId))
+      throw new Error('INVALID_OWNED_MUTATION');
+    return structuredClone(this.ownedMutations.get(requestId)?.receipt ?? null);
+  }
+  async addOwnedPosition(request: OwnedMutationRequest & { operation: 'ADD' }) {
+    return this.mutateOwned(request, 'ADD');
+  }
+  async reduceOwnedPosition(
+    request: OwnedMutationRequest & { operation: 'REDUCE' },
+  ) {
+    return this.mutateOwned(request, 'REDUCE');
+  }
+  async closeOwnedPosition(
+    request: OwnedMutationRequest & { operation: 'CLOSE' },
+  ) {
+    return this.mutateOwned(request, 'CLOSE');
+  }
+  async changeOwnedProtection(
+    request: OwnedMutationRequest & {
+      operation: 'STOP_CHANGED' | 'TARGET_CHANGED';
+    },
+  ) {
+    return this.mutateOwned(request, 'PROTECTION');
+  }
+  private mutateOwned(
+    input: OwnedMutationRequest,
+    capability: 'ADD' | 'REDUCE' | 'CLOSE' | 'PROTECTION',
+  ): OwnedMutationReceipt {
+    this.ready();
+    const parsed = ownedMutationRequestSchema.safeParse(input);
+    if (!parsed.success) throw new Error('INVALID_OWNED_MUTATION');
+    const request = parsed.data;
+    if (
+      capability === 'PROTECTION'
+        ? !['STOP_CHANGED', 'TARGET_CHANGED'].includes(request.operation)
+        : request.operation !== capability
+    )
+      throw new Error('OWNED_CAPABILITY_MISMATCH');
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify(request))
+      .digest('hex');
+    const old = this.ownedMutations.get(request.requestId);
+    if (old) {
+      if (old.fingerprint !== fingerprint)
+        throw new Error('IDEMPOTENCY_CONFLICT');
+      return structuredClone(old.receipt);
+    }
+    const original = this.account(request.accountId),
+      a = structuredClone(original),
+      p = a.positions[0];
+    const staged = new Map(
+      [...this.protection].map(([id, item]) => [id, structuredClone(item)]),
+    );
+    const owned = [...staged.values()]
+      .map((item) => item.order)
+      .filter(
+        (order) =>
+          order.accountId === request.accountId &&
+          order.entryRequestId === request.entryRequestId,
+      );
+    const active = owned.filter((order) => order.status === 'ACTIVE');
+    const before = {
+      quantity: p?.quantity ?? '0',
+      basis: p?.entryPrice ?? null,
+      revision: a.revision,
+    };
+    let receipt: OwnedMutationReceipt = ownedMutationReceiptSchema.parse({
+      environment: request.environment,
+      evidence: request.evidence,
+      requestId: request.requestId,
+      eventId: request.eventId,
+      rootKey: request.rootKey,
+      accountId: request.accountId,
+      entryRequestId: request.entryRequestId,
+      symbol: request.symbol,
+      side: request.side,
+      sequence: request.sequence,
+      operation: request.operation,
+      requestHash: fingerprint,
+      status: 'REJECTED',
+      noFutureExecution: true,
+      before,
+      after: before,
+      executedQuantity: '0',
+      fees: '0',
+      protection: owned,
+      stop: active.find((order) => order.type === 'STOP_LOSS') ?? null,
+      target: active.find((order) => order.type === 'TAKE_PROFIT') ?? null,
+      reason: 'OWNERSHIP_CHANGED',
+    });
+    const record = (effects = false) => {
+      if (effects) {
+        this.accounts.set(a.accountId, a);
+        this.protection = staged;
+      }
+      this.ownedMutations.set(request.requestId, {
+        fingerprint,
+        receipt: structuredClone(receipt),
+      });
+      this.log('OWNED_MUTATION', {
+        accountId: request.accountId,
+        requestId: request.requestId,
+        error: receipt.reason === 'NONE' ? null : receipt.reason,
+      });
+      return structuredClone(receipt);
+    };
+    const prior = [...this.ownedMutations.values()].filter(
+      (item) =>
+        item.receipt.accountId === request.accountId &&
+        item.receipt.entryRequestId === request.entryRequestId,
+    );
+    if (
+      !p ||
+      a.positions.length !== 1 ||
+      a.revision !== request.expectedRevision ||
+      p.entryRequestId !== request.entryRequestId ||
+      p.symbol !== request.symbol ||
+      p.side !== request.side ||
+      !new D(p.quantity).eq(request.expectedQuantity) ||
+      !new D(p.entryPrice).eq(request.expectedBasis) ||
+      !new D(p.leverage).eq(request.leverage) ||
+      prior.some(
+        (item) =>
+          item.receipt.rootKey !== request.rootKey ||
+          !item.receipt.noFutureExecution ||
+          item.receipt.sequence >= request.sequence,
+      ) ||
+      [...staged.values()].some(
+        (item) =>
+          item.order.accountId === a.accountId &&
+          item.order.status === 'ACTIVE' &&
+          item.order.entryRequestId !== request.entryRequestId,
+      )
+    )
+      return record();
+    const age = this.clock();
+    if (
+      a.lastSyncTimestamp > age ||
+      age - a.lastSyncTimestamp > this.config.maxDataAgeMs ||
+      this.quote.timestamp > age ||
+      age - this.quote.timestamp > this.config.maxDataAgeMs
+    ) {
+      receipt.reason = 'STALE_EVIDENCE';
+      return record();
+    }
+    if (
+      request.operation === 'ADD' &&
+      (!a.enabled || a.status !== 'ACTIVE' || a.executionStatus === 'UNKNOWN')
+    ) {
+      receipt.reason = 'ACCOUNT_UNAVAILABLE';
+      return record();
+    }
+    if (
+      active.some(
+        (order) =>
+          order.symbol !== p.symbol ||
+          order.positionSide !== p.side ||
+          !order.reduceOnly ||
+          !new D(order.quantity).eq(p.quantity) ||
+          !new D(order.filledSize).isZero(),
+      ) ||
+      ['STOP_LOSS', 'TAKE_PROFIT'].some(
+        (type) => active.filter((order) => order.type === type).length > 1,
+      )
+    ) {
+      receipt.reason = 'PROTECTION_UNPROVEN';
+      return record();
+    }
+    const fault = this.ownedMutationFaults.get(a.accountId);
+    this.ownedMutationFaults.delete(a.accountId);
+    if (fault === 'REJECT') {
+      receipt.reason = 'SIMULATED_REJECTION';
+      return record();
+    }
+    if (fault === 'UNKNOWN_BEFORE') {
+      receipt.status = 'UNKNOWN';
+      receipt.noFutureExecution = false;
+      receipt.reason = 'PROVIDER_UNCERTAIN';
+      return record();
+    }
+    if (request.operation === 'ADD') {
+      const stop = active.find((order) => order.type === 'STOP_LOSS'),
+        target = active.find((order) => order.type === 'TAKE_PROFIT');
+      if (!stop || !target) {
+        receipt.reason = 'PROTECTION_UNPROVEN';
+        return record();
+      }
+      const risk = assessOwnedIncrease(
+        a,
+        this.quote,
+        this.config,
+        request.deltaQuantity,
+        stop.triggerPrice,
+        request,
+        age,
+      );
+      if (!risk.approved) {
+        receipt.reason = 'RISK_LIMIT';
+        return record();
+      }
+      if (
+        new D(this.quote.price)
+          .minus(stop.triggerPrice)
+          .mul(direction(p.side))
+          .lte(0) ||
+        new D(risk.fillPrice)
+          .minus(target.triggerPrice)
+          .mul(direction(p.side))
+          .gte(0)
+      ) {
+        receipt.reason = 'INVALID_PROTECTION';
+        return record();
+      }
+      if (
+        evaluateFleetExposure({ symbol: p.symbol, side: p.side }, [
+          ...this.accounts.values(),
+        ]).length
+      ) {
+        receipt.reason = 'RISK_LIMIT';
+        return record();
+      }
+      p.quantity = risk.quantity;
+      p.entryPrice = risk.basis;
+      a.balance = new D(a.balance).minus(risk.entryFee).toFixed();
+      a.realizedPnl = new D(a.realizedPnl).minus(risk.entryFee).toFixed();
+      for (const order of active) order.quantity = p.quantity;
+      receipt.executedQuantity = request.deltaQuantity;
+      receipt.fees = risk.entryFee;
+    } else if (
+      request.operation === 'REDUCE' ||
+      request.operation === 'CLOSE'
+    ) {
+      const requested =
+        request.operation === 'CLOSE'
+          ? new D(p.quantity)
+          : new D(request.deltaQuantity);
+      if (
+        requested.gt(p.quantity) ||
+        !requested.mod(this.config.sizeStep).isZero()
+      ) {
+        receipt.reason = 'INVALID_QUANTITY';
+        return record();
+      }
+      const quantity =
+        fault === 'PARTIAL_REDUCE' && request.operation === 'REDUCE'
+          ? requested
+              .div(2)
+              .div(this.config.sizeStep)
+              .floor()
+              .mul(this.config.sizeStep)
+          : requested;
+      if (quantity.lte(0)) {
+        receipt.reason = 'INVALID_QUANTITY';
+        return record();
+      }
+      const fill = D.max(
+        '0.00000001',
+        new D(this.quote.price).minus(
+          new D(this.config.slippagePointsPerSide).mul(direction(p.side)),
+        ),
+      );
+      const fee = fill.mul(quantity).mul(costsFor(a, this.config).exitFeeRate),
+        net = fill
+          .minus(p.entryPrice)
+          .mul(quantity)
+          .mul(direction(p.side))
+          .minus(fee);
+      a.balance = new D(a.balance).plus(net).toFixed();
+      a.realizedPnl = new D(a.realizedPnl).plus(net).toFixed();
+      const remaining = new D(p.quantity).minus(quantity);
+      if (remaining.isZero()) {
+        a.positions = [];
+        for (const order of active) order.status = 'CANCELED';
+        a.executionStatus = 'IDLE';
+      } else {
+        p.quantity = remaining.toFixed();
+        for (const order of active) order.quantity = p.quantity;
+      }
+      receipt.executedQuantity = quantity.toFixed();
+      receipt.fees = fee.toFixed();
+      if (quantity.lt(requested)) {
+        receipt.status = 'PARTIAL';
+        receipt.reason = 'PARTIAL_REDUCTION';
+      }
+    } else {
+      const type =
+        request.operation === 'STOP_CHANGED' ? 'STOP_LOSS' : 'TAKE_PROFIT';
+      const market = new D(this.quote.price)
+        .minus(request.price)
+        .mul(direction(p.side));
+      if (type === 'STOP_LOSS' ? market.lte(0) : market.gte(0)) {
+        receipt.reason = 'INVALID_PROTECTION';
+        return record();
+      }
+      let order = active.find((item) => item.type === type);
+      if (
+        !order &&
+        owned.some(
+          (item) =>
+            item.type === type &&
+            !['REJECTED', 'CANCELED'].includes(item.status),
+        )
+      ) {
+        receipt.reason = 'PROTECTION_UNPROVEN';
+        return record();
+      }
+      const stopPrice =
+        type === 'STOP_LOSS'
+          ? request.price
+          : active.find((item) => item.type === 'STOP_LOSS')?.triggerPrice;
+      if (
+        !stopPrice ||
+        !assessOwnedIncrease(
+          a,
+          this.quote,
+          this.config,
+          '0',
+          stopPrice,
+          request,
+          age,
+        ).approved
+      ) {
+        receipt.reason = 'RISK_LIMIT';
+        return record();
+      }
+      if (!order) {
+        const stableId = createHash('sha256')
+          .update(JSON.stringify([request.entryRequestId, type]))
+          .digest('hex');
+        const priorOrder = staged.get(stableId)?.order;
+        if (
+          priorOrder &&
+          (priorOrder.accountId !== request.accountId ||
+            priorOrder.entryRequestId !== request.entryRequestId ||
+            !['REJECTED', 'CANCELED'].includes(priorOrder.status))
+        ) {
+          receipt.reason = 'PROTECTION_UNPROVEN';
+          return record();
+        }
+        order = protectionOrderSchema.parse({
+          requestId: stableId,
+          orderId: stableId,
+          masterTradeId: request.eventId,
+          entryRequestId: request.entryRequestId,
+          accountId: request.accountId,
+          symbol: request.symbol,
+          positionSide: request.side,
+          quantity: p.quantity,
+          type,
+          triggerPrice: request.price,
+          reduceOnly: true,
+          status: 'ACTIVE',
+          filledSize: '0',
+          error: null,
+        });
+        staged.set(stableId, {
+          fingerprint: createHash('sha256')
+            .update(JSON.stringify(order))
+            .digest('hex'),
+          order,
+        });
+      } else order.triggerPrice = request.price;
+    }
+    if (a.positions[0]) {
+      a.positions[0].protectionStatus = ['STOP_LOSS', 'TAKE_PROFIT'].every(
+        (type) =>
+          [...staged.values()].some(
+            (item) =>
+              item.order.accountId === a.accountId &&
+              item.order.entryRequestId === request.entryRequestId &&
+              item.order.type === type &&
+              item.order.status === 'ACTIVE',
+          ),
+      )
+        ? 'ACTIVE'
+        : 'FAILED';
+      a.executionStatus =
+        a.positions[0].protectionStatus === 'ACTIVE' ? 'FILLED' : 'UNKNOWN';
+    }
+    a.revision++;
+    markAccount(a, this.quote.price, age);
+    receipt.after = {
+      quantity: a.positions[0]?.quantity ?? '0',
+      basis: a.positions[0]?.entryPrice ?? null,
+      revision: a.revision,
+    };
+    receipt.protection = [...staged.values()]
+      .map((item) => item.order)
+      .filter(
+        (order) =>
+          order.accountId === a.accountId &&
+          order.entryRequestId === request.entryRequestId,
+      );
+    receipt.stop =
+      receipt.protection.find(
+        (order) => order.type === 'STOP_LOSS' && order.status === 'ACTIVE',
+      ) ?? null;
+    receipt.target =
+      receipt.protection.find(
+        (order) => order.type === 'TAKE_PROFIT' && order.status === 'ACTIVE',
+      ) ?? null;
+    if (receipt.status !== 'PARTIAL') {
+      receipt.status = 'VERIFIED';
+      receipt.reason = 'NONE';
+    }
+    receipt = ownedMutationReceiptSchema.parse(receipt);
+    const result = record(true);
+    return fault === 'UNKNOWN_AFTER'
+      ? {
+          ...result,
+          status: 'UNKNOWN',
+          noFutureExecution: false,
+          reason: 'PROVIDER_UNCERTAIN',
+        }
+      : result;
   }
   async updatePrice(price: string) {
     this.ready();

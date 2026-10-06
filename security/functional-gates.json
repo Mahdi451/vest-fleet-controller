@@ -23,7 +23,7 @@
       "title": "Concurrent account lanes, isolated outcomes, global revocation and pending-exposure hedge safety in fixtures",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-RISK", "OFF-EVENTS", "OFF-READINESS"]
     },
     {
@@ -55,7 +55,7 @@
       "title": "Spoof/replay/generation rejection across local channel",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-ARMING"]
     },
     {
@@ -87,7 +87,7 @@
       "title": "Precomputed account readiness and session-envelope checks at actual dispatch",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-RISK", "OFF-ARMING"]
     },
     {
@@ -95,7 +95,7 @@
       "title": "Incremental account outcomes and scoped idempotent repair without UNKNOWN retry",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-FANOUT", "OFF-RECOVERY"]
     },
     {
@@ -103,7 +103,7 @@
       "title": "Per-follower timing provenance and measured fan-out latency calculations",
       "phase": "OFFLINE",
       "automation": "LOCAL",
-      "checks": [],
+      "checks": ["regression"],
       "requires": ["OFF-FANOUT"]
     },
     {

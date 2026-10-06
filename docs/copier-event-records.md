@@ -31,7 +31,8 @@ Submission certainty, partial/full fill, average fill price, stop, target and ex
 are independent fields. A rejected order does not erase uncertain or existing exposure.
 Account-local unresolved attempts block that account; global identity, storage or system
 failures stop new admission. Non-entry mutations require owned exposure under the same
-entry root. Concurrent reservations and the fleet hedge guard are Phase 2 work.
+entry root. Phase 2 adds durable event batches, concurrent reservations and atomic
+fleet hedge checks; see [offline fan-out contracts](offline-fanout.md).
 
 UNKNOWN never grants retry. Explicit retry requires correlated terminal evidence that
 the prior attempt was not sent or was conclusively rejected, with no remaining execution
@@ -52,4 +53,5 @@ reads and every supported exit/skip disposition.
 
 This is a record-layer milestone. It does not prove fan-out, provider reconciliation,
 arming, browser isolation, dashboard repair actions, latency or live functionality.
+The separate Phase 2 coordinator proves synthetic ENTRY scheduling only.
 The production runtime remains inert and live execution remains locked.

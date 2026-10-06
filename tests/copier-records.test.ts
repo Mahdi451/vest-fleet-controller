@@ -1458,7 +1458,7 @@ describe('explicit copier schema activation', () => {
       expect(tables()).toHaveLength(0);
       const records = journal.copier;
       expect(journal.copier).toBe(records);
-      expect(tables()).toHaveLength(8);
+      expect(tables()).toHaveLength(9);
     } finally {
       db.close();
       journal.close();

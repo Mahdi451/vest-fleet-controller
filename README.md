@@ -14,30 +14,57 @@ The current dashboard and CLI operate on synthetic accounts and prices. They do 
 connect to Vest or place live trades. This is an independent tool, not an official
 Vest product.
 
+**Chosen target:** local controller and dashboard with a dedicated managed Vest
+browser; no Chrome extension required. The original browser adapter remains to be
+implemented and proven. See the [target decision](docs/fanout-adoption-plan.md#chosen-runtime-target).
+
 ## Current state
 
 | Component                                            | Status                                                                             |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Simulation dashboard and CLI                         | Working with synthetic data                                                        |
-| Risk engine, hedge guard and journal                 | Existing offline foundation; concurrent integration pending                        |
+| Risk engine, hedge guard and journal                 | Integrated into synthetic concurrent execution; pending/UNKNOWN exposure reserved  |
 | Leader events and follower records                   | Phase 1 verified offline: durable identity, atomic claims and independent outcomes |
-| Fast follower fan-out                                | Next implementation milestone                                                      |
-| Session arming, readiness and secure browser channel | Production implementation and proof pending                                        |
-| Vest execution and reconciliation                    | Not implemented or verified                                                        |
-| Follower repair controls and latency metrics         | Pending                                                                            |
+| Fast follower fan-out                                | Phase 2 verified offline; additive synthetic dashboard now available               |
+| Session arming, readiness and secure browser channel | Fixture contracts and managed pages verified; Vest readiness unproven              |
+| Managed browser lifecycle                            | Real headless localhost fixtures verified; authentic Vest profile remains unproven |
+| Vest execution and reconciliation                    | Original fixture evidence contracts added; connected implementation unproven       |
+| Follower repair controls and latency metrics         | Verified offline; scoped repairs, latency and headless dashboard tests pass        |
 | Funded-account execution                             | Locked; requires separate evidence, review and authorization                       |
 
 Phase 1 added **61 tests** covering duplicate events, competing processes, restart
 recovery, safe retry eligibility, no-reopen records and storage integrity. Independent
 review findings were resolved, and all six local verification checks passed at that
-checkpoint. These results prove offline behavior only.
+checkpoint. Phase 2 adds independent account lanes, durable batch replay and atomic
+pending-exposure hedge protection, with 40 fan-out/exposure tests and independent
+review. These results prove offline behavior only; see the
+[offline fan-out contracts](docs/offline-fanout.md).
+
+Phase 3 adds expiring memory-only authority, prepared follower approvals, isolated
+context loss and a concurrent authenticated fixture channel. Real Vest lifecycle
+evidence remains pending; see [readiness and channel limits](docs/offline-readiness-channel.md).
+
+Leader ADD/REDUCE/CLOSE and stop/target changes now work in fixtures, with durable
+replay-only activation, current exposure tracking and no automatic reopen/resend.
+Real headless fixture pages exercise the managed-browser lifecycle without opening
+Vest or foreground windows. These prove local behavior; actual Vest execution and
+browser-wide network containment remain unproven. See the
+[managed fixture limits](docs/managed-browser-fixture.md).
+
+The additive `/copier` dashboard exercises independent follower outcomes, safe repairs
+and observed fixture latency using a separate synthetic fleet. Restart restores its
+journal but returns to LOCKED. Phase 5 offline verification and independent review
+passed; the current report is
+`dist/functional-proof-5c3d215f-10c6-484b-99e2-fdf4b76550e0/report.json`.
+Actual Vest integration, exit propagation and complete credential containment remain
+unproven. See the [copier simulation guide](docs/copier-simulation-guide.md).
 
 ## Planned copy-trading flow
 
 ![Planned architecture: a validated Account 01 event fans out to independent followers, then their outcomes are monitored](docs/images/fanout-flow.png)
 
-_Planned architecture, not a screenshot or proof of connected execution. The current
-simulator still uses its legacy sequential controller._
+_Target connected architecture. Independent fan-out works in synthetic tests and the
+additive copier dashboard; the original simulator retains its sequential controller._
 
 Followers execute without waiting for another follower's fill or protection. An
 isolated rejection or missing stop is reported for that account. Authentication,
@@ -74,6 +101,9 @@ Open **http://127.0.0.1:4173** manually. No Vest login is needed. Stop the servi
 `Ctrl+C`. For trade controls, sizing, recovery, phone access and troubleshooting, use
 the [simulation guide](docs/simulator-guide.md).
 
+For the new independent follower workflow, open **http://127.0.0.1:4173/copier**.
+Both pages use synthetic data; neither connects to Vest.
+
 ![Existing simulation dashboard with synthetic account risk previews](docs/images/dashboard-preview.png)
 
 _Existing simulation dashboard capture. Account balances, prices and trades are
@@ -92,14 +122,19 @@ visible in the report. Funded tests are excluded from ordinary verification.
 
 ## Next milestone and documentation
 
-**Next: independent follower fan-out**, with per-account ordering, isolated failures
-and pending/UNKNOWN exposure included in fleet hedge protection.
+**Next: obtain the missing Phase 4 provider evidence and implement the original connected adapter.**
+Connected Vest execution remains unimplemented. Phase 5 fixture visibility/repairs and
+Phase 6 canaries/manual release preparation do not substitute for provider proof or
+authorize funded testing.
 
 - [Implementation checklist](docs/implementation-checklist.md) — completed work, evidence and remaining phases.
 - [Fan-out adoption plan](docs/fanout-adoption-plan.md) — execution architecture and simplification.
 - [Event-record contracts](docs/copier-event-records.md) — Phase 1 guarantees and limits.
 - [Functional proof](docs/functional-proof-goal.md) — automation, provider evidence and live gates.
 - [Security containment](docs/security-containment.md) — current locked build and boundaries.
+- [Provider evidence contract](docs/provider-evidence-contract.md) — original fixture contracts and actual connected blockers.
+- [Copier simulation guide](docs/copier-simulation-guide.md) — independent outcomes, repairs and latency.
+- [Manual local release](docs/manual-local-release.md) — reviewed builds, updates and recovery.
 - [Simulation guide](docs/simulator-guide.md) — operating the existing prototype.
 
 Older plans and captures are historical where they conflict with the current checklist.

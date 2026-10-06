@@ -94,6 +94,16 @@ export interface ExecutionAdapter {
   cancelOrder(accountId: string, orderId: string): Promise<void>;
   /** Close positions and cancel all protection; callers must reconcile both. */
   flattenAccount(accountId: string): Promise<void>;
+  /** Fixture capability: check ownership/revision and execute without an intervening await. */
+  flattenOwnedPosition?(scope: {
+    accountId: string;
+    entryRequestId: string;
+    expectedRevision: number;
+  }): Promise<void>;
+  repairOwnedProtection?(
+    request: ProtectionRequest,
+    expectedRevision: number,
+  ): Promise<ProtectionOrder>;
 }
 // Native OCO, subscriptions and live capability discovery are not assumed.
 // This minimal contract does not claim those capabilities exist at Vest.

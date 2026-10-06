@@ -31,6 +31,7 @@ import { unprovenCopierStatus } from '../../packages/browser-execution/src/copie
 import { envelope, hash } from './src/commands.ts';
 import { loadLocalIdentity } from './src/identity.ts';
 import { loadPrivateAccess, type PrivateAccess } from './src/private-access.ts';
+import { createCopierSimulation } from './src/copier-simulation.ts';
 
 const previewSchema = z
   .object({
@@ -153,6 +154,26 @@ export async function createDashboard(
     throw error;
   }
   let closing = false;
+  let copierAuthRevision = 0;
+  let copierSimulation:
+    Awaited<ReturnType<typeof createCopierSimulation>> | undefined;
+  let copierInitialization:
+    Promise<Awaited<ReturnType<typeof createCopierSimulation>>> | undefined;
+  const getCopier = () => {
+    if (copierInitialization) return copierInitialization;
+    const revision = copierAuthRevision;
+    return (copierInitialization = createCopierSimulation(
+      config,
+      journalDirectory
+        ? resolve(journalDirectory, 'copier-simulation.sqlite')
+        : undefined,
+      now,
+    ).then((instance) => {
+      copierSimulation = instance;
+      if (closing || revision !== copierAuthRevision) instance.lock();
+      return instance;
+    }));
+  };
   const reconciliationTimer = setInterval(() => {
     if (busy || closing) return;
     busy = true;
@@ -253,6 +274,9 @@ export async function createDashboard(
   });
   const assets: Record<string, [string, string]> = {
     '/': ['index.html', 'text/html; charset=utf-8'],
+    '/copier': ['copier.html', 'text/html; charset=utf-8'],
+    '/copier.js': ['copier.js', 'text/javascript; charset=utf-8'],
+    '/copier.css': ['copier.css', 'text/css; charset=utf-8'],
     '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
     '/style.css': ['style.css', 'text/css; charset=utf-8'],
     '/brand/mark.svg': ['brand/mark.svg', 'image/svg+xml'],
@@ -332,6 +356,7 @@ export async function createDashboard(
         return;
       }
       const csrf = auth?.csrf ?? token;
+      const requestCopierRevision = copierAuthRevision;
       if (access && req.method === 'POST') {
         try {
           access.validateMutation(req, auth!);
@@ -350,6 +375,8 @@ export async function createDashboard(
           .parse(await body(req));
         if (path === '/api/logout') access.logout(req, res);
         else access.revokeAll(res);
+        copierAuthRevision++;
+        copierSimulation?.lock();
         reply(200, { authenticated: false });
         return;
       }
@@ -369,6 +396,10 @@ export async function createDashboard(
         reply(200, await snapshot(csrf));
         return;
       }
+      if (req.method === 'GET' && path === '/api/copier/state') {
+        reply(200, { ...(await (await getCopier()).state()), token: csrf });
+        return;
+      }
       if (
         req.method !== 'POST' ||
         ![
@@ -381,6 +412,13 @@ export async function createDashboard(
           '/api/reconcile',
           '/api/vest-copy-plan',
           '/api/vest-ticket',
+          '/api/copier/arm',
+          '/api/copier/lock',
+          '/api/copier/entry',
+          '/api/copier/repair',
+          '/api/copier/scenario',
+          '/api/copier/change',
+          '/api/copier/change-reconcile',
         ].includes(path)
       ) {
         reply(404, { error: 'NOT_FOUND' });
@@ -409,6 +447,19 @@ export async function createDashboard(
       if (path === '/api/vest-ticket') {
         vestTicketLeverage = observeVestTicket(input);
         reply(200, { vestTicketLeverage });
+        return;
+      }
+      if (path.startsWith('/api/copier/')) {
+        const copier = await getCopier();
+        if (
+          closing ||
+          requestCopierRevision !== copierAuthRevision ||
+          (access && !access.authenticate(req))
+        ) {
+          reply(403, { error: 'MUTATION_AUTHORIZATION_REQUIRED' });
+          return;
+        }
+        reply(200, { result: await copier.command(path, input) });
         return;
       }
       if (path === '/api/vest-copy-plan') {
@@ -636,6 +687,8 @@ export async function createDashboard(
     close: () =>
       (closePromise ??= (async () => {
         closing = true;
+        copierAuthRevision++;
+        copierSimulation?.lock();
         clearInterval(reconciliationTimer);
         access?.revokeAll();
         const disconnected = new Promise<void>((resolve) => {
@@ -650,6 +703,7 @@ export async function createDashboard(
         server.closeAllConnections();
         await disconnected;
         try {
+          await copierSimulation?.close();
           await adapter.disconnect();
         } finally {
           journal.close();

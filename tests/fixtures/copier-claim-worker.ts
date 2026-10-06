@@ -8,7 +8,7 @@ process.once('message', (message) => {
     const result = journal.copier.claimFollowerAttempt(
       {
         eventId: process.argv[3]!,
-        followerAccountId: '02',
+        followerAccountId: process.argv[6] ?? '02',
         quantity: '1',
         leverage: '10',
       },

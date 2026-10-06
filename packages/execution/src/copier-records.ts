@@ -1,8 +1,17 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
-import { D } from '../../core/src/index.ts';
+import {
+  D,
+  accountSchema,
+  isFresh,
+  type Account,
+} from '../../core/src/index.ts';
+import { evaluateFleetExposure } from '../../risk-engine/src/exposure.ts';
 import {
   attemptObservationSchema,
+  fanoutBatchPlanSchema,
+  fanoutBatchSchema,
+  type FanoutBatchPlan,
   copierHash,
   dispositionSchema,
   eventObservationSchema,
@@ -28,6 +37,16 @@ import {
   type LeaderStream,
 } from './copier-events.ts';
 
+export interface CopierFleetEvidence {
+  accounts: readonly Account[];
+  maxAgeMs: number;
+}
+const fleetEvidenceSchema = z
+  .object({
+    accounts: z.array(accountSchema).min(1).max(100),
+    maxAgeMs: z.number().int().positive().max(60000),
+  })
+  .strict();
 type Row = Record<string, unknown>;
 class RecordError extends Error {}
 const refuse = (code: string): never => {
@@ -49,6 +68,7 @@ const parse = <T>(schema: z.ZodType<T>, input: unknown): T => {
 export class CopierRecords {
   constructor(private readonly db: DatabaseSync) {
     db.exec(`PRAGMA busy_timeout=5000;
+      CREATE TABLE IF NOT EXISTS copier_batches(event_id TEXT PRIMARY KEY, batch TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS copier_streams(
         id TEXT PRIMARY KEY, binding TEXT NOT NULL, cursor INTEGER NOT NULL, high_water INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS copier_events(
@@ -92,6 +112,10 @@ export class CopierRecords {
       if (error instanceof RecordError) {
         if (error.message === 'COPIER_IDENTITY_CONFLICT')
           this.haltGlobal('EVENT_IDENTITY_CORRUPT');
+        if (error.message === 'COPIER_HEDGE_CONFLICT')
+          this.haltGlobal('UNSAFE_FLEET_EXPOSURE');
+        if (error.message === 'COPIER_FLEET_UNPROVEN')
+          this.haltGlobal('ACCOUNT_MAPPING_CORRUPT');
         if (error.message === 'COPIER_STORAGE_CORRUPT')
           this.haltGlobal('JOURNAL_INTEGRITY_LOST');
         throw error;
@@ -151,6 +175,91 @@ export class CopierRecords {
       return result.data;
     });
   }
+  fanoutBatch(eventId: string) {
+    return this.read(() => {
+      const row = this.db
+        .prepare('SELECT batch FROM copier_batches WHERE event_id=?')
+        .get(eventId);
+      if (!row) return null;
+      const batch = this.stored(fanoutBatchSchema, row.batch);
+      const payloadHash = batch.payloadHash,
+        plan = {
+          eventId: batch.eventId,
+          followerAccountIds: batch.followerAccountIds,
+          intent: batch.intent,
+        };
+      const event = this.leaderEvent(eventId);
+      if (
+        batch.eventId !== eventId ||
+        payloadHash !== copierHash(plan) ||
+        !event ||
+        event.kind !== 'ENTRY' ||
+        batch.intent.side !== event.side ||
+        batch.intent.symbol !== event.symbol ||
+        !new D(batch.intent.leverage).eq(event.leverage) ||
+        batch.followerAccountIds.includes(event.leaderAccountId)
+      )
+        return refuse('COPIER_STORAGE_CORRUPT');
+      return batch;
+    });
+  }
+  claimFanoutBatch(
+    input: FanoutBatchPlan,
+    ownerGeneration: string,
+    at: number,
+    fleetEvidence?: CopierFleetEvidence,
+  ) {
+    const plan = parse(fanoutBatchPlanSchema, input),
+      life = parse(lifecycleSchema, { ownerGeneration, at });
+    return this.transaction(() => {
+      const previous = this.fanoutBatch(plan.eventId),
+        payloadHash = copierHash(plan);
+      if (previous) {
+        if (previous.payloadHash !== payloadHash)
+          return refuse('COPIER_IDENTITY_CONFLICT');
+        return { fresh: false, batch: previous };
+      }
+      if (this.globalStop()) return refuse('COPIER_GLOBAL_STOP');
+      const event = this.leaderEvent(plan.eventId);
+      if (
+        !event ||
+        event.kind !== 'ENTRY' ||
+        plan.intent.symbol !== event.symbol ||
+        plan.intent.side !== event.side ||
+        !new D(plan.intent.leverage).eq(event.leverage) ||
+        plan.followerAccountIds.includes(event.leaderAccountId) ||
+        at < event.occurredAt
+      )
+        return refuse('COPIER_IDENTITY_CONFLICT');
+      const stream = this.db
+        .prepare('SELECT cursor,high_water FROM copier_streams WHERE id=?')
+        .get(leaderStreamId(event));
+      if (!stream || stream.cursor !== stream.high_water)
+        return refuse('LEADER_SEQUENCE_GAP');
+      if (event.sequence !== stream.high_water)
+        return refuse('STALE_LEADER_EVENT');
+      this.assertFleetExposure(
+        {
+          operation: 'ENTRY',
+          side: event.side,
+          symbol: event.symbol,
+          followerAccountId: plan.followerAccountIds[0]!,
+        },
+        life.at,
+        fleetEvidence,
+      );
+      const batch = {
+        ...plan,
+        payloadHash,
+        ownerGeneration: life.ownerGeneration,
+        activatedAt: life.at,
+      };
+      this.db
+        .prepare('INSERT INTO copier_batches VALUES(?,?)')
+        .run(plan.eventId, JSON.stringify(batch));
+      return { fresh: true, batch };
+    });
+  }
   registerLeaderStream(input: LeaderStream): string {
     const stream = parse(leaderStreamSchema, input);
     const key = leaderStreamId(stream);
@@ -190,6 +299,53 @@ export class CopierRecords {
         .get(eventId);
       return row ? this.event(row) : null;
     });
+  }
+  eventContiguous(eventId: string): boolean {
+    return this.read(() => {
+      const event = this.leaderEvent(eventId);
+      if (!event) return false;
+      const stream = this.db
+        .prepare('SELECT cursor,high_water FROM copier_streams WHERE id=?')
+        .get(leaderStreamId(event));
+      return (
+        !!stream &&
+        Number(stream.cursor) === Number(stream.high_water) &&
+        Number(stream.cursor) >= event.sequence
+      );
+    });
+  }
+  firstDetection(eventId: string): EventObservation | null {
+    return this.read(() => {
+      if (!this.leaderEvent(eventId)) return null;
+      const row = this.db
+        .prepare(
+          'SELECT * FROM copier_event_observations WHERE event_id=? ORDER BY rowid LIMIT 1',
+        )
+        .get(eventId);
+      if (!row) return null;
+      const observation = this.stored(eventObservationSchema, row.observation);
+      if (row.id !== copierHash([eventId, observation]))
+        return refuse('COPIER_STORAGE_CORRUPT');
+      return observation;
+    });
+  }
+  /** Execution history is independent from the dashboard's recent-event display limit. */
+  leaderRootHistory(rootKey: string) {
+    return this.read(() =>
+      this.db
+        .prepare('SELECT * FROM copier_events ORDER BY sequence')
+        .all()
+        .map((row) => ({ eventId: String(row.id), event: this.event(row) }))
+        .filter((row) => leaderRootKey(row.event) === rootKey),
+    );
+  }
+  leaderEvents() {
+    return this.read(() =>
+      this.db
+        .prepare('SELECT * FROM copier_events ORDER BY rowid DESC LIMIT 100')
+        .all()
+        .map((row) => ({ eventId: String(row.id), event: this.event(row) })),
+    );
   }
   recordLeaderEvent(input: LeaderEvent, observationInput: EventObservation) {
     const event = parse(leaderEventSchema, input);
@@ -383,6 +539,21 @@ export class CopierRecords {
         );
     });
   }
+  eventFollowers(eventId: string) {
+    return this.read(() =>
+      this.db
+        .prepare(
+          'SELECT * FROM copier_commands WHERE event_id=? ORDER BY account_id',
+        )
+        .all(eventId)
+        .map((row) => {
+          const command = this.command(row),
+            attempt = this.followerAttempts(command.commandId).at(-1);
+          if (!attempt) return refuse('COPIER_STORAGE_CORRUPT');
+          return { command, attempt };
+        }),
+    );
+  }
   private admission(command: FollowerCommand) {
     if (this.globalStop()) refuse('COPIER_GLOBAL_STOP');
     const event = this.leaderEvent(command.eventId);
@@ -449,6 +620,54 @@ export class CopierRecords {
           : 'FOLLOWER_MUTATION_REQUIRES_OWNED_EXPOSURE',
       );
   }
+  /** Possible entry exposure remains reserved until terminal proof AND absent exposure. */
+  private assertFleetExposure(
+    command: Pick<
+      FollowerCommand,
+      'operation' | 'side' | 'symbol' | 'followerAccountId'
+    >,
+    at: number,
+    evidence?: CopierFleetEvidence,
+  ) {
+    if (command.operation !== 'ENTRY' && command.operation !== 'ADD') return;
+    if (evidence) {
+      const parsed = fleetEvidenceSchema.safeParse(evidence);
+      if (
+        !parsed.success ||
+        new Set(parsed.data.accounts.map((a) => a.accountId)).size !==
+          parsed.data.accounts.length ||
+        !parsed.data.accounts.some(
+          (a) => a.accountId === command.followerAccountId && a.enabled,
+        ) ||
+        parsed.data.accounts.some(
+          (a) =>
+            a.enabled &&
+            !isFresh(a.lastSyncTimestamp, at, parsed.data.maxAgeMs),
+        )
+      )
+        refuse('COPIER_FLEET_UNPROVEN');
+      if (!parsed.success) return refuse('COPIER_FLEET_UNPROVEN');
+      if (evaluateFleetExposure(command, parsed.data.accounts).length)
+        refuse('COPIER_HEDGE_CONFLICT');
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT a.* FROM copier_attempts a WHERE a.number=(SELECT MAX(number) FROM copier_attempts WHERE command_id=a.command_id)`,
+      )
+      .all();
+    for (const row of rows) {
+      const attempt = this.attempt(row);
+      if (attempt.terminal && attempt.outcome.exposure === 'ABSENT') continue;
+      const reserved = this.followerCommand(attempt.commandId);
+      if (!reserved) return refuse('COPIER_STORAGE_CORRUPT');
+      if (
+        reserved.symbol === command.symbol &&
+        reserved.side !== command.side &&
+        (reserved.operation === 'ENTRY' || reserved.operation === 'ADD')
+      )
+        refuse('COPIER_HEDGE_CONFLICT');
+    }
+  }
   private createAttempt(
     command: FollowerCommand,
     number: number,
@@ -493,10 +712,18 @@ export class CopierRecords {
     input: FollowerPlan,
     ownerGeneration: string,
     at: number,
+    fleetEvidence?: CopierFleetEvidence,
   ) {
     const plan = parse(followerPlanSchema, input),
       life = parse(lifecycleSchema, { ownerGeneration, at });
     return this.transaction(() => {
+      const batch = this.fanoutBatch(plan.eventId);
+      if (
+        batch &&
+        (batch.ownerGeneration !== life.ownerGeneration ||
+          !batch.followerAccountIds.includes(plan.followerAccountId))
+      )
+        return refuse('COPIER_IDENTITY_CONFLICT');
       const event = this.leaderEvent(plan.eventId);
       if (!event) return refuse('LEADER_EVENT_MISSING');
       if (plan.followerAccountId === event.leaderAccountId)
@@ -527,6 +754,7 @@ export class CopierRecords {
       }
       if (life.at < event.occurredAt) refuse('INVALID_COPIER_TIME');
       this.admission(command);
+      this.assertFleetExposure(command, life.at, fleetEvidence);
       this.db
         .prepare('INSERT INTO copier_commands VALUES(?,?,?,?)')
         .run(
@@ -542,7 +770,12 @@ export class CopierRecords {
       };
     });
   }
-  markDispatchStarted(attemptId: string, ownerGeneration: string, at: number) {
+  markDispatchStarted(
+    attemptId: string,
+    ownerGeneration: string,
+    at: number,
+    fleetEvidence?: CopierFleetEvidence,
+  ) {
     const life = parse(lifecycleSchema, { ownerGeneration, at });
     return this.transaction(() => {
       const attempt = this.followerAttempt(attemptId);
@@ -557,7 +790,16 @@ export class CopierRecords {
         refuse('DISPATCH_CLAIM_REFUSED');
       const command = this.followerCommand(attempt.commandId);
       if (!command) return refuse('COPIER_STORAGE_CORRUPT');
+      const batch = this.fanoutBatch(command.eventId);
+      if (
+        batch &&
+        attempt.number === 1 &&
+        (batch.ownerGeneration !== life.ownerGeneration ||
+          !batch.followerAccountIds.includes(command.followerAccountId))
+      )
+        return refuse('COPIER_IDENTITY_CONFLICT');
       this.admission(command);
+      this.assertFleetExposure(command, life.at, fleetEvidence);
       attempt.dispatchStartedAt = life.at;
       attempt.revision++;
       attempt.outcome.submission = 'SUBMITTING';
@@ -688,6 +930,28 @@ export class CopierRecords {
         .map((row) => this.stored(attemptObservationSchema, row.observation));
     });
   }
+  followerDisposition(eventId: string, accountId: string) {
+    return this.read(() => {
+      const event = this.leaderEvent(eventId);
+      if (!event) return null;
+      const root = leaderRootKey(event),
+        row = this.db
+          .prepare(
+            'SELECT disposition FROM copier_dispositions WHERE root_id=? AND account_id=?',
+          )
+          .get(root, accountId);
+      if (!row) return null;
+      const disposition = this.stored(dispositionSchema, row.disposition),
+        source = this.leaderEvent(disposition.eventId);
+      if (
+        disposition.followerAccountId !== accountId ||
+        !source ||
+        leaderRootKey(source) !== root
+      )
+        return refuse('COPIER_STORAGE_CORRUPT');
+      return disposition;
+    });
+  }
   recordFollowerDisposition(input: FollowerDisposition) {
     const disposition = parse(dispositionSchema, input);
     return this.transaction(() => {
@@ -717,6 +981,7 @@ export class CopierRecords {
     previousAttemptId: string,
     ownerGeneration: string,
     at: number,
+    fleetEvidence?: CopierFleetEvidence,
   ) {
     const life = parse(lifecycleSchema, { ownerGeneration, at });
     return this.transaction(() => {
@@ -741,6 +1006,7 @@ export class CopierRecords {
       )
         refuse('EXPLICIT_RETRY_UNPROVEN');
       this.admission(command);
+      this.assertFleetExposure(command, life.at, fleetEvidence);
       return {
         fresh: true,
         command,

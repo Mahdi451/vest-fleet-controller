@@ -4,7 +4,8 @@ Engineering handoff, implementation reference and planning for `vest-fleet-contr
 For installation and daily use, see the [README](README.md).
 
 **Current direction:** follow the [implementation checklist](docs/implementation-checklist.md).
-Phase 1 event records are verified offline; Phase 2 independent follower fan-out is next.
+Phases 1–3 records, independent fan-out, readiness and channel contracts are verified
+offline. Phase 4 original Vest integration and real context evidence are next.
 Live trading remains locked. Earlier connection, platform and sequential-execution
 notes below are historical wherever they conflict with that checklist.
 
@@ -16,7 +17,7 @@ Windows and Mac packages remain scheduled near final release, after acceptance.
 
 Customer deployment targets are Windows and macOS. Native identity, protected storage,
 startup configuration and diagnostics are implemented; [desktop host acceptance](docs/desktop-host-support.md)
-remains a release gate. Immediate work is offline independent follower fan-out.
+remains a release gate. Immediate work is Phase 4 original Vest integration.
 Record native CI and physical device results separately from Linux evidence.
 
 Mobile simulation and private HTTPS application work are now delivered around the

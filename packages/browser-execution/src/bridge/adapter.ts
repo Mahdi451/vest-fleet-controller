@@ -22,15 +22,17 @@ import {
 const hash = (value: unknown) =>
   createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-/** Protocol prototype. FleetController remains the only execution owner. */
+/** Synthetic transport with explicitly declared account lanes; no execution policy. */
 export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
   readonly name = 'OfflineBridgeExecutionAdapter:OFFLINE_FIXTURE';
   readonly mode = 'SIMULATION' as const;
+  readonly environment = 'OFFLINE_FIXTURE' as const;
   private state: 'DISCONNECTED' | 'CONNECTED' | 'QUARANTINED' | 'CLOSED' =
     'DISCONNECTED';
   private readonly sessionId: string;
   private readonly recoveredHalt: boolean;
-  private queue: Promise<unknown> = Promise.resolve();
+  private queues = new Map<string, Promise<unknown>>();
+  readonly scheduling: 'ACCOUNT_LANES' | 'SERIAL';
   private readonly timeoutMs: number;
   private readonly maxAgeMs: number;
   constructor(
@@ -42,6 +44,8 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
     if (port.environment !== 'OFFLINE_FIXTURE')
       throw new Error('LIVE_BRIDGE_DISABLED');
     this.sessionId = z.string().uuid().parse(port.sessionId);
+    this.scheduling =
+      port.concurrency === 'ACCOUNT_BOUND' ? 'ACCOUNT_LANES' : 'SERIAL';
     this.recoveredHalt = journal.halted();
     this.timeoutMs = options.timeoutMs ?? 500;
     this.maxAgeMs = options.maxAgeMs ?? 5000;
@@ -58,9 +62,13 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
   private assertUsable(connecting = false) {
     if (
       this.port.environment !== 'OFFLINE_FIXTURE' ||
-      this.port.sessionId !== this.sessionId
-    )
+      this.port.sessionId !== this.sessionId ||
+      (this.port.concurrency === 'ACCOUNT_BOUND') !==
+        (this.scheduling === 'ACCOUNT_LANES')
+    ) {
+      this.quarantine();
       throw new Error('BRIDGE_SESSION_CHANGED');
+    }
     if (
       this.state !== 'CONNECTED' &&
       !(connecting && this.state === 'DISCONNECTED')
@@ -75,9 +83,20 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
       void this.port.quarantine().catch(() => {});
     }
   }
-  private serialized<T>(operation: () => Promise<T>): Promise<T> {
-    const run = this.queue.then(operation);
-    this.queue = run.catch(() => {});
+  private serialized<T>(
+    operation: () => Promise<T>,
+    accountId = '@fleet',
+  ): Promise<T> {
+    const key = this.scheduling === 'ACCOUNT_LANES' ? accountId : '@fleet';
+    const run = (this.queues.get(key) ?? Promise.resolve()).then(operation);
+    const tail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.queues.set(key, tail);
+    void tail.then(() => {
+      if (this.queues.get(key) === tail) this.queues.delete(key);
+    });
     return run;
   }
   private async rpc<K extends BridgeOperation>(
@@ -170,7 +189,7 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
     return account;
   }
   getAccountState(accountId: string) {
-    return this.serialized(() => this.account(accountId));
+    return this.serialized(() => this.account(accountId), accountId);
   }
   getQuote() {
     return this.serialized(() => this.rpc('QUOTE', {}));
@@ -223,16 +242,20 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
       if (!result) throw new Error('BRIDGE_ENTRY_UNKNOWN');
       if (result.status !== 'UNKNOWN') this.journal.confirmBrowserAction(key);
       return result;
-    });
+    }, order.accountId);
   }
   getOrder(requestId: string) {
-    return this.serialized(async () => {
-      const accountId = this.journal.browserActionAccount(
-        `bridge:entry:${requestId}`,
-      );
-      if (!accountId) return null;
-      return this.order(requestId, accountId);
-    });
+    return this.serialized(
+      async () => {
+        const accountId = this.journal.browserActionAccount(
+          `bridge:entry:${requestId}`,
+        );
+        if (!accountId) return null;
+        return this.order(requestId, accountId);
+      },
+      this.journal.browserActionAccount(`bridge:entry:${requestId}`) ??
+        '@fleet',
+    );
   }
   private async protection(accountId: string, orderId: string) {
     const order = await this.rpc('PROTECTION_ORDER', { accountId, orderId });
@@ -259,10 +282,13 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
       if (!order) throw new Error('BRIDGE_PROTECTION_UNKNOWN');
       this.journal.confirmBrowserAction(key);
       return order;
-    });
+    }, request.accountId);
   }
   getProtectionOrder(accountId: string, orderId: string) {
-    return this.serialized(() => this.protection(accountId, orderId));
+    return this.serialized(
+      () => this.protection(accountId, orderId),
+      accountId,
+    );
   }
   private async openOrders(accountId: string) {
     const orders = await this.rpc('OPEN_ORDERS', { accountId });
@@ -274,7 +300,7 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
     return orders;
   }
   getOpenOrders(accountId: string) {
-    return this.serialized(() => this.openOrders(accountId));
+    return this.serialized(() => this.openOrders(accountId), accountId);
   }
   cancelOrder(accountId: string, orderId: string) {
     return this.serialized(async () => {
@@ -292,7 +318,7 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
         ),
       );
       this.journal.confirmBrowserAction(key);
-    });
+    }, accountId);
   }
   flattenAccount(accountId: string) {
     return this.serialized(async () => {
@@ -316,6 +342,6 @@ export class OfflineBridgeExecutionAdapter implements ExecutionAdapter {
           !(await this.openOrders(accountId)).length,
       );
       this.journal.confirmBrowserAction(key);
-    });
+    }, accountId);
   }
 }

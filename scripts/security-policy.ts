@@ -95,6 +95,11 @@ export function auditExecutionSource(
 ): void {
   assertSyntax(source);
   const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+  // Reviewed localhost-only fixture host; never included in the inert production build.
+  const managedFixture =
+    !!root &&
+    relative(root, resolve(file)).replaceAll('\\', '/') ===
+      'packages/browser-execution/src/managed-fixture.ts';
   const forbiddenName =
     /^(fetch|XMLHttpRequest|WebSocket|sendBeacon|eval|Function|require|localStorage|sessionStorage|indexedDB|bearer|token|accessToken|refreshToken)$/i;
   const forbiddenContent =
@@ -102,16 +107,96 @@ export function auditExecutionSource(
   function visit(node: ts.Node): void {
     if (
       (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) &&
-      forbiddenName.test(node.text)
+      forbiddenName.test(node.text) &&
+      !(
+        ts.isStringLiteralLike(node) &&
+        node.text === 'function' &&
+        ts.isBinaryExpression(node.parent) &&
+        (ts.isTypeOfExpression(node.parent.left) ||
+          ts.isTypeOfExpression(node.parent.right))
+      )
     )
       throw new Error(`FORBIDDEN_CAPABILITY:${node.text}`);
     if (ts.isStringLiteralLike(node) && /^authorization$/i.test(node.text))
       throw new Error('AUTHORIZATION_HEADER_FORBIDDEN');
     if (
       (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) &&
-      forbiddenContent.test(node.text)
+      forbiddenContent.test(node.text) &&
+      !(
+        managedFixture &&
+        ts.isStringLiteralLike(node) &&
+        node.text === 'http://127.0.0.1:'
+      )
     ) {
       throw new Error('FORBIDDEN_EXECUTION_CONTENT');
+    }
+    if (
+      managedFixture &&
+      ts.isIdentifier(node) &&
+      node.text === 'chromium' &&
+      !ts.isImportSpecifier(node.parent)
+    ) {
+      const parent = node.parent;
+      if (
+        !ts.isPropertyAccessExpression(parent) ||
+        parent.expression !== node ||
+        parent.name.text !== 'launchPersistentContext' ||
+        !ts.isCallExpression(parent.parent) ||
+        parent.parent.expression !== parent
+      )
+        throw new Error('MANAGED_BROWSER_USE_FORBIDDEN');
+    }
+    if (
+      managedFixture &&
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression)
+    ) {
+      const method = node.expression.name.text;
+      if (
+        [
+          'connectOverCDP',
+          'launchServer',
+          'exposeNetwork',
+          'browserType',
+        ].includes(method)
+      )
+        throw new Error('MANAGED_BROWSER_ATTACHMENT_FORBIDDEN');
+      if (
+        method === 'launch' ||
+        (method === 'connect' &&
+          !(
+            node.expression.expression.getText(ast) === 'mock' &&
+            node.arguments.length === 0
+          ))
+      )
+        throw new Error('MANAGED_BROWSER_ATTACHMENT_FORBIDDEN');
+      if (method === 'launchPersistentContext') {
+        const options = node.arguments[1];
+        if (
+          !options ||
+          !ts.isObjectLiteralExpression(options) ||
+          options.properties.some(
+            (p) =>
+              !ts.isPropertyAssignment(p) ||
+              !(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)),
+          ) ||
+          options.properties.filter(
+            (p) =>
+              p.name &&
+              (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+              p.name.text === 'headless',
+          ).length !== 1 ||
+          !options.properties.some(
+            (p) =>
+              ts.isPropertyAssignment(p) &&
+              (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+              p.name.text === 'headless' &&
+              p.initializer.kind === ts.SyntaxKind.TrueKeyword,
+          ) ||
+          node.expression.expression.getText(ast) !== 'chromium'
+        )
+          throw new Error('MANAGED_HEADLESS_REQUIRED');
+      }
     }
     if (
       ts.isCallExpression(node) &&
@@ -148,12 +233,33 @@ export function auditExecutionSource(
         } else if (name.includes('../'))
           throw new Error('EXECUTION_IMPORT_REQUIRES_ROOT');
       } else if (name === 'playwright') {
+        if (managedFixture) {
+          if (
+            !ts.isImportDeclaration(node) ||
+            !node.importClause ||
+            node.importClause.name ||
+            !node.importClause.namedBindings ||
+            !ts.isNamedImports(node.importClause.namedBindings)
+          )
+            throw new Error('MANAGED_BROWSER_IMPORT_FORBIDDEN');
+          for (const item of node.importClause.namedBindings.elements) {
+            const typeOnly = node.importClause.isTypeOnly || item.isTypeOnly;
+            if (
+              item.propertyName ||
+              (typeOnly
+                ? !['Page', 'BrowserContext'].includes(item.name.text)
+                : item.name.text !== 'chromium')
+            )
+              throw new Error('MANAGED_BROWSER_IMPORT_FORBIDDEN');
+          }
+        }
         if (
-          !file
+          !managedFixture &&
+          (!file
             .replaceAll('\\', '/')
             .endsWith('/packages/browser-execution/src/vest-live-page.ts') ||
-          !ts.isImportDeclaration(node) ||
-          !node.importClause?.isTypeOnly
+            !ts.isImportDeclaration(node) ||
+            !node.importClause?.isTypeOnly)
         )
           throw new Error('UNAPPROVED_EXECUTION_IMPORT');
       } else if (
@@ -164,11 +270,13 @@ export function auditExecutionSource(
           'node:sqlite',
           'node:fs',
           'node:path',
+          ...(managedFixture ? ['node:http', 'node:os'] : []),
         ].includes(name)
       ) {
         throw new Error('UNAPPROVED_EXECUTION_IMPORT');
       } else if (
         ['node:fs', 'node:path'].includes(name) &&
+        !managedFixture &&
         !file
           .replaceAll('\\', '/')
           .endsWith('/packages/simulator/src/storage.ts')
